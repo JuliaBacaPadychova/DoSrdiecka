@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Do srdiečka — správa</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+
+<div id="loginView" class="admin-login">
+  <h1><span class="heart" style="color:var(--terra)">♥</span> Do srdiečka — správa</h1>
+  <div>
+    <label for="loginEmail">E-mail</label>
+    <input id="loginEmail" type="email" placeholder="tvoj@email.sk">
+  </div>
+  <div style="margin-top:12px">
+    <label for="loginPassword">Heslo</label>
+    <input id="loginPassword" type="password" placeholder="••••••••">
+  </div>
+  <p class="err" id="loginErr" style="display:none"></p>
+  <button class="btn" style="margin-top:16px;width:100%" onclick="Admin.login()">Prihlásiť sa</button>
+</div>
+
+<div id="dashboardView" class="admin-wrap" style="display:none">
+  <div class="admin-row">
+    <h1 style="font-size:1.6rem"><span class="heart" style="color:var(--terra)">♥</span> Do srdiečka — správa</h1>
+    <button class="btn ghost sm logout" onclick="Admin.logout()">Odhlásiť sa</button>
+  </div>
+
+  <div class="admin-tabs">
+    <button class="on" data-tab="orders" onclick="Admin.showTab('orders')">Objednávky</button>
+    <button data-tab="days" onclick="Admin.showTab('days')">Dni a limity</button>
+    <button data-tab="products" onclick="Admin.showTab('products')">Ponuka</button>
+    <button data-tab="settings" onclick="Admin.showTab('settings')">Nastavenia</button>
+  </div>
+
+  <div class="admin-panel on" id="tab-orders">
+    <div class="admin-card">
+      <div id="ordersList"><p class="muted">Načítavam objednávky…</p></div>
+    </div>
+  </div>
+
+  <div class="admin-panel" id="tab-days">
+    <div class="admin-card">
+      <h3>Pridať / upraviť deň</h3>
+      <div class="form">
+        <div><label for="dayDate">Dátum</label><input id="dayDate" type="date"></div>
+        <div><label for="dayOpen">Stav</label>
+          <select id="dayOpen"><option value="true">Otvorené</option><option value="false">Zatvorené</option></select>
+        </div>
+        <div><label for="dayCapZ">Limit zákuskov (ks)</label><input id="dayCapZ" type="number" min="0" value="18"></div>
+        <div><label for="dayCapT">Limit tort</label><input id="dayCapT" type="number" min="0" value="1"></div>
+      </div>
+      <button class="btn" style="margin-top:14px" onclick="Admin.saveDay()">Uložiť deň</button>
+      <p class="err" id="dayErr" style="display:none"></p>
+    </div>
+    <div class="admin-card">
+      <div id="daysList"><p class="muted">Načítavam dni…</p></div>
+    </div>
+  </div>
+
+  <div class="admin-panel" id="tab-products">
+    <div class="admin-card">
+      <h3 id="productFormTitle">Nový výrobok</h3>
+      <input type="hidden" id="productId">
+      <div class="form">
+        <div><label for="pCategory">Kategória</label>
+          <select id="pCategory"><option value="chlebik">Chlebík</option><option value="zakusky">Zákusky</option><option value="torty">Torty</option></select>
+        </div>
+        <div><label for="pName">Názov</label><input id="pName"></div>
+        <div><label for="pSub">Podnadpis</label><input id="pSub"></div>
+        <div><label for="pPrice">Cena od (€)</label><input id="pPrice" type="number" min="0" step="0.5"></div>
+        <div><label for="pMinQty">Minimálny odber (ks)</label><input id="pMinQty" type="number" min="1" value="1"></div>
+        <div><label for="pMinLabel">Popisok min. odberu</label><input id="pMinLabel" placeholder="napr. min. 6 ks"></div>
+        <div class="full"><label for="pDesc">Popis</label><textarea id="pDesc"></textarea></div>
+        <div class="full"><label for="pAlt">Alternatívy / poznámka</label><textarea id="pAlt"></textarea></div>
+        <div><label for="pAllerg">Alergény</label><input id="pAllerg" placeholder="napr. 1, 3, 7"></div>
+        <div><label for="pActive">Zobrazovať na webe</label>
+          <select id="pActive"><option value="true">Áno</option><option value="false">Nie</option></select>
+        </div>
+        <div class="full">
+          <label for="pImageFile">Fotka</label>
+          <input id="pImageFile" type="file" accept="image/png,image/jpeg,image/webp">
+          <input type="hidden" id="pImageUrl">
+          <div id="pImagePreview" style="margin-top:8px"></div>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px">
+        <button class="btn" onclick="Admin.saveProduct()">Uložiť výrobok</button>
+        <button class="btn ghost" onclick="Admin.resetProductForm()">Nový / zrušiť úpravu</button>
+      </div>
+      <p class="err" id="productErr" style="display:none"></p>
+    </div>
+    <div class="admin-card">
+      <div id="productsList"><p class="muted">Načítavam ponuku…</p></div>
+    </div>
+  </div>
+
+  <div class="admin-panel" id="tab-settings">
+    <div class="admin-card">
+      <h3>Texty na úvodnej stránke</h3>
+      <div class="form">
+        <div class="full"><label for="sHeroTitle">Hlavný nadpis</label><input id="sHeroTitle"></div>
+        <div class="full"><label for="sHeroLead">Úvodný text</label><textarea id="sHeroLead"></textarea></div>
+        <div class="full"><label for="sAbout">Text v pätičke (o mne)</label><textarea id="sAbout"></textarea></div>
+      </div>
+      <button class="btn" style="margin-top:14px" onclick="Admin.saveSettings()">Uložiť texty</button>
+      <p class="err" id="settingsErr" style="display:none"></p>
+      <p class="muted" id="settingsOk" style="display:none">Uložené.</p>
+    </div>
+  </div>
+</div>
+
+<script src="/admin/app.js"></script>
+</body>
+</html>

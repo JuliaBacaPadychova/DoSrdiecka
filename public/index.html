@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Do srdiečka — domáca cukráreň</title>
+<meta name="description" content="Ručne pečené dobroty na osobný odber. Pečiem len na vybrané dni — vyber si termín a vytvor si predbežnú objednávku.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+<header>
+  <div class="wrap bar">
+    <div class="brand"><span class="heart">♥</span> Do srdiečka</div>
+    <div class="head-right">
+      <span class="chip"><span class="dot"></span> Najbližší voľný termín: <b id="nextFree">—</b></span>
+      <button class="btn sm" onclick="goOrder()">Objednať</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero wrap">
+    <span class="eyebrow">Ručne pečené dobroty · osobný odber</span>
+    <h1 id="heroTitle">Každý kúsok ide predsa do srdiečka.</h1>
+    <p class="lead" id="heroLead">Chlebík, zákusky aj torty z čerstvých surovín — pracujem prevažne
+      s bezlaktózovými produktami a príchute rada prispôsobím tvojim preferenciám.</p>
+    <div class="note">
+      <b>Pečiem len na vybrané dni.</b> Objednávku spustíš výberom termínu — hneď uvidíš,
+      koľko sa naň ešte zmestí, takže nič nenaklikáš zbytočne.
+      <br><button class="btn" onclick="goOrder()">Vybrať termín a objednať</button>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <svg class="wave" viewBox="0 0 1080 46" fill="none" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 30 C 160 4, 250 44, 420 24 S 720 6, 900 28 S 1040 40, 1080 22" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+    </svg>
+  </div>
+
+  <section class="wrap" id="ponuka">
+    <div class="sec-head">
+      <div><span class="eyebrow">Ponuka</span><h2>Čo momentálne pečiem</h2></div>
+      <p>Ceny sú uvedené ako „od" — konečnú dohodneme podľa finálnej kombinácie a príchutí.</p>
+    </div>
+    <div id="menu"><p class="muted">Načítavam ponuku…</p></div>
+  </section>
+
+  <section class="wrap" id="objednavka">
+    <div class="sec-head">
+      <div><span class="eyebrow">Objednávka</span><h2>Vytvor si predbežnú objednávku</h2></div>
+      <p>Nezáväzná — po odoslaní ti potvrdím termín aj konečnú cenu.</p>
+    </div>
+
+    <div class="order">
+      <div class="steps">
+        <div class="stp on" id="s1"><b>1</b> Termín</div>
+        <div class="stp" id="s2"><b>2</b> Výrobky</div>
+        <div class="stp" id="s3"><b>3</b> Kontakt</div>
+      </div>
+
+      <div class="panel on" id="p1">
+        <div class="cal-top">
+          <div class="cal-nav">
+            <button class="btn ghost sm" id="prevMonth" onclick="shiftMonth(-1)" aria-label="Predchádzajúci mesiac">←</button>
+            <h3 id="calTitle">—</h3>
+            <button class="btn ghost sm" onclick="shiftMonth(1)" aria-label="Nasledujúci mesiac">→</button>
+          </div>
+        </div>
+        <div class="caplimit">Čísla v kalendári ukazujú, koľko sa na daný deň ešte zmestí.</div>
+        <div class="legend">
+          <span><i class="l-free"></i>Voľné</span>
+          <span><i class="l-full"></i>Plný</span>
+          <span><i class="l-closed"></i>Nepečiem</span>
+        </div>
+        <div class="dow"><span>Po</span><span>Ut</span><span>St</span><span>Št</span><span>Pi</span><span>So</span><span>Ne</span></div>
+        <div class="cal" id="cal"><p class="muted">Načítavam kalendár…</p></div>
+      </div>
+
+      <div class="panel" id="p2">
+        <div class="daybar">
+          <div class="d1" id="dayLabel">—</div>
+          <div class="cap">Ešte sa zmestí: <b id="capT">—</b> torta · <b id="capZ">—</b> ks zákuskov</div>
+        </div>
+        <div id="orderItems"></div>
+        <div class="flownav">
+          <button class="btn ghost" onclick="setStep(1)">← Späť na termín</button>
+          <button class="btn" id="toStep3" onclick="setStep(3)" disabled>Pokračovať na kontakt</button>
+        </div>
+      </div>
+
+      <div class="panel" id="p3">
+        <div id="checkout">
+          <h3 style="font-size:1.3rem;margin-bottom:10px">Súhrn objednávky</h3>
+          <div id="sumList"></div>
+          <div class="sumtot"><span>Orientačná cena</span><span id="sumTotal">od 0 €</span></div>
+          <p class="disc">Predbežná, nezáväzná objednávka. Konečnú cenu ti potvrdím podľa zvolených príchutí, veľkostí a úprav.</p>
+          <div class="form">
+            <div><label for="fname">Meno a priezvisko</label><input id="fname" placeholder="Napr. Jana Nováková"></div>
+            <div><label for="fphone">Telefón</label><input id="fphone" placeholder="+421 ..."></div>
+            <div class="full"><label for="femail">E-mail</label><input id="femail" placeholder="jana@email.sk"></div>
+            <div class="full"><label for="fnote">Poznámka (príchute, veľkosť torty, alergie, čas odberu…)</label>
+              <textarea id="fnote" placeholder="Napr. veterníky v príchuti pistácia–malina, brownie torta Ø 18 cm, odber okolo 15:00"></textarea></div>
+          </div>
+          <p class="err" id="formErr" style="display:none"></p>
+          <div class="flownav">
+            <button class="btn ghost" onclick="setStep(2)">← Späť na výrobky</button>
+            <button class="btn" id="submitBtn" onclick="submitOrder()">Odoslať predbežnú objednávku</button>
+          </div>
+        </div>
+        <div class="success" id="success" style="display:none">
+          <div class="ic">♥</div>
+          <h3>Ďakujem, mám to!</h3>
+          <p>Tvoju predbežnú objednávku som prijala. Ozvem sa ti s potvrdením termínu a finálnou cenou.</p>
+          <button class="btn ghost" style="margin-top:16px" onclick="resetAll()">Vytvoriť ďalšiu</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap fgrid">
+    <div><b>Do srdiečka</b><br>Ručne pečené dobroty · osobný odber</div>
+    <div id="aboutText">Pracujem prevažne s bezlaktózovými produktami.<br>Alergény sú uvedené pri každom výrobku.</div>
+    <div><a href="/admin/">Správa (admin)</a></div>
+  </div>
+</footer>
+
+<script src="/assets/app.js"></script>
+</body>
+</html>

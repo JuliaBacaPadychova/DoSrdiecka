@@ -1,0 +1,13 @@
+{
+  "name": "dosrdiecka",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Do srdiečka — objednávkový web domácej cukrárne",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
