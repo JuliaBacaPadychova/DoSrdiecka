@@ -107,9 +107,11 @@ select
   d.is_open,
   d.cap_zakusky,
   d.cap_torty,
-  d.cap_chlebik,
   d.cap_zakusky - coalesce(z.used, 0) as remaining_zakusky,
   d.cap_torty - coalesce(t.used, 0) as remaining_torty,
+  -- Nové stĺpce musia byť na konci: "create or replace view" v Postgrese
+  -- vie stĺpce iba pridať, nie vložiť doprostred ani premenovať.
+  d.cap_chlebik,
   d.cap_chlebik - coalesce(ch.used, 0) as remaining_chlebik
 from open_days d
 left join (
