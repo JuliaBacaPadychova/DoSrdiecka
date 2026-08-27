@@ -244,7 +244,7 @@ children.push(H2("Vercel — tu web beží"));
 children.push(P("Server, na ktorom web reálne beží. Doručuje stránky zákazníčkam a spúšťa funkcie, ktoré prijímajú objednávky a odosielajú e-maily."));
 children.push(BULLET("DoSrdiecka, projekt do-srdiecka", "Tím: "));
 children.push(BULLET("Cez tvoj GitHub účet", "Prihlásenie: "));
-children.push(BULLET("Settings → Environment Variables — šesť premenných, medzi nimi kľúč k databáze a heslo k schránke", "Tajné údaje: "));
+children.push(BULLET("Settings → Environment Variables — sedem premenných, medzi nimi kľúč k databáze, heslo k schránke a zoznam ADMIN_EMAILS", "Nastavenia: "));
 children.push(BULLET("Záložka Logs ukáže, čo presne zlyhalo — ale len hodinu dozadu", "Keď niečo nejde: "));
 children.push(BULLET("Zadarmo, plán Hobby", "Cena: "));
 
@@ -255,7 +255,7 @@ children.push(BULLET("qjqsqllghqzoqykodkar.supabase.co", "Adresa: "));
 children.push(BULLET("Kategórie, výrobky, otvorené dni, objednávky, položky objednávok, nastavenia", "Tabuľky: "));
 children.push(BULLET("Zákusky, torty a chlebíky majú vlastný denný limit — meníš ich v správe pri každom dni", "Limity: "));
 children.push(BULLET("Authentication → Users — tu žije prihlásenie do /admin/", "Tvoj účet: "));
-children.push(BULLET("Keď si potrebuješ obnoviť heslo do správy. Inak takmer nikdy.", "Kedy sem ideš: "));
+children.push(BULLET("Keď si potrebuješ obnoviť heslo do správy, alebo keď ti pošlem migráciu na spustenie v SQL Editore. Inak takmer nikdy.", "Kedy sem ideš: "));
 children.push(BULLET("Zadarmo", "Cena: "));
 
 children.push(H2("Websupport — doména a pošta"));
@@ -283,6 +283,7 @@ children.push(table(
     [["Obnoviť si zabudnuté heslo do správy"], [["Supabase → Authentication → Users", true]]],
     [["Zistiť, prečo niečo nefunguje"], [["Vercel → do-srdiecka → Logs", true], ["Len hodinu dozadu — choď tam hneď, ako problém nastane", false, true]]],
     [["Zmeniť heslo k e-mailovej schránke"], [["Websupport, a hneď potom Vercel → Environment Variables", true], ["Inak prestanú chodiť notifikácie o objednávkach", false, true]]],
+    [["Zmeniť e-mail, ktorým sa hlásim do správy"], [["Supabase → Authentication → Users, a hneď potom ADMIN_EMAILS vo Verceli", true], ["Keď sa tie dve adresy rozídu, správa nepustí dnu ani teba", false, true]]],
     [["Zmeniť texty, vzhľad alebo správanie webu"], [["Napíš mi — mením to v kóde na GitHube", true]]],
   ]
 ));
@@ -301,6 +302,7 @@ children.push(table(
     [[["Kľúč service_role", true]], [["Iba vo Verceli", true]], ["Web ním číta a zapisuje do databázy"]],
     [[["Heslo k schránke", true]], [["Websupport + vo Verceli", true]], ["Odosielanie notifikácií"]],
     [[["Účet GitHub", true]], ["Tvoje prihlásenie"], ["Cez neho sa hlásiš aj do Vercelu"]],
+    [[["ADMIN_EMAILS", true], ["nie je tajné"]], ["Vo Verceli"], ["Určuje, kto sa dostane do správy. Prihlásenie samo o sebe nestačí."]],
   ]
 ));
 children.push(SPACER(160));
@@ -322,6 +324,10 @@ children.push(H1("Kde stojíme"));
   ["hotovo", "Košík", "objednávka sa dá začať aj z ponuky, nielen výberom termínu"],
   ["hotovo", "Dva e-maily", "notifikácia tebe a potvrdenie zákazníčke, s názvami výrobkov"],
   ["hotovo", "Denný limit chlebíka", "18 ks zákuskov, 1 torta, 1 chlebík na deň"],
+  ["hotovo", "Do správy len povolené e-maily", "prihlásenie samo o sebe nestačí, registrácia je vypnutá"],
+  ["hotovo", "Objednávku založí len server", "cez verejný kľúč to už nejde"],
+  ["hotovo", "Kapacity nie sú verejne čitateľné", "pohľad rešpektuje ochranu tabuliek"],
+  ["zostáva", "Ochrana proti uniknutým heslám", "je za plateným programom Supabase; heslo si over na haveibeenpwned.com/Passwords"],
   ["zostáva", "Druhé kolo úprav", "texty a rozdelenie ponuky podľa príchutí"],
 ].forEach(([stav, co, detail]) => {
   children.push(new Paragraph({
@@ -339,7 +345,7 @@ children.push(new Paragraph({
   border: { top: { style: BorderStyle.SINGLE, size: 4, color: LINE } },
   spacing: { before: 120, after: 0 },
   children: [new TextRun({
-    text: "Do srdiečka · prevádzková príručka k webu · aktualizované po pripojení domény a prvom kole úprav",
+    text: "Do srdiečka · prevádzková príručka k webu · aktualizované po prvom kole úprav a bezpečnostných opravách",
     size: 17, color: GREY, italics: true,
   })],
 }));
