@@ -244,6 +244,15 @@ begin
 end;
 $$;
 
+-- Funkciu smie spúšťať iba náš server (service-role kľúčom). Bez tohto
+-- ju cez /rest/v1/rpc/create_order zavolá ktokoľvek s verejným kľúčom
+-- a obíde kontroly, ktoré robí /api/orders — a hlavne si vie zaplniť
+-- dni vymyslenými objednávkami.
+revoke execute on function create_order(date, text, text, text, text, jsonb)
+  from public, anon, authenticated;
+grant execute on function create_order(date, text, text, text, text, jsonb)
+  to service_role;
+
 -- ---------------------------------------------------------------------
 -- ÚLOŽISKO NA FOTKY VÝROBKOV (verejne čitateľné, nahrávať vie len admin
 -- cez náš /api/admin/upload, ktorý používa service role kľúč)
