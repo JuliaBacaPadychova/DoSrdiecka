@@ -100,6 +100,11 @@ alter table site_settings enable row level security;
 
 -- ---------------------------------------------------------------------
 -- POHĽAD: zvyšná kapacita na deň (počíta sa z už prijatých objednávok)
+--
+-- security_invoker: pohľad sa pýta tabuliek pod právami toho, kto sa
+-- pýta jeho, nie pod právami autora. Bez toho by obchádzal ochranu na
+-- tabuľkách a kapacity by si prečítal ktokoľvek aj s verejným kľúčom.
+-- Web tým netrpí — číta ho zo servera service-role kľúčom.
 -- ---------------------------------------------------------------------
 create or replace view day_capacity as
 select
@@ -135,6 +140,8 @@ left join (
   where o.status <> 'zrusena' and oi.category_id = 'chlebik'
   group by o.day
 ) ch on ch.day = d.day;
+
+alter view day_capacity set (security_invoker = on);
 
 -- ---------------------------------------------------------------------
 -- FUNKCIA: atomické vytvorenie objednávky s kontrolou kapacity.
