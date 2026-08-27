@@ -81,7 +81,7 @@ test("po objednávke odídu dva e-maily s názvami výrobkov", async (t) => {
   assert.match(zakaznicky.text, /Ďakujem za objednávku!/);
   assert.match(zakaznicky.text, /6x Choux/);
   assert.match(zakaznicky.text, /Vavilovova 4/, "adresa osobného odberu");
-  assert.match(zakaznicky.text, /Júlia, od srdiečka/, "podpis");
+  assert.match(zakaznicky.text, /Od srdiečka, Júlia/, "podpis");
   assert.match(zakaznicky.text, /malinové/, "poznámka zákazníčky");
 
   // Zákazníčka nesmie dostať nič o správe webu ani cudzie údaje.
@@ -144,4 +144,55 @@ test("keď interná správa zlyhá, potvrdenie zákazníčke aj tak odíde", asy
   assert.equal(out.statusCode, 200, "objednávka sa uloží aj tak");
   assert.equal(sent.length, 1, "druhá správa sa odošle nezávisle");
   assert.equal(sent[0].to, "jana@example.sk");
+});
+
+test("druhý chlebík na ten istý deň sa neprijme", async (t) => {
+  const fake = await startFakeSupabase();
+  const day = iso(13);
+  fake.db.open_days.push({
+    day, is_open: true, cap_zakusky: 18, cap_torty: 1, cap_chlebik: 1,
+  });
+
+  process.env.SUPABASE_URL = fake.url;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "fake";
+  const handler = require("../api/orders");
+  t.after(async () => { await fake.close(); });
+
+  const zakaznicka = (email) => ({
+    day, name: "Jana", phone: "0900123456", email, note: "",
+    items: [{ product_id: "p-chlebik", qty: 1 }],
+  });
+
+  sent.length = 0;
+  const prva = await objednaj(handler, zakaznicka("jana@example.sk"));
+  assert.equal(prva.statusCode, 200, "prvý chlebík prejde");
+
+  // Druhá zákazníčka, ten istý deň — limit je vyčerpaný.
+  const druha = await objednaj(handler, zakaznicka("eva@example.sk"));
+  assert.equal(druha.statusCode, 409, "druhý chlebík sa odmietne");
+  assert.match(druha.body.message, /chlebík/i, "hláška má vysvetliť prečo");
+  assert.equal(sent.length, 2, "za odmietnutú objednávku sa nič neposiela");
+});
+
+test("chlebík a zákusky sa nemiešajú — každý má vlastný limit", async (t) => {
+  const fake = await startFakeSupabase();
+  const day = iso(15);
+  fake.db.open_days.push({
+    day, is_open: true, cap_zakusky: 18, cap_torty: 1, cap_chlebik: 1,
+  });
+
+  process.env.SUPABASE_URL = fake.url;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "fake";
+  const handler = require("../api/orders");
+  t.after(async () => { await fake.close(); });
+
+  sent.length = 0;
+  const out = await objednaj(handler, {
+    day, name: "Jana", phone: "0900123456", email: "jana@example.sk", note: "",
+    items: [
+      { product_id: "p-chlebik", qty: 1 },
+      { product_id: "p-choux", qty: 6 },
+    ],
+  });
+  assert.equal(out.statusCode, 200, "chlebík aj zákusky naraz musia prejsť");
 });

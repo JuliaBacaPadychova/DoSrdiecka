@@ -25,16 +25,23 @@ module.exports = withErrors(
       const isOpen = body.is_open !== false;
       const capZakusky = parseInt(body.cap_zakusky, 10);
       const capTorty = parseInt(body.cap_torty, 10);
+      const capChlebik = parseInt(body.cap_chlebik, 10);
       if (!Number.isInteger(capZakusky) || capZakusky < 0) {
         return sendJson(res, 400, { error: "invalid_cap_zakusky" });
       }
       if (!Number.isInteger(capTorty) || capTorty < 0) {
         return sendJson(res, 400, { error: "invalid_cap_torty" });
       }
+      if (!Number.isInteger(capChlebik) || capChlebik < 0) {
+        return sendJson(res, 400, { error: "invalid_cap_chlebik" });
+      }
 
       const upserted = await rest("open_days?on_conflict=day", {
         method: "POST",
-        body: { day, is_open: isOpen, cap_zakusky: capZakusky, cap_torty: capTorty },
+        body: {
+          day, is_open: isOpen,
+          cap_zakusky: capZakusky, cap_torty: capTorty, cap_chlebik: capChlebik,
+        },
         prefer: "resolution=merge-duplicates,return=representation",
       });
       return sendJson(res, 200, { day: upserted[0] || null });

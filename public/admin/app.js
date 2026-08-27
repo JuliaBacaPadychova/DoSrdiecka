@@ -160,23 +160,25 @@
     const el = document.getElementById('daysList');
     if (!days.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne otvorené dni. Pridaj prvý deň vyššie.</p>'; return; }
     el.innerHTML = `<table class="admin-table"><thead><tr>
-        <th>Dátum</th><th>Stav</th><th>Limit zákuskov</th><th>Limit tort</th><th>Zvyšná kapacita</th><th></th>
+        <th>Dátum</th><th>Stav</th><th>Zákusky</th><th>Torty</th><th>Chlebíky</th><th>Zvyšná kapacita</th><th></th>
       </tr></thead><tbody>${days.map((d) => `
         <tr>
           <td>${d.day}</td>
           <td>${d.is_open ? 'Otvorené' : 'Zatvorené'}</td>
           <td>${d.cap_zakusky}</td>
           <td>${d.cap_torty}</td>
-          <td>${d.remaining_zakusky} ks · ${d.remaining_torty} torta</td>
-          <td><button class="btn ghost sm" onclick="Admin.editDay('${d.day}', ${d.is_open}, ${d.cap_zakusky}, ${d.cap_torty})">Upraviť</button></td>
+          <td>${d.cap_chlebik}</td>
+          <td>${d.remaining_zakusky} ks · ${d.remaining_torty} torta · ${d.remaining_chlebik} chlebík</td>
+          <td><button class="btn ghost sm" onclick="Admin.editDay('${d.day}', ${d.is_open}, ${d.cap_zakusky}, ${d.cap_torty}, ${d.cap_chlebik})">Upraviť</button></td>
         </tr>`).join('')}</tbody></table>`;
   }
 
-  function editDay(day, isOpen, capZ, capT) {
+  function editDay(day, isOpen, capZ, capT, capCh) {
     document.getElementById('dayDate').value = day;
     document.getElementById('dayOpen').value = String(isOpen);
     document.getElementById('dayCapZ').value = capZ;
     document.getElementById('dayCapT').value = capT;
+    document.getElementById('dayCapCh').value = capCh;
     document.getElementById('tab-days').scrollIntoView({ behavior: 'smooth' });
   }
 
@@ -190,6 +192,7 @@
       is_open: document.getElementById('dayOpen').value === 'true',
       cap_zakusky: parseInt(document.getElementById('dayCapZ').value, 10),
       cap_torty: parseInt(document.getElementById('dayCapT').value, 10),
+      cap_chlebik: parseInt(document.getElementById('dayCapCh').value, 10),
     };
     try {
       await apiFetch('/api/admin/days', {

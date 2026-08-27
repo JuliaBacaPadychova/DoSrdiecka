@@ -41,7 +41,8 @@ create table if not exists open_days (
   day date primary key,
   is_open boolean not null default true,
   cap_zakusky int not null default 18,
-  cap_torty int not null default 1
+  cap_torty int not null default 1,
+  cap_chlebik int not null default 1
 );
 
 -- ---------------------------------------------------------------------
@@ -106,8 +107,10 @@ select
   d.is_open,
   d.cap_zakusky,
   d.cap_torty,
+  d.cap_chlebik,
   d.cap_zakusky - coalesce(z.used, 0) as remaining_zakusky,
-  d.cap_torty - coalesce(t.used, 0) as remaining_torty
+  d.cap_torty - coalesce(t.used, 0) as remaining_torty,
+  d.cap_chlebik - coalesce(ch.used, 0) as remaining_chlebik
 from open_days d
 left join (
   select o.day, sum(oi.qty) as used
@@ -122,7 +125,14 @@ left join (
   join orders o on o.id = oi.order_id
   where o.status <> 'zrusena' and oi.category_id = 'torty'
   group by o.day
-) t on t.day = d.day;
+) t on t.day = d.day
+left join (
+  select o.day, sum(oi.qty) as used
+  from order_items oi
+  join orders o on o.id = oi.order_id
+  where o.status <> 'zrusena' and oi.category_id = 'chlebik'
+  group by o.day
+) ch on ch.day = d.day;
 
 -- ---------------------------------------------------------------------
 -- FUNKCIA: atomické vytvorenie objednávky s kontrolou kapacity.
@@ -147,8 +157,10 @@ declare
   v_product products%rowtype;
   v_zak_used int := 0;
   v_tor_used int := 0;
+  v_chl_used int := 0;
   v_zak_add int := 0;
   v_tor_add int := 0;
+  v_chl_add int := 0;
   v_order_id uuid;
   v_total numeric(10,2) := 0;
   v_qty int;
@@ -168,6 +180,9 @@ begin
   select coalesce(sum(oi.qty), 0) into v_tor_used
     from order_items oi join orders o on o.id = oi.order_id
     where o.day = p_day and o.status <> 'zrusena' and oi.category_id = 'torty';
+  select coalesce(sum(oi.qty), 0) into v_chl_used
+    from order_items oi join orders o on o.id = oi.order_id
+    where o.day = p_day and o.status <> 'zrusena' and oi.category_id = 'chlebik';
 
   for v_item in select * from jsonb_array_elements(p_items) loop
     select * into v_product from products
@@ -188,6 +203,8 @@ begin
       v_zak_add := v_zak_add + v_qty;
     elsif v_product.category_id = 'torty' then
       v_tor_add := v_tor_add + v_qty;
+    elsif v_product.category_id = 'chlebik' then
+      v_chl_add := v_chl_add + v_qty;
     end if;
 
     v_total := v_total + v_product.price * v_qty;
@@ -198,6 +215,9 @@ begin
   end if;
   if v_tor_used + v_tor_add > v_day.cap_torty then
     raise exception 'capacity_torty';
+  end if;
+  if v_chl_used + v_chl_add > v_day.cap_chlebik then
+    raise exception 'capacity_chlebik';
   end if;
 
   insert into orders (day, customer_name, phone, email, note, total_estimate)
@@ -272,8 +292,8 @@ on conflict do nothing;
 
 -- Pár ukážkových otvorených dní, aby si po nasadení hneď videla, ako to
 -- vyzerá. Kľudne ich v admin časti zmaž/priprav podľa svojho kalendára.
-insert into open_days (day, is_open, cap_zakusky, cap_torty) values
-  (current_date + 7,  true, 18, 1),
-  (current_date + 9,  true, 18, 1),
-  (current_date + 14, true, 18, 1)
+insert into open_days (day, is_open, cap_zakusky, cap_torty, cap_chlebik) values
+  (current_date + 7,  true, 18, 1, 1),
+  (current_date + 9,  true, 18, 1, 1),
+  (current_date + 14, true, 18, 1, 1)
 on conflict (day) do nothing;

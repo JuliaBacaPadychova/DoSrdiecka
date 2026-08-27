@@ -181,3 +181,4 @@ footer a{color:var(--peach-deep)}
 /* osobný odber v potvrdení objednávky */
 .success .pickup{margin-top:10px;font-size:.92rem;color:var(--ink-soft)}
 .success .pickup b{color:var(--ink)}
+.cell .ch{color:var(--ink-soft);font-weight:600}

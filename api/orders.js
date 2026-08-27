@@ -29,6 +29,7 @@ const ERROR_MESSAGES = {
   below_minimum: "Pri niektorom výrobku nie je splnený minimálny odber.",
   capacity_zakusky: "Na tento termín sa už nezmestí toľko zákuskov. Skús znížiť množstvo alebo zvoliť iný deň.",
   capacity_torty: "Na tento termín je torta už obsadená — skús iný deň.",
+  capacity_chlebik: "Na tento termín je chlebík už obsadený — skús iný deň.",
 };
 
 module.exports = withErrors(async function handler(req, res) {
@@ -129,8 +130,7 @@ module.exports = withErrors(async function handler(req, res) {
         subject: `Ďakujem za objednávku na ${dlhyDatum(day)}`,
         text:
           `Ďakujem za objednávku!\n\n` +
-          `Tvoju predbežnú objednávku mám. Ozvem sa ti s potvrdením termínu\n` +
-          `a konečnou cenou.\n\n` +
+          `Tvoju predbežnú objednávku mám. Ozvem sa ti s potvrdením termínu a konečnou cenou.\n\n` +
           `Termín: ${dlhyDatum(day)}\n` +
           `Objednávka:\n${itemsText}\n\n` +
           `Orientačná cena: od ${result.total} €\n` +
@@ -139,7 +139,7 @@ module.exports = withErrors(async function handler(req, res) {
           `Výrobky si vyzdvihneš osobne na adrese ${ODBER}.\n` +
           `Na čase odberu sa dohodneme, keď ti termín potvrdím.\n\n` +
           `Ak niečo nesedí, stačí odpovedať na tento e-mail.\n\n` +
-          `Júlia, od srdiečka`,
+          `Od srdiečka, Júlia`,
       });
     } catch (mailErr) {
       // eslint-disable-next-line no-console

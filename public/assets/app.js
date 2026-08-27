@@ -9,6 +9,7 @@
     day: null, // 'YYYY-MM-DD'
     capZ: 0,
     capT: 0,
+    capCh: 0,
     qty: {}, // product.id -> qty
     viewYear: today.getFullYear(),
     viewMonth: today.getMonth() + 1, // 1-12
@@ -84,7 +85,8 @@
   }
 
   function isFreeEntry(d) {
-    return d && d.is_open && (d.remaining_zakusky >= 6 || d.remaining_torty >= 1);
+    return d && d.is_open
+      && (d.remaining_zakusky >= 6 || d.remaining_torty >= 1 || d.remaining_chlebik >= 1);
   }
 
   // Poznámka nad kalendárom: čo je v košíku a či sa vôbec niekam zmestí.
@@ -135,6 +137,7 @@
           let lines = '';
           if (entry.remaining_zakusky >= 6) lines += `<small class="kz">${entry.remaining_zakusky} ks</small>`;
           if (entry.remaining_torty >= 1) lines += `<small class="tt">${entry.remaining_torty} torta</small>`;
+          if (entry.remaining_chlebik >= 1) lines += `<small class="ch">${entry.remaining_chlebik} chlebík</small>`;
           const tight = totalItems() > 0 && !cartFits(entry);
           const label = tight
             ? `${d}. ${MONTHS[m]}, voľné, ale tvoj výber sa naň celý nezmestí`
@@ -170,6 +173,7 @@
     state.day = key;
     state.capZ = entry.remaining_zakusky;
     state.capT = entry.remaining_torty;
+    state.capCh = entry.remaining_chlebik;
     // Košík sa zámerne nemaže — zákazníčka si ho mohla naplniť už v ponuke.
     // Ak sa na zvolený deň nezmestí, povie jej to hláška v kroku 2.
     buildCal();
@@ -227,28 +231,34 @@
   // ---------- step 2 ----------
   function usedZ() { return PRODUCTS.filter((p) => p.category_id === 'zakusky').reduce((s, p) => s + state.qty[p.id], 0); }
   function usedT() { return PRODUCTS.filter((p) => p.category_id === 'torty').reduce((s, p) => s + state.qty[p.id], 0); }
+  function usedCh() { return PRODUCTS.filter((p) => p.category_id === 'chlebik').reduce((s, p) => s + state.qty[p.id], 0); }
   function budget(p) {
     // Kým termín nie je vybraný, košík sa napĺňa voľne — čo sa naň zmestí,
     // rozhodne až kalendár, ktorý nevyhovujúce dni označí.
     if (!state.day) return 9999;
     if (p.category_id === 'zakusky') return state.capZ - usedZ();
     if (p.category_id === 'torty') return state.capT - usedT();
-    return 9999; // chlebík zatiaľ bez tvrdého stropu
+    if (p.category_id === 'chlebik') return state.capCh - usedCh();
+    return 9999;
   }
 
   // O koľko obsah košíka presahuje kapacitu vybraného dňa.
   function overZ() { return state.day ? Math.max(0, usedZ() - state.capZ) : 0; }
   function overT() { return state.day ? Math.max(0, usedT() - state.capT) : 0; }
+  function overCh() { return state.day ? Math.max(0, usedCh() - state.capCh) : 0; }
 
   // Zmestí sa celý košík na daný deň?
   function cartFits(entry) {
-    return entry.remaining_zakusky >= usedZ() && entry.remaining_torty >= usedT();
+    return entry.remaining_zakusky >= usedZ()
+      && entry.remaining_torty >= usedT()
+      && entry.remaining_chlebik >= usedCh();
   }
   function totalItems() { return PRODUCTS.reduce((s, p) => s + state.qty[p.id], 0); }
 
   function renderItems() {
     document.getElementById('capZ').textContent = Math.max(0, state.capZ - usedZ());
     document.getElementById('capT').textContent = Math.max(0, state.capT - usedT());
+    document.getElementById('capCh').textContent = Math.max(0, state.capCh - usedCh());
     let html = '';
     CATS.forEach((c) => {
       const items = PRODUCTS.filter((p) => p.category_id === c.id);
@@ -263,9 +273,13 @@
              <span class="q">${q}</span><button onclick="DoSrdiecka.incItem('${p.id}')" ${canPlus ? '' : 'disabled'} aria-label="Pridať">+</button></div>`;
         let msg = '';
         if (q === 0 && !canAdd) {
-          msg = p.category_id === 'torty'
-            ? `<div class="cap-msg">Na tento termín je torta už obsadená — skús iný deň.</div>`
-            : `<div class="cap-msg">Na tento termín sa už nezmestí (min. ${p.min_qty} ks). Skús iný deň alebo menej iných kúskov.</div>`;
+          if (p.category_id === 'torty') {
+            msg = `<div class="cap-msg">Na tento termín je torta už obsadená — skús iný deň.</div>`;
+          } else if (p.category_id === 'chlebik') {
+            msg = `<div class="cap-msg">Na tento termín je chlebík už obsadený — skús iný deň.</div>`;
+          } else {
+            msg = `<div class="cap-msg">Na tento termín sa už nezmestí (min. ${p.min_qty} ks). Skús iný deň alebo menej iných kúskov.</div>`;
+          }
         }
         return `<div class="oitem"><img class="th" src="${p.image_url}" alt="">
           <div class="info"><h5>${p.name}</h5><div class="l2">${p.sub || ''}</div>
@@ -276,12 +290,13 @@
 
     // Výber sa nikdy nemení sám — len povieme, čo treba ubrať.
     const warn = document.getElementById('capWarn');
-    const oz = overZ(), ot = overT();
+    const oz = overZ(), ot = overT(), och = overCh();
     if (warn) {
-      if (oz || ot) {
+      if (oz || ot || och) {
         const parts = [];
         if (oz) parts.push(`<b>${oz} ks</b> zákuskov`);
         if (ot) parts.push(`<b>${ot}</b> tortu`);
+        if (och) parts.push(`<b>${och}</b> chlebík`);
         warn.hidden = false;
         warn.innerHTML = `Na tento termín sa toho zmestí menej, než máš v košíku —
           uber ${parts.join(' a ')}, alebo sa vráť a zvoľ iný termín.`;
@@ -290,7 +305,8 @@
         warn.innerHTML = '';
       }
     }
-    document.getElementById('toStep3').disabled = (totalItems() === 0 || oz > 0 || ot > 0);
+    document.getElementById('toStep3').disabled =
+      (totalItems() === 0 || oz > 0 || ot > 0 || och > 0);
   }
   function addItem(id) { const p = PRODUCTS.find((x) => x.id === id); if (budget(p) >= p.min_qty) state.qty[id] = p.min_qty; afterCartChange(); }
   function incItem(id) { const p = PRODUCTS.find((x) => x.id === id); if (budget(p) >= 1) { state.qty[id]++; afterCartChange(); } }

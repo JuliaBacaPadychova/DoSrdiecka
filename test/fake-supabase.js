@@ -45,8 +45,10 @@ function startFakeSupabase() {
         is_open: d.is_open,
         cap_zakusky: d.cap_zakusky,
         cap_torty: d.cap_torty,
+        cap_chlebik: d.cap_chlebik === undefined ? 1 : d.cap_chlebik,
         remaining_zakusky: d.cap_zakusky - used("zakusky"),
         remaining_torty: d.cap_torty - used("torty"),
+        remaining_chlebik: (d.cap_chlebik === undefined ? 1 : d.cap_chlebik) - used("chlebik"),
       };
     });
   }
@@ -115,7 +117,7 @@ function startFakeSupabase() {
     if (!Array.isArray(args.p_items) || args.p_items.length === 0) throw { message: "no_items" };
 
     const cap = dayCapacityRows().find((d) => d.day === args.p_day);
-    let addZ = 0, addT = 0, total = 0;
+    let addZ = 0, addT = 0, addCh = 0, total = 0;
     const resolvedItems = [];
     for (const item of args.p_items) {
       const product = db.products.find((p) => p.id === item.product_id && p.active);
@@ -125,11 +127,13 @@ function startFakeSupabase() {
       if (qty < product.min_qty) throw { message: "below_minimum" };
       if (product.category_id === "zakusky") addZ += qty;
       if (product.category_id === "torty") addT += qty;
+      if (product.category_id === "chlebik") addCh += qty;
       total += product.price * qty;
       resolvedItems.push({ product, qty });
     }
     if (addZ > cap.remaining_zakusky) throw { message: "capacity_zakusky" };
     if (addT > cap.remaining_torty) throw { message: "capacity_torty" };
+    if (addCh > cap.remaining_chlebik) throw { message: "capacity_chlebik" };
 
     const orderId = "order-" + (db.orders.length + 1);
     db.orders.push({
