@@ -60,11 +60,15 @@
               <div class="price">od ${p.price} €<small> /ks</small>${p.min_label ? `<br><small>${p.min_label}</small>` : ''}</div>
               <div><span class="tag">Alergény: ${p.allergens || '—'}</span></div>
             </div>
+            <div class="mctrl" id="mc-${p.id}"></div>
           </div>
         </article>`).join('');
       return `<div class="catblock"><div class="cathead"><h3>${c.name}</h3><span class="cl"></span></div>
         <p class="catnote">${c.note || ''}</p><div class="grid">${cards}</div></div>`;
     }).join('');
+
+    renderMenuControls();
+    updateCartBtn();
   }
 
   // ---------- calendar ----------
@@ -76,10 +80,26 @@
     (data.days || []).forEach((d) => { DAYS_BY_DATE[d.day] = d; });
     buildCal();
     updateNextFree();
+    updateCartNote();
   }
 
   function isFreeEntry(d) {
     return d && d.is_open && (d.remaining_zakusky >= 6 || d.remaining_torty >= 1);
+  }
+
+  // Poznámka nad kalendárom: čo je v košíku a či sa vôbec niekam zmestí.
+  function updateCartNote() {
+    const el = document.getElementById('cartNote');
+    if (!el) return;
+    const n = totalItems();
+    if (n === 0) { el.hidden = true; el.innerHTML = ''; return; }
+    const open = Object.values(DAYS_BY_DATE).filter((d) => d.is_open);
+    const anyFits = open.some((d) => cartFits(d));
+    el.hidden = false;
+    el.innerHTML = anyFits || !open.length
+      ? `V košíku máš <b>${n} ks</b> — vyber termín, na ktorý to upečiem.`
+      : `V košíku máš <b>${n} ks</b> a v tomto mesiaci sa toľko nezmestí ani na jeden termín.
+         Skús iný mesiac, uber pár kúskov, alebo mi napíš a dohodneme sa.`;
   }
 
   function updateNextFree() {
@@ -115,7 +135,11 @@
           let lines = '';
           if (entry.remaining_zakusky >= 6) lines += `<small class="kz">${entry.remaining_zakusky} ks</small>`;
           if (entry.remaining_torty >= 1) lines += `<small class="tt">${entry.remaining_torty} torta</small>`;
-          html += `<button class="cell free${state.day === key ? ' sel' : ''}" data-d="${key}" onclick="DoSrdiecka.pickDay('${key}')" aria-label="${d}. ${MONTHS[m]}, voľné">
+          const tight = totalItems() > 0 && !cartFits(entry);
+          const label = tight
+            ? `${d}. ${MONTHS[m]}, voľné, ale tvoj výber sa naň celý nezmestí`
+            : `${d}. ${MONTHS[m]}, voľné`;
+          html += `<button class="cell free${state.day === key ? ' sel' : ''}${tight ? ' tight' : ''}" data-d="${key}" onclick="DoSrdiecka.pickDay('${key}')" aria-label="${label}">
             <span class="dnum">${d}</span>${lines}</button>`;
         } else {
           html += `<div class="cell full" aria-label="${d}. ${MONTHS[m]}, plný"><span class="dnum">${d}</span><small>Plný</small></div>`;
@@ -146,20 +170,79 @@
     state.day = key;
     state.capZ = entry.remaining_zakusky;
     state.capT = entry.remaining_torty;
-    PRODUCTS.forEach((p) => { state.qty[p.id] = 0; });
+    // Košík sa zámerne nemaže — zákazníčka si ho mohla naplniť už v ponuke.
+    // Ak sa na zvolený deň nezmestí, povie jej to hláška v kroku 2.
     buildCal();
     const [y, m, d] = key.split('-').map(Number);
     document.getElementById('dayLabel').textContent = `${d}. ${MONTHS[m].toLowerCase()} ${y}`;
     setStep(2);
   }
 
+  // ---------- košík v ponuke a v hlavičke ----------
+
+  // Ovládanie pri každom výrobku v ponuke: prvý klik pridá minimum,
+  // potom sa z tlačidla stane počítadlo.
+  function renderMenuControls() {
+    PRODUCTS.forEach((p) => {
+      const box = document.getElementById('mc-' + p.id);
+      if (!box) return;
+      const q = state.qty[p.id] || 0;
+      if (q === 0) {
+        const canAdd = budget(p) >= p.min_qty;
+        box.innerHTML = `<button class="btn ghost sm" ${canAdd ? '' : 'disabled'}
+          onclick="DoSrdiecka.addItem('${p.id}')">Do košíka${p.min_qty > 1 ? ' · ' + p.min_qty + ' ks' : ''}</button>`
+          + (canAdd ? '' : `<span class="mhint">Na zvolený termín sa už nezmestí.</span>`);
+      } else {
+        box.innerHTML = `<div class="stepper">
+            <button onclick="DoSrdiecka.decItem('${p.id}')" aria-label="Ubrať">−</button>
+            <span class="q">${q}</span>
+            <button onclick="DoSrdiecka.incItem('${p.id}')" ${budget(p) >= 1 ? '' : 'disabled'} aria-label="Pridať">+</button>
+          </div><span class="mhint">v košíku</span>`;
+      }
+    });
+  }
+
+  function updateCartBtn() {
+    const btn = document.getElementById('cartBtn');
+    if (!btn) return;
+    const n = totalItems();
+    btn.hidden = (n === 0);
+    document.getElementById('cartCount').textContent = n;
+  }
+
+  // Jediné miesto, ktoré po zmene košíka zosúladí celú stránku.
+  function afterCartChange() {
+    renderMenuControls();
+    updateCartBtn();
+    updateCartNote();
+    buildCal();
+    if (state.step === 2) renderItems();
+  }
+
+  function goCart() {
+    document.getElementById('objednavka').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (state.day) setStep(2);
+  }
+
   // ---------- step 2 ----------
   function usedZ() { return PRODUCTS.filter((p) => p.category_id === 'zakusky').reduce((s, p) => s + state.qty[p.id], 0); }
   function usedT() { return PRODUCTS.filter((p) => p.category_id === 'torty').reduce((s, p) => s + state.qty[p.id], 0); }
   function budget(p) {
+    // Kým termín nie je vybraný, košík sa napĺňa voľne — čo sa naň zmestí,
+    // rozhodne až kalendár, ktorý nevyhovujúce dni označí.
+    if (!state.day) return 9999;
     if (p.category_id === 'zakusky') return state.capZ - usedZ();
     if (p.category_id === 'torty') return state.capT - usedT();
     return 9999; // chlebík zatiaľ bez tvrdého stropu
+  }
+
+  // O koľko obsah košíka presahuje kapacitu vybraného dňa.
+  function overZ() { return state.day ? Math.max(0, usedZ() - state.capZ) : 0; }
+  function overT() { return state.day ? Math.max(0, usedT() - state.capT) : 0; }
+
+  // Zmestí sa celý košík na daný deň?
+  function cartFits(entry) {
+    return entry.remaining_zakusky >= usedZ() && entry.remaining_torty >= usedT();
   }
   function totalItems() { return PRODUCTS.reduce((s, p) => s + state.qty[p.id], 0); }
 
@@ -190,11 +273,28 @@
       }).join('');
     });
     document.getElementById('orderItems').innerHTML = html;
-    document.getElementById('toStep3').disabled = (totalItems() === 0);
+
+    // Výber sa nikdy nemení sám — len povieme, čo treba ubrať.
+    const warn = document.getElementById('capWarn');
+    const oz = overZ(), ot = overT();
+    if (warn) {
+      if (oz || ot) {
+        const parts = [];
+        if (oz) parts.push(`<b>${oz} ks</b> zákuskov`);
+        if (ot) parts.push(`<b>${ot}</b> tortu`);
+        warn.hidden = false;
+        warn.innerHTML = `Na tento termín sa toho zmestí menej, než máš v košíku —
+          uber ${parts.join(' a ')}, alebo sa vráť a zvoľ iný termín.`;
+      } else {
+        warn.hidden = true;
+        warn.innerHTML = '';
+      }
+    }
+    document.getElementById('toStep3').disabled = (totalItems() === 0 || oz > 0 || ot > 0);
   }
-  function addItem(id) { const p = PRODUCTS.find((x) => x.id === id); if (budget(p) >= p.min_qty) state.qty[id] = p.min_qty; renderItems(); }
-  function incItem(id) { const p = PRODUCTS.find((x) => x.id === id); if (budget(p) >= 1) { state.qty[id]++; renderItems(); } }
-  function decItem(id) { const p = PRODUCTS.find((x) => x.id === id); state.qty[id]--; if (state.qty[id] < p.min_qty) state.qty[id] = 0; renderItems(); }
+  function addItem(id) { const p = PRODUCTS.find((x) => x.id === id); if (budget(p) >= p.min_qty) state.qty[id] = p.min_qty; afterCartChange(); }
+  function incItem(id) { const p = PRODUCTS.find((x) => x.id === id); if (budget(p) >= 1) { state.qty[id]++; afterCartChange(); } }
+  function decItem(id) { const p = PRODUCTS.find((x) => x.id === id); state.qty[id]--; if (state.qty[id] < p.min_qty) state.qty[id] = 0; afterCartChange(); }
 
   // ---------- step 3 ----------
   function renderSummary() {
@@ -283,11 +383,13 @@
     document.getElementById('checkout').style.display = 'block';
     document.getElementById('success').style.display = 'none';
     loadDaysForView();
+    afterCartChange();
     setStep(1);
   }
 
   window.DoSrdiecka = { pickDay, addItem, incItem, decItem };
   window.goOrder = goOrder;
+  window.goCart = goCart;
   window.setStep = setStep;
   window.submitOrder = submitOrder;
   window.resetAll = resetAll;

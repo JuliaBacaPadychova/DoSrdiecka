@@ -16,6 +16,9 @@
     <div class="brand"><span class="heart">♥</span> Do srdiečka</div>
     <div class="head-right">
       <span class="chip"><span class="dot"></span> Najbližší voľný termín: <b id="nextFree">—</b></span>
+      <button class="btn sm ghost cartbtn" id="cartBtn" onclick="goCart()" hidden>
+        Košík · <b id="cartCount">0</b>
+      </button>
       <button class="btn sm" onclick="goOrder()">Objednať</button>
     </div>
   </div>
@@ -70,6 +73,7 @@
           </div>
         </div>
         <div class="caplimit">Čísla v kalendári ukazujú, koľko sa na daný deň ešte zmestí.</div>
+        <div class="cartnote" id="cartNote" hidden></div>
         <div class="legend">
           <span><i class="l-free"></i>Voľné</span>
           <span><i class="l-full"></i>Plný</span>
@@ -84,6 +88,7 @@
           <div class="d1" id="dayLabel">—</div>
           <div class="cap">Ešte sa zmestí: <b id="capT">—</b> torta · <b id="capZ">—</b> ks zákuskov</div>
         </div>
+        <div class="capwarn" id="capWarn" hidden></div>
         <div id="orderItems"></div>
         <div class="flownav">
           <button class="btn ghost" onclick="setStep(1)">← Späť na termín</button>

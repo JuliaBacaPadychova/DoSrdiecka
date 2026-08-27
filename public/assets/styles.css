@@ -155,3 +155,25 @@ footer a{color:var(--peach-deep)}
 .badge.zrusena{background:#f0e0e0;color:#9a3b3b}
 .small-input{width:80px}
 .logout{margin-left:auto}
+
+/* ---------- košík: tlačidlo v hlavičke, ovládanie v ponuke ---------- */
+.cartbtn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.cartbtn[hidden]{display:none}
+.cartbtn b{background:var(--peach-deep);color:#fff8ef;border-radius:999px;padding:1px 8px;font-size:.8rem}
+.cartbtn:hover b{background:var(--terra)}
+
+/* ovládanie priamo pri výrobku v ponuke */
+.mctrl{margin-top:12px;display:flex;align-items:center;gap:10px;min-height:38px}
+.mctrl .stepper{margin:0}
+.mctrl .mhint{font-size:.74rem;color:var(--ink-soft)}
+
+/* upozornenia okolo kapacity */
+.cartnote,.capwarn{border:1px solid var(--peach);background:#fbeede;color:var(--ink);
+  border-radius:12px;padding:11px 15px;font-size:.87rem;line-height:1.5}
+.cartnote{margin:0 0 14px}
+.capwarn{margin:0 0 16px}
+.cartnote b,.capwarn b{color:var(--terra)}
+
+/* deň, na ktorý sa obsah košíka nezmestí */
+.cell.free.tight{border-style:dashed;border-color:var(--full)}
+.cell.free.tight .dnum{color:var(--full)}
