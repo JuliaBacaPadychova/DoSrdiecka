@@ -1,4 +1,4 @@
-const { rpc } = require("../lib/supabase");
+const { rpc, rest } = require("../lib/supabase");
 const { sendJson, readJson, withErrors } = require("../lib/http");
 const { sendMail } = require("../lib/mailer");
 
@@ -8,6 +8,18 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function clean(str, maxLen) {
   return String(str || "").trim().slice(0, maxLen);
 }
+
+const MESIACE = ["", "januára", "februára", "marca", "apríla", "mája", "júna",
+  "júla", "augusta", "septembra", "októbra", "novembra", "decembra"];
+
+// "2026-09-06" -> "6. septembra 2026" (pre e-mail zákazníčke)
+function dlhyDatum(day) {
+  const [y, m, d] = day.split("-").map(Number);
+  return `${d}. ${MESIACE[m]} ${y}`;
+}
+
+// Adresa osobného odberu. Keby sa menila, stačí prepísať tu a v pätičke webu.
+const ODBER = "Vavilovova 4, Petržalka, Bratislava";
 
 const ERROR_MESSAGES = {
   day_closed: "Na tento termín sa už žiaľ nedá objednať. Vyber si prosím iný deň.",
@@ -65,14 +77,32 @@ module.exports = withErrors(async function handler(req, res) {
     return sendJson(res, 409, { error: code || "order_failed", message });
   }
 
-  // E-mailová notifikácia majiteľke. Ak zlyhá, objednávka je aj tak uložená
-  // v databáze (vidí ju v admin časti) — zákazníkovi to nezobrazujeme ako chybu.
+  // Názvy výrobkov tak, ako boli v čase objednávky (order_items ich drží
+  // odložené), aby v e-mailoch nefigurovali len vnútorné identifikátory.
+  // Keď sa nepodarí načítať, e-mail aj tak odíde — len s množstvami.
+  let itemsText = cleanItems.map((it) => `- ${it.qty}x`).join("\n");
   try {
-    const notifyTo = process.env.SMTP_USER;
-    if (notifyTo) {
-      const itemsText = cleanItems
-        .map((it) => `- ${it.qty}x (id ${it.product_id})`)
+    const rows = await rest(
+      `order_items?order_id=eq.${encodeURIComponent(result.order_id)}` +
+      `&select=name_snapshot,sub_snapshot,qty&order=name_snapshot.asc`
+    );
+    if (rows && rows.length) {
+      itemsText = rows
+        .map((r) => `- ${r.qty}x ${r.name_snapshot}${r.sub_snapshot ? ` (${r.sub_snapshot})` : ""}`)
         .join("\n");
+    }
+  } catch (itemsErr) {
+    // eslint-disable-next-line no-console
+    console.error("Načítanie názvov položiek pre e-mail zlyhalo:", itemsErr);
+  }
+
+  // Dve samostatné správy: interná pre majiteľku a potvrdenie zákazníčke.
+  // Posielajú sa nezávisle — keď zlyhá jedna, druhá sa aj tak pokúsi odísť
+  // a objednávka je v oboch prípadoch uložená v databáze.
+  const notifyTo = process.env.SMTP_USER;
+
+  if (notifyTo) {
+    try {
       await sendMail({
         to: notifyTo,
         replyTo: email,
@@ -88,10 +118,33 @@ module.exports = withErrors(async function handler(req, res) {
           `Orientačná cena: od ${result.total} €\n\n` +
           `Detaily nájdeš v admin časti webu.`,
       });
+    } catch (mailErr) {
+      // eslint-disable-next-line no-console
+      console.error("Odoslanie e-mailovej notifikácie zlyhalo:", mailErr);
     }
-  } catch (mailErr) {
-    // eslint-disable-next-line no-console
-    console.error("Odoslanie e-mailovej notifikácie zlyhalo:", mailErr);
+
+    try {
+      await sendMail({
+        to: email,
+        subject: `Ďakujem za objednávku na ${dlhyDatum(day)}`,
+        text:
+          `Ďakujem za objednávku!\n\n` +
+          `Tvoju predbežnú objednávku mám. Ozvem sa ti s potvrdením termínu\n` +
+          `a konečnou cenou.\n\n` +
+          `Termín: ${dlhyDatum(day)}\n` +
+          `Objednávka:\n${itemsText}\n\n` +
+          `Orientačná cena: od ${result.total} €\n` +
+          (note ? `Poznámka: ${note}\n` : "") +
+          `\n` +
+          `Výrobky si vyzdvihneš osobne na adrese ${ODBER}.\n` +
+          `Na čase odberu sa dohodneme, keď ti termín potvrdím.\n\n` +
+          `Ak niečo nesedí, stačí odpovedať na tento e-mail.\n\n` +
+          `Júlia, od srdiečka`,
+      });
+    } catch (mailErr) {
+      // eslint-disable-next-line no-console
+      console.error("Odoslanie potvrdenia zákazníčke zlyhalo:", mailErr);
+    }
   }
 
   sendJson(res, 200, { ok: true, order_id: result.order_id, total: result.total });

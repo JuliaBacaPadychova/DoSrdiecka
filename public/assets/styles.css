@@ -177,3 +177,7 @@ footer a{color:var(--peach-deep)}
 /* deň, na ktorý sa obsah košíka nezmestí */
 .cell.free.tight{border-style:dashed;border-color:var(--full)}
 .cell.free.tight .dnum{color:var(--full)}
+
+/* osobný odber v potvrdení objednávky */
+.success .pickup{margin-top:10px;font-size:.92rem;color:var(--ink-soft)}
+.success .pickup b{color:var(--ink)}
