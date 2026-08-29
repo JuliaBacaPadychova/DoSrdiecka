@@ -101,13 +101,14 @@
           <h3 style="font-size:1.3rem;margin-bottom:10px">Súhrn objednávky</h3>
           <div id="sumList"></div>
           <div class="sumtot"><span>Orientačná cena</span><span id="sumTotal">od 0 €</span></div>
-          <p class="disc"><span class="req">*</span> Polia označené hviezdičkou sú povinné — bez nich ti nedokážem objednávku potvrdiť.<br>Predbežná, nezáväzná objednávka. Konečnú cenu ti potvrdím podľa zvolených príchutí, veľkostí a úprav.</p>
+          <p class="disc">Predbežná, nezáväzná objednávka. Konečnú cenu ti potvrdím podľa zvolených príchutí, veľkostí a úprav.</p>
+          <p class="disc reqnote"><span class="req">*</span> Polia označené hviezdičkou sú povinné — bez nich ti nedokážem objednávku potvrdiť.</p>
           <div class="form">
             <div><label for="fname">Meno a priezvisko <span class="req">*</span></label><input id="fname" required autocomplete="name" placeholder="Napr. Jana Nováková"></div>
             <div><label for="fphone">Telefón <span class="req">*</span></label><input id="fphone" required type="tel" autocomplete="tel" placeholder="+421 ..."></div>
             <div class="full"><label for="femail">E-mail <span class="req">*</span></label><input id="femail" required type="email" autocomplete="email" placeholder="jana@email.sk"></div>
-            <div class="full"><label for="fnote">Poznámka <span class="opt">nepovinné</span> — príchute, veľkosť torty, alergie, čas odberu…</label>
-              <textarea id="fnote" placeholder="Napr. veterníky v príchuti pistácia–malina, brownie torta Ø 18 cm, odber okolo 15:00"></textarea></div>
+            <div class="full"><label for="fnote">Poznámka — alergie a intolerancie alebo iné želanie <span class="req">*</span></label>
+              <textarea id="fnote" required placeholder="Napr. alergia na orechy, bez laktózy, odber okolo 15:00 — a ak nič z toho, stačí napísať, že nič"></textarea></div>
           </div>
           <p class="err" id="formErr" style="display:none"></p>
           <div class="flownav">

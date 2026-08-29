@@ -356,28 +356,30 @@
 
     // Povinné polia: povedať presne, ktoré chýba, a rovno naň skočiť.
     // Generická hláška "vyplň všetko" núti zákazníčku hľadať očami.
+    //
+    // Na poradí záleží: tvar e-mailu overujeme hneď po ňom, nie až na
+    // konci. Inak by sa zákazníčka pri zle napísanom e-maile najprv
+    // dozvedela o poznámke a na e-mail by prišla až o krok neskôr.
     const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const povinne = [
-      { id: 'fname', hodnota: name, chyba: 'Vyplň prosím meno a priezvisko.' },
-      { id: 'fphone', hodnota: phone, chyba: 'Vyplň prosím telefón — ozvem sa ti naň s potvrdením.' },
-      { id: 'femail', hodnota: email, chyba: 'Vyplň prosím e-mail — pošlem naň potvrdenie objednávky.' },
-    ];
-    ['fname', 'fphone', 'femail'].forEach((id) => {
-      document.getElementById(id).classList.remove('missing');
-    });
-    const chybajuce = povinne.find((f) => !f.hodnota);
-    if (chybajuce) {
-      const el = document.getElementById(chybajuce.id);
+    const polia = ['fname', 'fphone', 'femail', 'fnote'];
+    polia.forEach((id) => document.getElementById(id).classList.remove('missing'));
+
+    const zastav = (id, sprava) => {
+      const el = document.getElementById(id);
       el.classList.add('missing');
-      showFormError(chybajuce.chyba);
+      showFormError(sprava);
       el.focus();
+    };
+
+    if (!name) { zastav('fname', 'Vyplň prosím meno a priezvisko.'); return; }
+    if (!phone) { zastav('fphone', 'Vyplň prosím telefón — ozvem sa ti naň s potvrdením.'); return; }
+    if (!email) { zastav('femail', 'Vyplň prosím e-mail — pošlem naň potvrdenie objednávky.'); return; }
+    if (!EMAIL_RE.test(email)) {
+      zastav('femail', 'E-mail nevyzerá správne — skontroluj ho prosím.');
       return;
     }
-    if (!EMAIL_RE.test(email)) {
-      const el = document.getElementById('femail');
-      el.classList.add('missing');
-      showFormError('E-mail nevyzerá správne — skontroluj ho prosím.');
-      el.focus();
+    if (!note) {
+      zastav('fnote', 'Vyplň prosím poznámku — potrebujem vedieť o alergiách a intoleranciách. Ak žiadne nemáš, stačí to napísať.');
       return;
     }
 
@@ -425,7 +427,7 @@
     document.getElementById('femail').value = '';
     document.getElementById('fnote').value = '';
     showFormError('');
-    ['fname', 'fphone', 'femail'].forEach((id) => {
+    ['fname', 'fphone', 'femail', 'fnote'].forEach((id) => {
       document.getElementById(id).classList.remove('missing');
     });
     document.getElementById('successNo').hidden = true;

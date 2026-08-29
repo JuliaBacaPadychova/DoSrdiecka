@@ -105,7 +105,7 @@ test("dátum je pre zákazníčku po slovensky, interne zostáva strojový", asy
     name: "Jana",
     phone: "0900123456",
     email: "jana@example.sk",
-    note: "",
+    note: "bez orechov",
     items: [{ product_id: "p-choux", qty: 6 }],
   });
 
@@ -137,7 +137,7 @@ test("keď interná správa zlyhá, potvrdenie zákazníčke aj tak odíde", asy
     name: "Jana",
     phone: "0900123456",
     email: "jana@example.sk",
-    note: "",
+    note: "bez orechov",
     items: [{ product_id: "p-choux", qty: 6 }],
   });
 
@@ -159,7 +159,7 @@ test("druhý chlebík na ten istý deň sa neprijme", async (t) => {
   t.after(async () => { await fake.close(); });
 
   const zakaznicka = (email) => ({
-    day, name: "Jana", phone: "0900123456", email, note: "",
+    day, name: "Jana", phone: "0900123456", email, note: "bez orechov",
     items: [{ product_id: "p-chlebik", qty: 1 }],
   });
 
@@ -188,7 +188,7 @@ test("chlebík a zákusky sa nemiešajú — každý má vlastný limit", async 
 
   sent.length = 0;
   const out = await objednaj(handler, {
-    day, name: "Jana", phone: "0900123456", email: "jana@example.sk", note: "",
+    day, name: "Jana", phone: "0900123456", email: "jana@example.sk", note: "bez orechov",
     items: [
       { product_id: "p-chlebik", qty: 1 },
       { product_id: "p-choux", qty: 6 },
@@ -212,7 +212,7 @@ test("číslo objednávky je v predmete oboch e-mailov aj v tele", async (t) => 
 
   sent.length = 0;
   const out = await objednaj(handler, {
-    day, name: "Jana", phone: "0900123456", email: "jana@example.sk", note: "",
+    day, name: "Jana", phone: "0900123456", email: "jana@example.sk", note: "bez orechov",
     items: [{ product_id: "p-choux", qty: 6 }],
   });
 
@@ -246,7 +246,7 @@ test("bez čísla objednávky e-mail aj tak odíde, bez 'undefined' v predmete",
 
   sent.length = 0;
   const out = await objednaj(handler, {
-    day, name: "Jana", phone: "0900123456", email: "jana@example.sk", note: "",
+    day, name: "Jana", phone: "0900123456", email: "jana@example.sk", note: "bez orechov",
     items: [{ product_id: "p-choux", qty: 6 }],
   });
   assert.equal(out.statusCode, 200);
@@ -254,4 +254,37 @@ test("bez čísla objednávky e-mail aj tak odíde, bez 'undefined' v predmete",
     assert.doesNotMatch(m.subject, /undefined|#\s*$/, "predmet: " + m.subject);
     assert.doesNotMatch(m.text, /undefined/);
   }
+});
+
+test("objednávka bez poznámky sa neprijme — kvôli alergiám", async (t) => {
+  const fake = await startFakeSupabase();
+  const day = iso(21);
+  fake.db.open_days.push({
+    day, is_open: true, cap_zakusky: 18, cap_torty: 1, cap_chlebik: 1,
+  });
+
+  process.env.SUPABASE_URL = fake.url;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "fake";
+  const handler = require("../api/orders");
+  t.after(async () => { await fake.close(); });
+
+  const zaklad = {
+    day, name: "Jana", phone: "0900123456", email: "jana@example.sk",
+    items: [{ product_id: "p-choux", qty: 6 }],
+  };
+
+  sent.length = 0;
+  const prazdna = await objednaj(handler, { ...zaklad, note: "" });
+  assert.equal(prazdna.statusCode, 400, "prázdna poznámka sa odmietne");
+  assert.equal(prazdna.body.error, "missing_note");
+
+  const medzery = await objednaj(handler, { ...zaklad, note: "    " });
+  assert.equal(medzery.statusCode, 400, "samé medzery tiež nestačia");
+
+  assert.equal(sent.length, 0, "za odmietnutú objednávku sa nič neposiela");
+
+  const vyplnena = await objednaj(handler, { ...zaklad, note: "alergia na orechy" });
+  assert.equal(vyplnena.statusCode, 200, "s poznámkou objednávka prejde");
+  assert.match(sent[0].text, /alergia na orechy/, "poznámka je v internej správe");
+  assert.match(sent[1].text, /alergia na orechy/, "aj v potvrdení zákazníčke");
 });

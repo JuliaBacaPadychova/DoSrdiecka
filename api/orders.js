@@ -50,6 +50,10 @@ module.exports = withErrors(async function handler(req, res) {
   if (!name) return sendJson(res, 400, { error: "missing_name" });
   if (!phone) return sendJson(res, 400, { error: "missing_phone" });
   if (!EMAIL_RE.test(email)) return sendJson(res, 400, { error: "invalid_email" });
+  // Poznámka je povinná kvôli alergiám a intoleranciám — pri jedle to
+  // nie je zdvorilostný údaj. Kontrola musí byť aj tu, nielen vo
+  // formulári, inak sa dá obísť.
+  if (!note) return sendJson(res, 400, { error: "missing_note" });
   if (!items.length) return sendJson(res, 400, { error: "no_items" });
 
   const cleanItems = [];
