@@ -196,3 +196,62 @@ test("chlebík a zákusky sa nemiešajú — každý má vlastný limit", async 
   });
   assert.equal(out.statusCode, 200, "chlebík aj zákusky naraz musia prejsť");
 });
+
+test("číslo objednávky je v predmete oboch e-mailov aj v tele", async (t) => {
+  const fake = await startFakeSupabase();
+  const day = iso(17);
+  fake.db.open_days.push({
+    day, is_open: true, cap_zakusky: 18, cap_torty: 1, cap_chlebik: 1,
+  });
+
+  process.env.SUPABASE_URL = fake.url;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "fake";
+  process.env.SMTP_USER = "kolacik@dosrdiecka.sk";
+  const handler = require("../api/orders");
+  t.after(async () => { await fake.close(); });
+
+  sent.length = 0;
+  const out = await objednaj(handler, {
+    day, name: "Jana", phone: "0900123456", email: "jana@example.sk", note: "",
+    items: [{ product_id: "p-choux", qty: 6 }],
+  });
+
+  assert.ok(out.body.order_no, "server vráti číslo aj do prehliadača");
+  const cislo = "#" + out.body.order_no;
+
+  const [interny, zakaznicky] = sent;
+  assert.ok(interny.subject.includes(cislo),
+    `interný predmet má obsahovať ${cislo}, je: ${interny.subject}`);
+  assert.ok(zakaznicky.subject.includes(cislo),
+    `predmet zákazníčke má obsahovať ${cislo}, je: ${zakaznicky.subject}`);
+  assert.match(interny.text, new RegExp("Číslo objednávky: " + cislo));
+  assert.match(zakaznicky.text, new RegExp("Číslo objednávky: " + cislo));
+});
+
+test("bez čísla objednávky e-mail aj tak odíde, bez 'undefined' v predmete", async (t) => {
+  const fake = await startFakeSupabase();
+  const day = iso(19);
+  fake.db.open_days.push({
+    day, is_open: true, cap_zakusky: 18, cap_torty: 1, cap_chlebik: 1,
+  });
+
+  process.env.SUPABASE_URL = fake.url;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "fake";
+  const handler = require("../api/orders");
+  t.after(async () => { await fake.close(); });
+
+  // Staršia databáza, ktorá poradové čísla ešte nemá.
+  const povodne = fake.db.orders.push;
+  fake.db.orders.push = function (o) { delete o.order_no; return povodne.call(this, o); };
+
+  sent.length = 0;
+  const out = await objednaj(handler, {
+    day, name: "Jana", phone: "0900123456", email: "jana@example.sk", note: "",
+    items: [{ product_id: "p-choux", qty: 6 }],
+  });
+  assert.equal(out.statusCode, 200);
+  for (const m of sent) {
+    assert.doesNotMatch(m.subject, /undefined|#\s*$/, "predmet: " + m.subject);
+    assert.doesNotMatch(m.text, /undefined/);
+  }
+});

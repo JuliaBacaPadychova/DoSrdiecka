@@ -101,15 +101,21 @@ module.exports = withErrors(async function handler(req, res) {
   // Posielajú sa nezávisle — keď zlyhá jedna, druhá sa aj tak pokúsi odísť
   // a objednávka je v oboch prípadoch uložená v databáze.
   const notifyTo = process.env.SMTP_USER;
+  // Poradové číslo pre ľudí. Keby ho starší záznam nemal, e-mail radšej
+  // odíde bez neho než by mal v predmete "undefined".
+  const cislo = result.order_no ? `#${result.order_no}` : "";
 
   if (notifyTo) {
     try {
       await sendMail({
         to: notifyTo,
         replyTo: email,
-        subject: `Nová objednávka na ${day}`,
+        subject: cislo
+          ? `Objednávka ${cislo} na ${day}`
+          : `Nová objednávka na ${day}`,
         text:
           `Prišla nová predbežná objednávka.\n\n` +
+          (cislo ? `Číslo objednávky: ${cislo}\n` : "") +
           `Termín: ${day}\n` +
           `Meno: ${name}\n` +
           `Telefón: ${phone}\n` +
@@ -127,10 +133,13 @@ module.exports = withErrors(async function handler(req, res) {
     try {
       await sendMail({
         to: email,
-        subject: `Ďakujem za objednávku na ${dlhyDatum(day)}`,
+        subject: cislo
+          ? `Ďakujem za objednávku ${cislo} na ${dlhyDatum(day)}`
+          : `Ďakujem za objednávku na ${dlhyDatum(day)}`,
         text:
           `Ďakujem za objednávku!\n\n` +
           `Tvoju predbežnú objednávku mám. Ozvem sa ti s potvrdením termínu a konečnou cenou.\n\n` +
+          (cislo ? `Číslo objednávky: ${cislo}\n` : "") +
           `Termín: ${dlhyDatum(day)}\n` +
           `Objednávka:\n${itemsText}\n\n` +
           `Orientačná cena: od ${result.total} €\n` +
@@ -147,7 +156,12 @@ module.exports = withErrors(async function handler(req, res) {
     }
   }
 
-  sendJson(res, 200, { ok: true, order_id: result.order_id, total: result.total });
+  sendJson(res, 200, {
+    ok: true,
+    order_id: result.order_id,
+    order_no: result.order_no,
+    total: result.total,
+  });
 });
 
 function extractPgErrorCode(err) {

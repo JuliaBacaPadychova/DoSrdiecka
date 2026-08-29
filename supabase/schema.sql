@@ -50,6 +50,9 @@ create table if not exists open_days (
 -- ---------------------------------------------------------------------
 create table if not exists orders (
   id uuid primary key default gen_random_uuid(),
+  -- Poradové číslo pre ľudí: v e-mailoch aj v správe sa objednávka
+  -- označuje ním, nie dlhým vnútorným identifikátorom.
+  order_no bigserial unique,
   day date not null,
   customer_name text not null,
   phone text not null,
@@ -171,6 +174,7 @@ declare
   v_tor_add int := 0;
   v_chl_add int := 0;
   v_order_id uuid;
+  v_order_no bigint;
   v_total numeric(10,2) := 0;
   v_qty int;
 begin
@@ -231,7 +235,7 @@ begin
 
   insert into orders (day, customer_name, phone, email, note, total_estimate)
     values (p_day, p_name, p_phone, p_email, p_note, v_total)
-    returning id into v_order_id;
+    returning id, order_no into v_order_id, v_order_no;
 
   for v_item in select * from jsonb_array_elements(p_items) loop
     select * into v_product from products where id = (v_item->>'product_id')::uuid;
@@ -240,7 +244,8 @@ begin
       values (v_order_id, v_product.id, v_product.category_id, v_product.name, v_product.sub, v_product.price, v_qty);
   end loop;
 
-  return jsonb_build_object('order_id', v_order_id, 'total', v_total);
+  return jsonb_build_object(
+    'order_id', v_order_id, 'order_no', v_order_no, 'total', v_total);
 end;
 $$;
 

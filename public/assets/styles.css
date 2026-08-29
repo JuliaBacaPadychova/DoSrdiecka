@@ -17,7 +17,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:.01em;margin:0}
 .err{color:#a33;font-size:.88rem;margin:10px 0 0}
 
 header{position:sticky;top:0;z-index:40;backdrop-filter:blur(8px);background:rgba(250,243,232,.82);border-bottom:1px solid var(--line)}
-.bar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-top:12px;padding-bottom:12px}
 .brand{display:flex;align-items:center;gap:9px;font-family:var(--serif);font-size:1.4rem;font-weight:700}
 .brand .heart{color:var(--terra)}
 .head-right{display:flex;align-items:center;gap:12px}
@@ -33,7 +33,7 @@ header{position:sticky;top:0;z-index:40;backdrop-filter:blur(8px);background:rgb
 .btn.sm{padding:8px 15px;font-size:.86rem}
 :focus-visible{outline:2.5px solid var(--terra);outline-offset:2px;border-radius:6px}
 
-.hero{padding:66px 0 20px}
+.hero{padding-top:66px;padding-bottom:20px}
 .hero h1{font-size:clamp(2.4rem,5.6vw,4.1rem);line-height:1.05;margin:14px 0 0;max-width:16ch}
 .hero .lead{font-size:1.1rem;color:var(--ink-soft);max-width:48ch;margin:18px 0 0}
 .note{margin:30px 0 0;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--peach-deep);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);max-width:58ch}
@@ -182,3 +182,13 @@ footer a{color:var(--peach-deep)}
 .success .pickup{margin-top:10px;font-size:.92rem;color:var(--ink-soft)}
 .success .pickup b{color:var(--ink)}
 .cell .ch{color:var(--ink-soft);font-weight:600}
+
+/* povinné a nepovinné polia vo formulári */
+.req{color:var(--terra);font-weight:700}
+.opt{color:var(--ink-soft);font-weight:500;font-size:.85em}
+.form input:focus-visible,.form textarea:focus-visible{outline:2px solid var(--peach-deep);outline-offset:1px}
+.form .missing{border-color:var(--terra);background:#fdf4ef}
+
+/* číslo objednávky v potvrdení a v správe */
+.success .ordno{margin-top:8px;font-size:1.05rem;font-weight:700;color:var(--terra)}
+.admin-table .ordno{font-weight:700;color:var(--terra);white-space:nowrap}

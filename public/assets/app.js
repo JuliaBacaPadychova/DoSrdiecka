@@ -354,8 +354,30 @@
     const email = document.getElementById('femail').value.trim();
     const note = document.getElementById('fnote').value.trim();
 
-    if (!name || !phone || !email) {
-      showFormError('Vyplň prosím meno, telefón a e-mail.');
+    // Povinné polia: povedať presne, ktoré chýba, a rovno naň skočiť.
+    // Generická hláška "vyplň všetko" núti zákazníčku hľadať očami.
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const povinne = [
+      { id: 'fname', hodnota: name, chyba: 'Vyplň prosím meno a priezvisko.' },
+      { id: 'fphone', hodnota: phone, chyba: 'Vyplň prosím telefón — ozvem sa ti naň s potvrdením.' },
+      { id: 'femail', hodnota: email, chyba: 'Vyplň prosím e-mail — pošlem naň potvrdenie objednávky.' },
+    ];
+    ['fname', 'fphone', 'femail'].forEach((id) => {
+      document.getElementById(id).classList.remove('missing');
+    });
+    const chybajuce = povinne.find((f) => !f.hodnota);
+    if (chybajuce) {
+      const el = document.getElementById(chybajuce.id);
+      el.classList.add('missing');
+      showFormError(chybajuce.chyba);
+      el.focus();
+      return;
+    }
+    if (!EMAIL_RE.test(email)) {
+      const el = document.getElementById('femail');
+      el.classList.add('missing');
+      showFormError('E-mail nevyzerá správne — skontroluj ho prosím.');
+      el.focus();
       return;
     }
 
@@ -365,11 +387,18 @@
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
     try {
-      await fetchJson('/api/orders', {
+      const odpoved = await fetchJson('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ day: state.day, name, phone, email, note, items }),
       });
+      const cisloEl = document.getElementById('successNo');
+      if (odpoved && odpoved.order_no) {
+        cisloEl.textContent = `Číslo objednávky: #${odpoved.order_no}`;
+        cisloEl.hidden = false;
+      } else {
+        cisloEl.hidden = true;
+      }
       document.getElementById('checkout').style.display = 'none';
       document.getElementById('success').style.display = 'block';
     } catch (err) {
@@ -396,6 +425,10 @@
     document.getElementById('femail').value = '';
     document.getElementById('fnote').value = '';
     showFormError('');
+    ['fname', 'fphone', 'femail'].forEach((id) => {
+      document.getElementById(id).classList.remove('missing');
+    });
+    document.getElementById('successNo').hidden = true;
     document.getElementById('checkout').style.display = 'block';
     document.getElementById('success').style.display = 'none';
     loadDaysForView();

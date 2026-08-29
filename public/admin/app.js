@@ -112,9 +112,10 @@
     const el = document.getElementById('ordersList');
     if (!orders.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne objednávky.</p>'; return; }
     el.innerHTML = `<table class="admin-table"><thead><tr>
-        <th>Termín</th><th>Zákazník</th><th>Položky</th><th>Cena</th><th>Stav</th><th></th>
+        <th>Číslo</th><th>Termín</th><th>Zákazník</th><th>Položky</th><th>Cena</th><th>Stav</th><th></th>
       </tr></thead><tbody>${orders.map((o) => `
         <tr>
+          <td class="ordno">${o.order_no ? '#' + o.order_no : '—'}</td>
           <td>${o.day}</td>
           <td>${o.customer_name}<br><span class="muted">${o.phone}<br>${o.email}</span>${o.note ? `<br><span class="muted">Pozn.: ${o.note}</span>` : ''}</td>
           <td>${(o.order_items || []).map((it) => `${it.qty}× ${it.name_snapshot}`).join('<br>')}</td>

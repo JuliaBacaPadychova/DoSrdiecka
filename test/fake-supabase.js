@@ -136,7 +136,8 @@ function startFakeSupabase() {
     if (addCh > cap.remaining_chlebik) throw { message: "capacity_chlebik" };
 
     const orderId = "order-" + (db.orders.length + 1);
-    db.orders.push({
+    const orderNo = db.orders.length + 1;
+    db.orders.push({ order_no: orderNo,
       id: orderId, day: args.p_day, customer_name: args.p_name, phone: args.p_phone,
       email: args.p_email, note: args.p_note, status: "nova", total_estimate: total,
       created_at: new Date().toISOString(),
@@ -148,7 +149,7 @@ function startFakeSupabase() {
         price_snapshot: product.price, qty,
       });
     }
-    return { order_id: orderId, total };
+    return { order_id: orderId, order_no: orderNo, total };
   }
 
   const server = http.createServer(async (req, res) => {
