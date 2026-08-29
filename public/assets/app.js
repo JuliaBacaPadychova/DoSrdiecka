@@ -18,6 +18,8 @@
   let CATS = [];
   let PRODUCTS = [];
   let DAYS_BY_DATE = {}; // 'YYYY-MM-DD' -> {is_open, cap_zakusky, cap_torty, remaining_zakusky, remaining_torty}
+  let NEXT_FREE = null;  // najbližší voľný termín, počíta ho server naprieč všetkými dňami
+  let prveNacitanie = true;
 
   function pad2(n) { return String(n).padStart(2, '0'); }
   function fmtDate(y, m, d) { return `${y}-${pad2(m)}-${pad2(d)}`; }
@@ -79,6 +81,23 @@
     const data = await fetchJson(`/api/days?year=${state.viewYear}&month=${state.viewMonth}`);
     DAYS_BY_DATE = {};
     (data.days || []).forEach((d) => { DAYS_BY_DATE[d.day] = d; });
+    NEXT_FREE = data.next_free || null;
+
+    // Pri prvom otvorení skočiť rovno na mesiac najbližšieho termínu.
+    // Inak by zákazníčka pozerala na prázdny august a musela hádať, že
+    // piecť sa začína až v septembri.
+    if (prveNacitanie) {
+      prveNacitanie = false;
+      if (NEXT_FREE) {
+        const [ny, nm] = NEXT_FREE.split('-').map(Number);
+        if (ny !== state.viewYear || nm !== state.viewMonth) {
+          state.viewYear = ny;
+          state.viewMonth = nm;
+          return loadDaysForView();
+        }
+      }
+    }
+
     buildCal();
     updateNextFree();
     updateCartNote();
@@ -106,13 +125,9 @@
 
   function updateNextFree() {
     const el = document.getElementById('nextFree');
-    const dates = Object.keys(DAYS_BY_DATE).filter((k) => isFreeEntry(DAYS_BY_DATE[k])).sort();
-    if (dates.length) {
-      const [y, m, d] = dates[0].split('-').map(Number);
-      el.textContent = `${d}. ${m}. ${y}`;
-    } else if (el.textContent === '—') {
-      el.textContent = 'čoskoro';
-    }
+    if (!NEXT_FREE) { el.textContent = 'čoskoro'; return; }
+    const [y, m, d] = NEXT_FREE.split('-').map(Number);
+    el.textContent = `${d}. ${m}. ${y}`;
   }
 
   function buildCal() {
