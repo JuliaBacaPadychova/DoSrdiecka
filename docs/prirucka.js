@@ -333,10 +333,11 @@ children.push(H1("Kde stojíme"));
   ["hotovo", "Povinná poznámka o alergiách", "bez nej sa objednávka neodošle, kontroluje to aj server"],
   ["hotovo", "Číslo objednávky", "v predmete oboch e-mailov aj na potvrdzovacej obrazovke"],
   ["hotovo", "Najbližší voľný termín", "ukazuje skutočný dátum, aj keď je až v ďalšom mesiaci"],
-  ["hotovo", "Príchute pri výrobku", "veterník aj Choux majú príchute v jednej karte, každá s vlastným minimom 6 ks"],
+  ["hotovo", "Príchute pri výrobku", "veterník, Choux aj cupcake majú príchute v jednej karte, každá s vlastným minimom 6 ks"],
   ["hotovo", "Objednávka na želanie", "pri Choux si zákazníčka vypýta vlastnú kombináciu a napíše ju do poznámky"],
   ["zostáva", "Ochrana proti uniknutým heslám", "je za plateným programom Supabase; heslo si over na haveibeenpwned.com/Passwords"],
-  ["zostáva", "Príchute pri cupcakoch, pavlove a tortách", "keď mi povieš, aké majú byť"],
+  ["zostáva", "Príchute pri pavlove a tortách", "keď mi povieš, aké majú byť"],
+  ["zostáva", "Naťahovanie kariet", "karta bez príchutí sa v riadku natiahne na výšku najvyššej — jednoriadková oprava"],
 ].forEach(([stav, co, detail]) => {
   children.push(new Paragraph({
     spacing: { after: 90, line: 276 },
