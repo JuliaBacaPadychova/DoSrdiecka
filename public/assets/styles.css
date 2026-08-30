@@ -34,7 +34,9 @@ header{position:sticky;top:0;z-index:40;backdrop-filter:blur(8px);background:rgb
 :focus-visible{outline:2.5px solid var(--terra);outline-offset:2px;border-radius:6px}
 
 .hero{padding-top:66px;padding-bottom:20px}
-.hero h1{font-size:clamp(2.4rem,5.6vw,4.1rem);line-height:1.05;margin:14px 0 0;max-width:16ch}
+/* max-width drží nadpis v čitateľnom stĺpci. 16ch stačilo na jednu krátku
+   vetu; dvojvetý nadpis by sa v ňom rozsypal na päť riadkov. */
+.hero h1{font-size:clamp(2.4rem,5.6vw,4.1rem);line-height:1.08;margin:14px 0 0;max-width:26ch}
 .hero .lead{font-size:1.1rem;color:var(--ink-soft);max-width:48ch;margin:18px 0 0}
 .note{margin:30px 0 0;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--peach-deep);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);max-width:58ch}
 .note b{color:var(--terra)} .note .btn{margin-top:14px}
@@ -51,7 +53,10 @@ section{padding:20px 0}
 .cathead .cl{flex:1;height:1px;background:linear-gradient(90deg,var(--peach),transparent)}
 .catnote{color:var(--ink-soft);font-size:.86rem;margin:0 0 14px}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px}
+/* align-items:start — karta má byť taká vysoká, aká je. Bez toho ju grid
+   natiahne na výšku najvyššej v riadku a pod obsahom zostane prázdno.
+   Pri príchutiach sú rozdiely veľké, tak radšej nerovné spodky ako diery. */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px;align-items:start}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .card .ph{aspect-ratio:16/11;overflow:hidden;background:var(--cream-2)}
 .card .ph img{width:100%;height:100%;object-fit:cover;display:block}
@@ -83,6 +88,10 @@ section{padding:20px 0}
 
 /* Vysvetlivka pod poľom vo formulári v správe webu. */
 .fieldhint{display:block;margin-top:5px;font-size:.76rem;color:var(--ink-soft);line-height:1.4}
+
+/* Hlavný nadpis smie mať viac riadkov. Text ide do stránky cez textContent
+   (nie ako HTML), takže zalomenie musí spraviť štýl, nie značka <br>. */
+#heroTitle{white-space:pre-line}
 
 .order{background:linear-gradient(180deg,#fffdf9,#faf3e8);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:26px;margin-top:24px}
 .steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}

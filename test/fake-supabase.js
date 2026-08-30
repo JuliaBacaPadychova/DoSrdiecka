@@ -21,7 +21,8 @@ function startFakeSupabase() {
     open_days: [],
     orders: [],
     order_items: [],
-    site_settings: [{ id: true, hero_title: "Každý kúsok ide predsa do srdiečka.", hero_lead: "Testovací úvod.", about_text: "Testovacia pätička." }],
+    // Nadpis je zámerne dvojriadkový — zalomenie je súčasťou textu.
+    site_settings: [{ id: true, hero_title: "Niečo sladké bez výčitky?\nJasné! Každý kúsok ide predsa do srdiečka.", hero_lead: "Testovací úvod.", about_text: "Testovacia pätička." }],
   };
 
   const ADMIN_EMAIL = "test-admin@dosrdiecka.sk";

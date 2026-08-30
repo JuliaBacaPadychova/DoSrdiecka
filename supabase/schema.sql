@@ -82,7 +82,7 @@ create index if not exists orders_day_idx on orders(day);
 -- ---------------------------------------------------------------------
 create table if not exists site_settings (
   id boolean primary key default true check (id),
-  hero_title text not null default 'Každý kúsok ide predsa do srdiečka.',
+  hero_title text not null default E'Niečo sladké bez výčitky?\nJasné! Každý kúsok ide predsa do srdiečka.',
   hero_lead text not null default 'Chlebík, zákusky aj torty z čerstvých surovín — pracujem prevažne s bezlaktózovými produktami a príchute rada prispôsobím tvojim preferenciám.',
   about_text text not null default 'Pracujem prevažne s bezlaktózovými produktami.'
 );
@@ -307,17 +307,22 @@ insert into products (category_id, name, sub, description, alt_text, price, min_
   ('zakusky', 'Cupcake', 'Mrkvový s cream cheese krémom',
    'Hebké mrkvové cesto s orechami a koreninami, cream cheese krém.',
    '',
-   2, 6, 'min. 6 ks', '1, 3, 7, 8', '/assets/img/cupcake.jpg', 7),
+   2, 6, 'min. 6 ks', '1, 3, 7, 8', '/assets/img/cupcake.jpg', 8),
 
   ('zakusky', 'Cupcake', 'Čokoládový s červenou repou',
    'Skrytá červená repa, o ktorej ani nevieš, krém rôznych príchutí. Daj mi vedieť do poznámky aký krém vyskúšame.',
    '',
-   2, 6, 'min. 6 ks', '1, 3, 6, 7', '/assets/img/cupcake.jpg', 8),
+   2, 6, 'min. 6 ks', '1, 3, 6, 7', '/assets/img/cupcake.jpg', 9),
 
   ('zakusky', 'Mini Pavlova', 'Jemná klasika',
    'Vanilkový krém, lemon curd, čerstvé maliny.',
-   'Alt.: iné príchute podľa preferencií.',
+   '',
    3, 6, 'min. 6 ks', '3, 7', '/assets/img/pavlova.jpg', 6),
+
+  ('zakusky', 'Mini Pavlova', 'Chcem inú kombináciu chutí',
+   'Vyber si počet kusov a napíš mi predstavu do poznámky.',
+   '',
+   3, 6, 'min. 6 ks', '', '/assets/img/pavlova.jpg', 7),
 
   -- Veterník má dve príchute. Web spája výrobky s rovnakým názvom
   -- v tej istej kategórii do jednej karty a podnadpisy ukazuje ako

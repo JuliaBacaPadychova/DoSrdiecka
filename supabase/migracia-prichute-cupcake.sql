@@ -39,6 +39,6 @@ update products set sort_order = 2 where name = 'Veterník'     and sub = 'Pist�
 update products set sort_order = 3 where name = 'Choux'        and sub = 'Pistáciovo mangový';
 update products set sort_order = 4 where name = 'Choux'        and sub = 'Pistáciovo kávový';
 update products set sort_order = 5 where name = 'Choux'        and sub = 'Chcem inú kombináciu chutí';
-update products set sort_order = 6 where name = 'Mini Pavlova';
+update products set sort_order = 6 where name = 'Mini Pavlova' and sub = 'Jemná klasika';
 update products set sort_order = 7 where name = 'Cupcake'      and sub = 'Mrkvový s cream cheese krémom';
 update products set sort_order = 8 where name = 'Cupcake'      and sub = 'Čokoládový s červenou repou';
