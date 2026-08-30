@@ -146,3 +146,79 @@ test("príchuť sa v ponuke tvári ako obyčajný výrobok — /api/menu ich vr�
   );
   assert.ok(fake);
 });
+
+// --- možnosť "podľa želania" -----------------------------------------
+//
+// Tretia možnosť pri Choux nemá vyplnené alergény: zloženie sa dohodne
+// až z poznámky, ktorú zákazníčka k objednávke musí napísať. Inak je to
+// úplne obyčajná príchuť — rovnaká cena aj rovnaké minimum.
+
+async function sChoux(t) {
+  const fake = await startFakeSupabase();
+  const day = iso(23);
+  fake.db.open_days.push({ day, is_open: true, cap_zakusky: 18, cap_torty: 1, cap_chlebik: 1 });
+  fake.db.products.push({
+    id: "p-choux-zelanie", category_id: "zakusky", name: "Choux",
+    sub: "Chcem inú kombináciu chutí",
+    description: "Vyber si počet kusov a napíš mi predstavu do poznámky.",
+    alt_text: "", price: 3, min_qty: 6, min_label: "min. 6 ks",
+    allergens: "", image_url: "/assets/img/choux.jpg", active: true, sort_order: 3,
+  });
+
+  process.env.SUPABASE_URL = fake.url;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "fake";
+  process.env.SMTP_USER = "kolacik@dosrdiecka.sk";
+  const handler = require("../api/orders");
+  t.after(async () => { await fake.close(); });
+
+  sent.length = 0;
+  return async function objednaj(items, note) {
+    const res = fakeRes();
+    await handler({
+      method: "POST", url: "/api/orders", headers: {},
+      body: {
+        day, name: "Jana Nováková", phone: "0900123456",
+        email: "jana@example.sk", note, items,
+      },
+    }, res);
+    return res.out;
+  };
+}
+
+test("objednávka na želanie prejde a jej predstava je v oboch e-mailoch", async (t) => {
+  const objednaj = await sChoux(t);
+
+  const out = await objednaj(
+    [{ product_id: "p-choux-zelanie", qty: 6 }],
+    "Slaný karamel a vanilka prosím, bez orechov."
+  );
+
+  assert.equal(out.code, 200);
+  assert.equal(sent.length, 2);
+  const [interny, zakaznicky] = sent;
+  assert.match(interny.text, /6x Choux \(Chcem inú kombináciu chutí\)/,
+    "majiteľka musí vidieť, že ide o objednávku na želanie");
+  assert.match(interny.text, /Slaný karamel a vanilka/,
+    "bez poznámky by nevedela, čo má upiecť");
+  assert.match(zakaznicky.text, /Slaný karamel a vanilka/,
+    "zákazníčka si má prečítať, čo si vlastne vypýtala");
+});
+
+test("na želanie platí rovnaké minimum ako pri ostatných príchutiach", async (t) => {
+  const objednaj = await sChoux(t);
+
+  const out = await objednaj([{ product_id: "p-choux-zelanie", qty: 3 }], "hocičo sladké");
+  assert.equal(out.code, 409);
+  assert.equal(out.body.error, "below_minimum");
+  assert.equal(sent.length, 0);
+});
+
+test("bez poznámky sa objednávka na želanie neodošle", async (t) => {
+  const objednaj = await sChoux(t);
+
+  const out = await objednaj([{ product_id: "p-choux-zelanie", qty: 6 }], "   ");
+  assert.equal(out.code, 400);
+  assert.equal(out.body.error, "missing_note",
+    "pri tejto možnosti je poznámka jediné, z čoho sa dá upiecť");
+  assert.equal(sent.length, 0);
+});

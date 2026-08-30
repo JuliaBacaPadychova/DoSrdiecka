@@ -278,6 +278,8 @@ children.push(table(
     [["Otvoriť nový deň na objednávky, zmeniť limit, zavrieť deň"], [["Správa → Dni a limity", true]]],
     [["Zmeniť cenu, popis, alergény alebo fotku výrobku"], [["Správa → Ponuka", true]]],
     [["Pridať k výrobku ďalšiu príchuť"], [["Správa → Ponuka → Nový výrobok s rovnakým názvom", true], ["Podnadpis je názov príchute. Web ich spojí do jednej karty. Minimálny odber platí pri každej príchuti zvlášť.", false, true]]],
+    [["Ponúknuť pri výrobku možnosť na želanie"], [["To isté, len alergény nechaj prázdne", true], ["Karta ich potom vôbec nespomenie. Zloženie sa dohodne z poznámky, ktorú zákazníčka k objednávke musí napísať.", false, true]]],
+    [["Zmeniť poradie výrobkov a príchutí na webe"], [["Správa → Ponuka → Poradie", true], ["Každý riadok potrebuje vlastné číslo, inak sa príchute môžu poprehadzovať.", false, true]]],
     [["Pozrieť objednávky, označiť vybavenú alebo zrušenú"], [["Správa → Objednávky", true], ["Zrušená objednávka automaticky uvoľní kapacitu dňa", false, true]]],
     [["Prepísať úvodný text na titulke"], [["Správa → Nastavenia", true]]],
     [["Zmeniť denný limit zákuskov, tort alebo chlebíkov"], [["Správa → Dni a limity", true], ["Každý deň má tri samostatné limity", false, true]]],
@@ -331,9 +333,10 @@ children.push(H1("Kde stojíme"));
   ["hotovo", "Povinná poznámka o alergiách", "bez nej sa objednávka neodošle, kontroluje to aj server"],
   ["hotovo", "Číslo objednávky", "v predmete oboch e-mailov aj na potvrdzovacej obrazovke"],
   ["hotovo", "Najbližší voľný termín", "ukazuje skutočný dátum, aj keď je až v ďalšom mesiaci"],
-  ["hotovo", "Príchute pri výrobku", "veterník karamelový a pistáciovo-malinový v jednej karte, každá s vlastným minimom 6 ks"],
+  ["hotovo", "Príchute pri výrobku", "veterník aj Choux majú príchute v jednej karte, každá s vlastným minimom 6 ks"],
+  ["hotovo", "Objednávka na želanie", "pri Choux si zákazníčka vypýta vlastnú kombináciu a napíše ju do poznámky"],
   ["zostáva", "Ochrana proti uniknutým heslám", "je za plateným programom Supabase; heslo si over na haveibeenpwned.com/Passwords"],
-  ["zostáva", "Príchute pri ostatných zákuskoch", "a možnosť „podľa želania\" — keď dopovieme, ako to má vyzerať"],
+  ["zostáva", "Príchute pri cupcakoch, pavlove a tortách", "keď mi povieš, aké majú byť"],
 ].forEach(([stav, co, detail]) => {
   children.push(new Paragraph({
     spacing: { after: 90, line: 276 },

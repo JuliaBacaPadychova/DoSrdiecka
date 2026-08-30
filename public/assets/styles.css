@@ -72,8 +72,11 @@ section{padding:20px 0}
 .fl:first-of-type{border-top:none;padding-top:0;margin-top:2px}
 .fl .fname{font-family:var(--serif);font-style:italic;color:var(--peach-deep);font-size:.96rem}
 .fl .fdesc{font-size:.86rem;margin-top:2px}
-.fl .frow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;flex-wrap:wrap}
-.fl .ftag{font-size:.72rem;color:var(--ink-soft);flex:1 1 auto}
+/* Alergény na vlastnom riadku, ovládanie pod nimi. Tlačidlo a počítadlo
+   sú rôzne široké a príchuť bez alergénov nemá čo zalamovať — takto sú
+   všetky príchute zarovnané rovnako bez ohľadu na šírku karty. */
+.fl .frow{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.fl .ftag{font-size:.72rem;color:var(--ink-soft);flex:1 1 100%}
 .fl .mctrl{margin-top:0;min-height:0;flex:0 0 auto}
 /* Poznámka pod zoznamom príchutí patrí celej karte, nie poslednej príchuti. */
 .flavours + .alt{margin-top:11px;padding-top:10px;border-top:1px dashed var(--line)}

@@ -216,6 +216,9 @@
       const data = await apiFetch('/api/admin/products');
       PRODUCTS_CACHE = data.products || [];
       renderProducts(PRODUCTS_CACHE);
+      // Poradie vieme predvyplniť až teraz, keď poznáme existujúce čísla.
+      // Ak práve upravuje konkrétny výrobok, jeho hodnotu neprepisujeme.
+      if (!document.getElementById('productId').value) predvyplnPoradie();
     } catch (err) {
       el.innerHTML = `<p class="err">${err.message}</p>`;
     }
@@ -241,7 +244,7 @@
         <tr>
           <td><img src="${p.image_url}" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:8px"></td>
           <td>${p.name}<br><span class="muted">${p.sub || ''}</span>${
-            jePrichut(p) ? `<br><span class="muted" style="font-size:.74rem">jedna z príchutí karty „${p.name}"</span>` : ''}</td>
+            jePrichut(p) ? `<br><span class="muted" style="font-size:.74rem">jedna z príchutí karty „${p.name}“</span>` : ''}</td>
           <td>${CATS_BY_ID[p.category_id] || p.category_id}</td>
           <td>od ${p.price} €</td>
           <td>${p.active ? 'Áno' : 'Nie'}</td>
@@ -261,6 +264,7 @@
     document.getElementById('pDesc').value = p.description || '';
     document.getElementById('pAlt').value = p.alt_text || '';
     document.getElementById('pAllerg').value = p.allergens || '';
+    document.getElementById('pSort').value = p.sort_order;
     document.getElementById('pActive').value = String(p.active);
     document.getElementById('pImageUrl').value = p.image_url || '';
     document.getElementById('pImagePreview').innerHTML = p.image_url
@@ -273,10 +277,19 @@
     document.getElementById('productId').value = '';
     ['pName', 'pSub', 'pPrice', 'pMinLabel', 'pDesc', 'pAlt', 'pAllerg', 'pImageUrl'].forEach((id) => { document.getElementById(id).value = ''; });
     document.getElementById('pMinQty').value = 1;
+    // Nový výrobok ide na koniec. Pri príchuti je to presne to, čo treba:
+    // karta zostane tam, kde bola (drží ju najnižšie číslo v skupine), a
+    // nová príchuť sa v nej objaví ako posledná.
+    predvyplnPoradie();
     document.getElementById('pCategory').value = 'zakusky';
     document.getElementById('pActive').value = 'true';
     document.getElementById('pImagePreview').innerHTML = '';
     document.getElementById('pImageFile').value = '';
+  }
+
+  function predvyplnPoradie() {
+    const najvyssie = PRODUCTS_CACHE.reduce((m, p) => Math.max(m, p.sort_order || 0), 0);
+    document.getElementById('pSort').value = najvyssie + 1;
   }
 
   function fileToBase64(file) {
@@ -323,6 +336,7 @@
         allergens: document.getElementById('pAllerg').value.trim(),
         active: document.getElementById('pActive').value === 'true',
         image_url: document.getElementById('pImageUrl').value.trim(),
+        sort_order: parseInt(document.getElementById('pSort').value, 10) || 0,
       };
       if (!body.name || !Number.isFinite(body.price)) {
         errEl.textContent = 'Vyplň aspoň názov a cenu.';

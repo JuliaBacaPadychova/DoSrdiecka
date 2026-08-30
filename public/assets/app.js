@@ -114,16 +114,25 @@
     const spolocne = rovnakaCena && rovnakeMin;
     const najnizsia = Math.min.apply(null, skupina.map((p) => p.price));
 
-    const prichute = skupina.map((p) => `
+    const prichute = skupina.map((p) => {
+      // Príchuť bez vyplnených alergénov ich vôbec nespomenie — je to
+      // možnosť "podľa želania", kde sa zloženie dohodne až z poznámky
+      // v objednávke. Prázdne "Alergény: —" by tam iba mýlilo.
+      const udaje = [];
+      if (p.allergens) udaje.push(`Alergény: ${p.allergens}`);
+      if (!spolocne) {
+        udaje.push(`od ${p.price} € /ks${p.min_qty > 1 ? ` · min. ${p.min_qty} ks` : ''}`);
+      }
+      return `
           <div class="fl">
             <div class="fname">${p.sub || p.name}</div>
             ${p.description ? `<div class="fdesc">${p.description}</div>` : ''}
             <div class="frow">
-              <span class="ftag">Alergény: ${p.allergens || '—'}${spolocne ? ''
-                : ` · od ${p.price} € /ks${p.min_qty > 1 ? ` · min. ${p.min_qty} ks` : ''}`}</span>
+              ${udaje.length ? `<span class="ftag">${udaje.join(' · ')}</span>` : ''}
               <div class="mctrl" id="mc-${p.id}"></div>
             </div>
-          </div>`).join('');
+          </div>`;
+    }).join('');
 
     const minPopis = spolocne && hlavny.min_qty > 1
       ? `min. ${hlavny.min_qty} ks z každej príchute` : '';

@@ -282,20 +282,33 @@ insert into products (category_id, name, sub, description, alt_text, price, min_
    'Pomaly kysnutý pšeničný chlebík na kvásku.', '',
    3, 1, '', '1', '/assets/img/chlebik.jpg', 1),
 
+  -- Choux má tri možnosti. Posledná je "podľa želania": nemá vyplnené
+  -- alergény, tak ich karta ani nespomenie — zloženie sa dohodne až
+  -- podľa poznámky, ktorú zákazníčka musí k objednávke napísať.
   ('zakusky', 'Choux', 'Pistáciovo mangový',
    'Mango krém, pistáciový krém, jablkový vklad.',
-   'Alt.: slaný karamel – vanilka, alebo iné príchute podľa preferencií.',
+   '',
    3, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/choux.jpg', 1),
+
+  ('zakusky', 'Choux', 'Pistáciovo kávový',
+   'Kávový krém, pistáciový krém, malinový vklad.',
+   '',
+   3, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/choux.jpg', 2),
+
+  ('zakusky', 'Choux', 'Chcem inú kombináciu chutí',
+   'Vyber si počet kusov a napíš mi predstavu do poznámky.',
+   '',
+   3, 6, 'min. 6 ks', '', '/assets/img/choux.jpg', 3),
 
   ('zakusky', 'Cupcake', 'Mrkvový s cream cheese krémom',
    'Mrkvové cesto s orechami, cream cheese krém.',
    'Alt.: čokoládový s červenou repou, krémy iných príchutí.',
-   2, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/cupcake.jpg', 2),
+   2, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/cupcake.jpg', 4),
 
   ('zakusky', 'Mini Pavlova', 'Jemná klasika',
    'Vanilkový krém, lemon curd, čerstvé maliny.',
    'Alt.: iné príchute podľa preferencií.',
-   3, 6, 'min. 6 ks', '3, 7', '/assets/img/pavlova.jpg', 3),
+   3, 6, 'min. 6 ks', '3, 7', '/assets/img/pavlova.jpg', 5),
 
   -- Veterník má dve príchute. Web spája výrobky s rovnakým názvom
   -- v tej istej kategórii do jednej karty a podnadpisy ukazuje ako
@@ -303,12 +316,12 @@ insert into products (category_id, name, sub, description, alt_text, price, min_
   ('zakusky', 'Veterník', 'Karamelový',
    'Karamelová poleva, vanilkový krém, karamelová šľahačka.',
    '',
-   3, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/veternik.jpg', 4),
+   3, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/veternik.jpg', 6),
 
   ('zakusky', 'Veterník', 'Pistáciovo-malinový',
    'Pistáciová poleva, pistáciový krém, malinová šľahačka.',
    '',
-   3, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/veternik.jpg', 5),
+   3, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/veternik.jpg', 7),
 
   ('torty', 'Brownie torta', 'Ø 12 cm',
    'Vanilkový krém, ovocné coulis, slaný karamel, čokoládová ganache z horkej čokolády.',
