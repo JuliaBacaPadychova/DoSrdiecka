@@ -49,7 +49,7 @@
     PRODUCTS.forEach((p) => { if (state.qty[p.id] === undefined) state.qty[p.id] = 0; });
 
     if (data.settings) {
-      if (data.settings.hero_title) document.getElementById('heroTitle').textContent = data.settings.hero_title;
+      if (data.settings.hero_title) nastavNadpis(data.settings.hero_title);
       if (data.settings.hero_lead) document.getElementById('heroLead').textContent = data.settings.hero_lead;
       if (data.settings.about_text) document.getElementById('aboutText').innerHTML = data.settings.about_text;
     }
@@ -68,6 +68,20 @@
 
     renderMenuControls();
     updateCartBtn();
+  }
+
+  // Nadpis na úvode môže mať viac riadkov. Prvý je ten veľký, ďalšie sa
+  // vykreslia menším písmom. Každý riadok ide do stránky cez textContent —
+  // nikdy nie ako HTML, aby sa text z databázy nedal zneužiť.
+  function nastavNadpis(text) {
+    const el = document.getElementById('heroTitle');
+    el.textContent = '';
+    String(text).split('\n').forEach((riadok, i) => {
+      const span = document.createElement('span');
+      span.className = i === 0 ? 'h1a' : 'h1b';
+      span.textContent = riadok;
+      el.appendChild(span);
+    });
   }
 
   // Výrobky s rovnakým názvom v tej istej kategórii sú jedna karta a ich
