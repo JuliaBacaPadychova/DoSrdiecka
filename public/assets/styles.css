@@ -64,6 +64,23 @@ section{padding:20px 0}
 .price small{font-family:var(--sans);font-size:.72rem;color:var(--ink-soft);font-weight:600;letter-spacing:.03em}
 .tag{display:inline-block;background:var(--ok-bg);border-radius:6px;padding:2px 7px;font-size:.72rem;color:var(--ink-soft)}
 
+/* Príchute v jednej karte (napr. veterník karamelový a pistáciovo-malinový).
+   Každá má vlastný popis, alergény aj tlačidlo, lebo minimálny odber platí
+   pri každej zvlášť. */
+.fl-head{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin-top:2px}
+.fl{border-top:1px dashed var(--line);padding-top:11px;margin-top:9px}
+.fl:first-of-type{border-top:none;padding-top:0;margin-top:2px}
+.fl .fname{font-family:var(--serif);font-style:italic;color:var(--peach-deep);font-size:.96rem}
+.fl .fdesc{font-size:.86rem;margin-top:2px}
+.fl .frow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;flex-wrap:wrap}
+.fl .ftag{font-size:.72rem;color:var(--ink-soft);flex:1 1 auto}
+.fl .mctrl{margin-top:0;min-height:0;flex:0 0 auto}
+/* Poznámka pod zoznamom príchutí patrí celej karte, nie poslednej príchuti. */
+.flavours + .alt{margin-top:11px;padding-top:10px;border-top:1px dashed var(--line)}
+
+/* Vysvetlivka pod poľom vo formulári v správe webu. */
+.fieldhint{display:block;margin-top:5px;font-size:.76rem;color:var(--ink-soft);line-height:1.4}
+
 .order{background:linear-gradient(180deg,#fffdf9,#faf3e8);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:26px;margin-top:24px}
 .steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
 .stp{display:flex;align-items:center;gap:9px;font-size:.86rem;color:var(--ink-soft);padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--cream)}

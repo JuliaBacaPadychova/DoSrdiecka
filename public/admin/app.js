@@ -224,12 +224,24 @@
   function renderProducts(products) {
     const el = document.getElementById('productsList');
     if (!products.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne výrobky.</p>'; return; }
+
+    // Web spája výrobky s rovnakým názvom v tej istej kategórii do jednej
+    // karty. Nech je to vidieť aj tu — inak by to vyzeralo ako omylom
+    // vytvorený duplikát.
+    const pocty = {};
+    products.forEach((p) => {
+      const k = p.category_id + '|' + p.name;
+      pocty[k] = (pocty[k] || 0) + 1;
+    });
+    const jePrichut = (p) => pocty[p.category_id + '|' + p.name] > 1;
+
     el.innerHTML = `<table class="admin-table"><thead><tr>
         <th>Fotka</th><th>Názov</th><th>Kategória</th><th>Cena</th><th>Zobrazené</th><th></th>
       </tr></thead><tbody>${products.map((p) => `
         <tr>
           <td><img src="${p.image_url}" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:8px"></td>
-          <td>${p.name}<br><span class="muted">${p.sub || ''}</span></td>
+          <td>${p.name}<br><span class="muted">${p.sub || ''}</span>${
+            jePrichut(p) ? `<br><span class="muted" style="font-size:.74rem">jedna z príchutí karty „${p.name}"</span>` : ''}</td>
           <td>${CATS_BY_ID[p.category_id] || p.category_id}</td>
           <td>od ${p.price} €</td>
           <td>${p.active ? 'Áno' : 'Nie'}</td>

@@ -26,7 +26,7 @@ const ERROR_MESSAGES = {
   no_items: "Objednávka je prázdna — pridaj aspoň jeden výrobok.",
   product_not_found: "Niektorý vybraný výrobok už nie je dostupný. Obnov stránku a skús to znova.",
   invalid_qty: "Neplatné množstvo pri niektorom výrobku.",
-  below_minimum: "Pri niektorom výrobku nie je splnený minimálny odber.",
+  below_minimum: "Pri niektorom výrobku nie je splnený minimálny odber — pri príchutiach platí pre každú zvlášť.",
   capacity_zakusky: "Na tento termín sa už nezmestí toľko zákuskov. Skús znížiť množstvo alebo zvoliť iný deň.",
   capacity_torty: "Na tento termín je torta už obsadená — skús iný deň.",
   capacity_chlebik: "Na tento termín je chlebík už obsadený — skús iný deň.",

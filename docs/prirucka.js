@@ -277,6 +277,7 @@ children.push(table(
   [
     [["Otvoriť nový deň na objednávky, zmeniť limit, zavrieť deň"], [["Správa → Dni a limity", true]]],
     [["Zmeniť cenu, popis, alergény alebo fotku výrobku"], [["Správa → Ponuka", true]]],
+    [["Pridať k výrobku ďalšiu príchuť"], [["Správa → Ponuka → Nový výrobok s rovnakým názvom", true], ["Podnadpis je názov príchute. Web ich spojí do jednej karty. Minimálny odber platí pri každej príchuti zvlášť.", false, true]]],
     [["Pozrieť objednávky, označiť vybavenú alebo zrušenú"], [["Správa → Objednávky", true], ["Zrušená objednávka automaticky uvoľní kapacitu dňa", false, true]]],
     [["Prepísať úvodný text na titulke"], [["Správa → Nastavenia", true]]],
     [["Zmeniť denný limit zákuskov, tort alebo chlebíkov"], [["Správa → Dni a limity", true], ["Každý deň má tri samostatné limity", false, true]]],
@@ -327,8 +328,12 @@ children.push(H1("Kde stojíme"));
   ["hotovo", "Do správy len povolené e-maily", "prihlásenie samo o sebe nestačí, registrácia je vypnutá"],
   ["hotovo", "Objednávku založí len server", "cez verejný kľúč to už nejde"],
   ["hotovo", "Kapacity nie sú verejne čitateľné", "pohľad rešpektuje ochranu tabuliek"],
+  ["hotovo", "Povinná poznámka o alergiách", "bez nej sa objednávka neodošle, kontroluje to aj server"],
+  ["hotovo", "Číslo objednávky", "v predmete oboch e-mailov aj na potvrdzovacej obrazovke"],
+  ["hotovo", "Najbližší voľný termín", "ukazuje skutočný dátum, aj keď je až v ďalšom mesiaci"],
+  ["hotovo", "Príchute pri výrobku", "veterník karamelový a pistáciovo-malinový v jednej karte, každá s vlastným minimom 6 ks"],
   ["zostáva", "Ochrana proti uniknutým heslám", "je za plateným programom Supabase; heslo si over na haveibeenpwned.com/Passwords"],
-  ["zostáva", "Druhé kolo úprav", "texty a rozdelenie ponuky podľa príchutí"],
+  ["zostáva", "Príchute pri ostatných zákuskoch", "a možnosť „podľa želania\" — keď dopovieme, ako to má vyzerať"],
 ].forEach(([stav, co, detail]) => {
   children.push(new Paragraph({
     spacing: { after: 90, line: 276 },

@@ -73,8 +73,11 @@
         <div><label for="pCategory">Kategória</label>
           <select id="pCategory"><option value="chlebik">Chlebík</option><option value="zakusky">Zákusky</option><option value="torty">Torty</option></select>
         </div>
-        <div><label for="pName">Názov</label><input id="pName"></div>
-        <div><label for="pSub">Podnadpis</label><input id="pSub"></div>
+        <div><label for="pName">Názov</label><input id="pName">
+          <span class="fieldhint">Rovnaký názov = jedna karta na webe. Ďalšiu príchuť
+            pridáš ako nový výrobok s rovnakým názvom.</span></div>
+        <div><label for="pSub">Podnadpis / príchuť</label><input id="pSub">
+          <span class="fieldhint">Toto sa pri viacerých príchutiach ukáže ako názov príchute.</span></div>
         <div><label for="pPrice">Cena od (€)</label><input id="pPrice" type="number" min="0" step="0.5"></div>
         <div><label for="pMinQty">Minimálny odber (ks)</label><input id="pMinQty" type="number" min="1" value="1"></div>
         <div><label for="pMinLabel">Popisok min. odberu</label><input id="pMinLabel" placeholder="napr. min. 6 ks"></div>

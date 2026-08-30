@@ -297,10 +297,18 @@ insert into products (category_id, name, sub, description, alt_text, price, min_
    'Alt.: iné príchute podľa preferencií.',
    3, 6, 'min. 6 ks', '3, 7', '/assets/img/pavlova.jpg', 3),
 
+  -- Veterník má dve príchute. Web spája výrobky s rovnakým názvom
+  -- v tej istej kategórii do jednej karty a podnadpisy ukazuje ako
+  -- príchute; minimálny odber pritom platí pri každej z nich zvlášť.
   ('zakusky', 'Veterník', 'Karamelový',
    'Karamelová poleva, vanilkový krém, karamelová šľahačka.',
-   'Alt.: pistácia – malina, alebo čokoláda – vanilka.',
+   'Alt.: čokoláda – vanilka, alebo iné príchute podľa preferencií.',
    3, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/veternik.jpg', 4),
+
+  ('zakusky', 'Veterník', 'Pistáciovo-malinový',
+   'Pistáciová poleva, pistáciový krém, malinová šľahačka.',
+   '',
+   3, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/veternik.jpg', 5),
 
   ('torty', 'Brownie torta', 'Ø 12 cm',
    'Vanilkový krém, ovocné coulis, slaný karamel, čokoládová ganache z horkej čokolády.',

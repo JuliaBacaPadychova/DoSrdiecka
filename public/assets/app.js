@@ -20,6 +20,9 @@
   let DAYS_BY_DATE = {}; // 'YYYY-MM-DD' -> {is_open, cap_zakusky, cap_torty, remaining_zakusky, remaining_torty}
   let NEXT_FREE = null;  // najbližší voľný termín, počíta ho server naprieč všetkými dňami
   let prveNacitanie = true;
+  // Výrobky, ktoré sú príchuťou v spoločnej karte — tlačidlo tam má
+  // menej miesta, tak je aj kratšie.
+  const PRICHUTE = new Set();
 
   function pad2(n) { return String(n).padStart(2, '0'); }
   function fmtDate(y, m, d) { return `${y}-${pad2(m)}-${pad2(d)}`; }
@@ -51,8 +54,37 @@
       if (data.settings.about_text) document.getElementById('aboutText').innerHTML = data.settings.about_text;
     }
 
+    PRICHUTE.clear();
     document.getElementById('menu').innerHTML = CATS.map((c) => {
-      const cards = PRODUCTS.filter((p) => p.category_id === c.id).map((p) => `
+      const cards = zoskupPodlaNazvu(PRODUCTS.filter((p) => p.category_id === c.id))
+        .map((skupina) => {
+          if (skupina.length === 1) return kartaJedneho(skupina[0]);
+          skupina.forEach((p) => PRICHUTE.add(p.id));
+          return kartaPrichuti(skupina);
+        }).join('');
+      return `<div class="catblock"><div class="cathead"><h3>${c.name}</h3><span class="cl"></span></div>
+        <p class="catnote">${c.note || ''}</p><div class="grid">${cards}</div></div>`;
+    }).join('');
+
+    renderMenuControls();
+    updateCartBtn();
+  }
+
+  // Výrobky s rovnakým názvom v tej istej kategórii sú jedna karta a ich
+  // podnadpisy sa ukážu ako príchute. Ďalšia príchuť sa teda pridáva ako
+  // obyčajný výrobok s rovnakým názvom — v databáze nepribúda nič.
+  function zoskupPodlaNazvu(items) {
+    const poradie = [];
+    const podlaNazvu = {};
+    items.forEach((p) => {
+      if (!podlaNazvu[p.name]) { podlaNazvu[p.name] = []; poradie.push(p.name); }
+      podlaNazvu[p.name].push(p);
+    });
+    return poradie.map((n) => podlaNazvu[n]);
+  }
+
+  function kartaJedneho(p) {
+    return `
         <article class="card">
           <div class="ph"><img src="${p.image_url}" alt="${p.name} – ${p.sub}" loading="lazy"></div>
           <div class="body">
@@ -65,13 +97,50 @@
             </div>
             <div class="mctrl" id="mc-${p.id}"></div>
           </div>
-        </article>`).join('');
-      return `<div class="catblock"><div class="cathead"><h3>${c.name}</h3><span class="cl"></span></div>
-        <p class="catnote">${c.note || ''}</p><div class="grid">${cards}</div></div>`;
-    }).join('');
+        </article>`;
+  }
 
-    renderMenuControls();
-    updateCartBtn();
+  // Karta s viacerými príchuťami. Fotka a názov sú spoločné; popis,
+  // alergény aj tlačidlo má každá príchuť vlastné, lebo minimálny odber
+  // platí pri každej zvlášť — 3 karamelové a 3 pistáciové nestačia.
+  //
+  // Cenu a minimum píšeme raz dole, kým sú pri všetkých príchutiach
+  // rovnaké. Len čo sa niektorá odlíši, presunú sa k jednotlivým
+  // príchutiam, nech pri žiadnej nesvieti cudzí údaj.
+  function kartaPrichuti(skupina) {
+    const hlavny = skupina[0];
+    const rovnakaCena = skupina.every((p) => p.price === hlavny.price);
+    const rovnakeMin = skupina.every((p) => p.min_qty === hlavny.min_qty);
+    const spolocne = rovnakaCena && rovnakeMin;
+    const najnizsia = Math.min.apply(null, skupina.map((p) => p.price));
+
+    const prichute = skupina.map((p) => `
+          <div class="fl">
+            <div class="fname">${p.sub || p.name}</div>
+            ${p.description ? `<div class="fdesc">${p.description}</div>` : ''}
+            <div class="frow">
+              <span class="ftag">Alergény: ${p.allergens || '—'}${spolocne ? ''
+                : ` · od ${p.price} € /ks${p.min_qty > 1 ? ` · min. ${p.min_qty} ks` : ''}`}</span>
+              <div class="mctrl" id="mc-${p.id}"></div>
+            </div>
+          </div>`).join('');
+
+    const minPopis = spolocne && hlavny.min_qty > 1
+      ? `min. ${hlavny.min_qty} ks z každej príchute` : '';
+
+    return `
+        <article class="card">
+          <div class="ph"><img src="${hlavny.image_url}" alt="${hlavny.name}" loading="lazy"></div>
+          <div class="body">
+            <h4>${hlavny.name}</h4>
+            <div class="fl-head">Príchute</div>
+            <div class="flavours">${prichute}</div>
+            ${hlavny.alt_text ? `<div class="alt">${hlavny.alt_text}</div>` : ''}
+            <div class="meta">
+              <div class="price">od ${najnizsia} €<small> /ks</small>${minPopis ? `<br><small>${minPopis}</small>` : ''}</div>
+            </div>
+          </div>
+        </article>`;
   }
 
   // ---------- calendar ----------
@@ -208,8 +277,11 @@
       const q = state.qty[p.id] || 0;
       if (q === 0) {
         const canAdd = budget(p) >= p.min_qty;
+        // V karte s príchuťami je na tlačidlo menej miesta, tak sa
+        // počet nepíše — je hneď vedľa v riadku „min. X ks".
+        const popis = (p.min_qty > 1 && !PRICHUTE.has(p.id)) ? ' · ' + p.min_qty + ' ks' : '';
         box.innerHTML = `<button class="btn ghost sm" ${canAdd ? '' : 'disabled'}
-          onclick="DoSrdiecka.addItem('${p.id}')">Do košíka${p.min_qty > 1 ? ' · ' + p.min_qty + ' ks' : ''}</button>`
+          onclick="DoSrdiecka.addItem('${p.id}')">Do košíka${popis}</button>`
           + (canAdd ? '' : `<span class="mhint">Na zvolený termín sa už nezmestí.</span>`);
       } else {
         box.innerHTML = `<div class="stepper">
