@@ -302,7 +302,7 @@ insert into products (category_id, name, sub, description, alt_text, price, min_
   -- príchute; minimálny odber pritom platí pri každej z nich zvlášť.
   ('zakusky', 'Veterník', 'Karamelový',
    'Karamelová poleva, vanilkový krém, karamelová šľahačka.',
-   'Alt.: čokoláda – vanilka, alebo iné príchute podľa preferencií.',
+   '',
    3, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/veternik.jpg', 4),
 
   ('zakusky', 'Veterník', 'Pistáciovo-malinový',

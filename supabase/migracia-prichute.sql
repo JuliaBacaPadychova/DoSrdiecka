@@ -24,11 +24,9 @@ where not exists (
   select 1 from products where name = 'Veterník' and sub = 'Pistáciovo-malinový'
 );
 
--- 2) Pistácia – malina bola doteraz len poznámkou "Alt.:". Teraz je to
---    plnohodnotná príchuť, tak ju z poznámky vyberieme, nech tam nie je
---    dvakrát.
+-- 2) Poznámka "Alt.: pistácia – malina, alebo čokoláda – vanilka." ide
+--    preč. Veterník má na výber tieto dve príchute a nič iné sa pri ňom
+--    neponúka — ponuky na želanie budeme riešiť pri ostatných zákuskoch.
 update products
-  set alt_text = 'Alt.: čokoláda – vanilka, alebo iné príchute podľa preferencií.'
-  where name = 'Veterník'
-    and sub = 'Karamelový'
-    and alt_text = 'Alt.: pistácia – malina, alebo čokoláda – vanilka.';
+  set alt_text = ''
+  where name = 'Veterník' and alt_text <> '';
