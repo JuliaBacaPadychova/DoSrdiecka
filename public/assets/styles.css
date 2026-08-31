@@ -86,6 +86,17 @@ section{padding:20px 0}
 .fl .frow{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
 .fl .ftag{font-size:.72rem;color:var(--ink-soft);flex:1 1 100%}
 .fl .mctrl{margin-top:0;min-height:0;flex:0 0 auto}
+/* Prepínač veľkostí pri tortách. Päť možností pod sebou by kartu
+   naťahovalo; ako pilulky sú vidieť naraz a zaberú dva riadky. */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+.chipv{font-family:var(--sans);font-size:.82rem;font-weight:600;cursor:pointer;
+  border:1.5px solid var(--peach);background:transparent;color:var(--peach-deep);
+  border-radius:999px;padding:6px 13px;transition:.15s ease;white-space:nowrap}
+.chipv:hover{background:var(--cream-2)}
+.chipv.on{background:var(--peach-deep);color:#fff8ef;border-color:var(--peach-deep)}
+.chipv.on:hover{background:var(--peach-deep)}
+.vkosiku{font-size:.76rem;color:var(--ink-soft)}
+
 /* Poznámka pod zoznamom príchutí patrí celej karte, nie poslednej príchuti. */
 .flavours + .alt{margin-top:11px;padding-top:10px;border-top:1px dashed var(--line)}
 

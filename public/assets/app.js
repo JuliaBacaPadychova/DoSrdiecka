@@ -23,6 +23,8 @@
   // Výrobky, ktoré sú príchuťou v spoločnej karte — tlačidlo tam má
   // menej miesta, tak je aj kratšie.
   const PRICHUTE = new Set();
+  // Pri tortách sa veľkosť prepína: názov skupiny -> id vybranej veľkosti.
+  const VYBER = {};
 
   function pad2(n) { return String(n).padStart(2, '0'); }
   function fmtDate(y, m, d) { return `${y}-${pad2(m)}-${pad2(d)}`; }
@@ -65,20 +67,26 @@
       if (data.settings.about_text) document.getElementById('aboutText').innerHTML = data.settings.about_text;
     }
 
+    renderMenu();
+    updateCartBtn();
+  }
+
+  // Prekreslenie ponuky z už načítaných dát — po zmene košíka aj po
+  // prepnutí veľkosti torty.
+  function renderMenu() {
     PRICHUTE.clear();
     document.getElementById('menu').innerHTML = CATS.map((c) => {
       const cards = zoskupPodlaNazvu(PRODUCTS.filter((p) => p.category_id === c.id))
         .map((skupina) => {
           if (skupina.length === 1) return kartaJedneho(skupina[0]);
+          if (jeTorta(skupina[0])) return kartaVelkosti(skupina);
           skupina.forEach((p) => PRICHUTE.add(p.id));
           return kartaPrichuti(skupina);
         }).join('');
       return `<div class="catblock"><div class="cathead"><h3>${c.name}</h3><span class="cl"></span></div>
         <p class="catnote">${c.note || ''}</p><div class="grid">${cards}</div></div>`;
     }).join('');
-
     renderMenuControls();
-    updateCartBtn();
   }
 
   // Nadpis na úvode môže mať viac riadkov. Prvý je ten veľký, ďalšie sa
@@ -125,35 +133,32 @@
         </article>`;
   }
 
-  // Karta, kde má výrobok viac možností: pri zákuskoch príchute, pri
-  // tortách veľkosti. Fotka a názov sú spoločné, každá možnosť má vlastné
-  // tlačidlo — minimálny odber totiž platí pri každej zvlášť.
+  // Karta s viacerými príchuťami. Fotka a názov sú spoločné; popis,
+  // alergény aj tlačidlo má každá príchuť vlastné, lebo minimálny odber
+  // platí pri každej zvlášť — 3 karamelové a 3 pistáciové nestačia.
   //
-  // Čo majú všetky možnosti rovnaké, píšeme raz: popis pod názov, cenu
-  // a alergény dole. Čo sa líši, ide k jednotlivým možnostiam. Bez toho
-  // by karta brownie torty päťkrát zopakovala ten istý popis aj alergény.
+  // Cenu a minimum píšeme raz dole, kým sú pri všetkých príchutiach
+  // rovnaké. Len čo sa niektorá odlíši, presunú sa k jednotlivým
+  // príchutiam, nech pri žiadnej nesvieti cudzí údaj.
   function kartaPrichuti(skupina) {
     const hlavny = skupina[0];
-    const rovnake = (klic) => skupina.every((p) => p[klic] === hlavny[klic]);
+    const rovnakaCena = skupina.every((p) => p.price === hlavny.price);
+    const rovnakeMin = skupina.every((p) => p.min_qty === hlavny.min_qty);
+    const spolocne = rovnakaCena && rovnakeMin;
 
-    const spolocnyPopis = rovnake('description') ? hlavny.description : '';
-    const spolocneAlergeny = rovnake('allergens') ? hlavny.allergens : '';
-    const spolocnaCena = rovnake('price') && rovnake('min_qty');
-    const nadpis = jeTorta(hlavny) ? 'Veľkosti' : 'Príchute';
-
-    const moznosti = skupina.map((p) => {
-      // Do riadku ide len to, čím sa táto možnosť odlišuje. Príchuť bez
-      // vyplnených alergénov ich nespomenie vôbec — je to možnosť
-      // "podľa želania", kde sa zloženie dohodne až z poznámky.
+    const prichute = skupina.map((p) => {
+      // Príchuť bez vyplnených alergénov ich vôbec nespomenie — je to
+      // možnosť "podľa želania", kde sa zloženie dohodne až z poznámky
+      // v objednávke. Prázdne "Alergény: —" by tam iba mýlilo.
       const udaje = [];
-      if (!spolocneAlergeny && p.allergens) udaje.push(`Alergény: ${p.allergens}`);
-      if (!spolocnaCena) {
+      if (p.allergens) udaje.push(`Alergény: ${p.allergens}`);
+      if (!spolocne) {
         udaje.push(cenaText(p) + (p.min_qty > 1 ? ` · min. ${p.min_qty} ks` : ''));
       }
       return `
           <div class="fl">
             <div class="fname">${p.sub || p.name}</div>
-            ${!spolocnyPopis && p.description ? `<div class="fdesc">${p.description}</div>` : ''}
+            ${p.description ? `<div class="fdesc">${p.description}</div>` : ''}
             <div class="frow">
               ${udaje.length ? `<span class="ftag">${udaje.join(' · ')}</span>` : ''}
               <div class="mctrl" id="mc-${p.id}"></div>
@@ -161,24 +166,62 @@
           </div>`;
     }).join('');
 
-    const minPopis = spolocnaCena && hlavny.min_qty > 1
+    const minPopis = spolocne && hlavny.min_qty > 1
       ? `min. ${hlavny.min_qty} ks z každej príchute` : '';
-    const dole = (spolocnaCena ? `<div class="price">${cenaHtml(hlavny)}${
-        minPopis ? `<br><small>${minPopis}</small>` : ''}</div>` : '')
-      + (spolocneAlergeny ? `<div><span class="tag">Alergény: ${spolocneAlergeny}</span></div>` : '');
 
     return `
         <article class="card">
           <div class="ph"><img src="${hlavny.image_url}" alt="${hlavny.name}" loading="lazy"></div>
           <div class="body">
             <h4>${hlavny.name}</h4>
-            ${spolocnyPopis ? `<div class="desc">${spolocnyPopis}</div>` : ''}
-            <div class="fl-head">${nadpis}</div>
-            <div class="flavours">${moznosti}</div>
+            <div class="fl-head">Príchute</div>
+            <div class="flavours">${prichute}</div>
             ${hlavny.alt_text ? `<div class="alt">${hlavny.alt_text}</div>` : ''}
-            ${dole ? `<div class="meta">${dole}</div>` : ''}
+            <div class="meta">
+              <div class="price">${cenaHtml(hlavny)}${minPopis ? `<br><small>${minPopis}</small>` : ''}</div>
+            </div>
           </div>
         </article>`;
+  }
+
+  // Torta sa líši len veľkosťou a cenou — popis aj alergény má spoločné.
+  // Päť možností pod sebou by kartu neúmerne naťahovalo, tak sa veľkosť
+  // prepína: všetky sú vidieť naraz a karta ostane krátka.
+  function kartaVelkosti(skupina) {
+    const hlavny = skupina[0];
+    const vybrany = skupina.find((p) => p.id === VYBER[hlavny.name]) || hlavny;
+    // Keby si niekto stihol vložiť dve veľkosti naraz (kým nemá vybraný
+    // termín), nesmie to ostať skryté za prepínačom.
+    const inde = skupina.filter((p) => p.id !== vybrany.id && state.qty[p.id] > 0);
+
+    const velkosti = skupina.map((p) => `
+            <button class="chipv${p.id === vybrany.id ? ' on' : ''}"
+              onclick="DoSrdiecka.vyberVelkost('${hlavny.name}','${p.id}')"
+              aria-pressed="${p.id === vybrany.id}">${p.sub || p.name}</button>`).join('');
+
+    return `
+        <article class="card">
+          <div class="ph"><img src="${hlavny.image_url}" alt="${hlavny.name}" loading="lazy"></div>
+          <div class="body">
+            <h4>${hlavny.name}</h4>
+            ${vybrany.description ? `<div class="desc">${vybrany.description}</div>` : ''}
+            <div class="fl-head">Veľkosť</div>
+            <div class="chips">${velkosti}</div>
+            ${vybrany.alt_text ? `<div class="alt">${vybrany.alt_text}</div>` : ''}
+            <div class="meta">
+              <div class="price">${cenaHtml(vybrany)}</div>
+              ${vybrany.allergens ? `<div><span class="tag">Alergény: ${vybrany.allergens}</span></div>` : ''}
+            </div>
+            <div class="mctrl" id="mc-${vybrany.id}"></div>
+            ${inde.length ? `<div class="vkosiku">V košíku máš ${
+              inde.map((p) => p.sub).join(', ')}.</div>` : ''}
+          </div>
+        </article>`;
+  }
+
+  function vyberVelkost(nazov, id) {
+    VYBER[nazov] = id;
+    renderMenu();
   }
 
   // ---------- calendar ----------
@@ -341,7 +384,7 @@
 
   // Jediné miesto, ktoré po zmene košíka zosúladí celú stránku.
   function afterCartChange() {
-    renderMenuControls();
+    renderMenu();
     updateCartBtn();
     updateCartNote();
     buildCal();
@@ -577,7 +620,7 @@
     setStep(1);
   }
 
-  window.DoSrdiecka = { pickDay, addItem, incItem, decItem };
+  window.DoSrdiecka = { pickDay, addItem, incItem, decItem, vyberVelkost };
   window.goOrder = goOrder;
   window.goCart = goCart;
   window.setStep = setStep;
