@@ -119,7 +119,7 @@
           <td>${o.day}</td>
           <td>${o.customer_name}<br><span class="muted">${o.phone}<br>${o.email}</span>${o.note ? `<br><span class="muted">Pozn.: ${o.note}</span>` : ''}</td>
           <td>${(o.order_items || []).map((it) => `${it.qty}× ${it.name_snapshot}`).join('<br>')}</td>
-          <td>od ${o.total_estimate} €</td>
+          <td>${(o.order_items || []).some((it) => it.category_id === 'torty') ? 'od ' : ''}${o.total_estimate} €</td>
           <td><span class="badge ${o.status}">${o.status}</span></td>
           <td>
             <select onchange="Admin.updateOrderStatus('${o.id}', this.value)">
@@ -170,8 +170,27 @@
           <td>${d.cap_torty}</td>
           <td>${d.cap_chlebik}</td>
           <td>${d.remaining_zakusky} ks · ${d.remaining_torty} torta · ${d.remaining_chlebik} chlebík</td>
-          <td><button class="btn ghost sm" onclick="Admin.editDay('${d.day}', ${d.is_open}, ${d.cap_zakusky}, ${d.cap_torty}, ${d.cap_chlebik})">Upraviť</button></td>
+          <td class="akcie">
+            <button class="btn ghost sm" onclick="Admin.editDay('${d.day}', ${d.is_open}, ${d.cap_zakusky}, ${d.cap_torty}, ${d.cap_chlebik})">Upraviť</button>
+            <button class="btn ghost sm zmazat" onclick="Admin.deleteDay('${d.day}')">Zrušiť</button>
+          </td>
         </tr>`).join('')}</tbody></table>`;
+  }
+
+  // Zrušenie termínu ho z tabuľky odstráni úplne. Deň s prijatými
+  // objednávkami server odmietne zmazať a povie prečo.
+  async function deleteDay(day) {
+    if (!confirm(`Naozaj zrušiť termín ${day}? Z kalendára zmizne úplne.`)) return;
+    const errEl = document.getElementById('dayErr');
+    errEl.style.display = 'none';
+    try {
+      await apiFetch(`/api/admin/days?day=${encodeURIComponent(day)}`, { method: 'DELETE' });
+      loadDays();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+      document.getElementById('tab-days').scrollIntoView({ behavior: 'smooth' });
+    }
   }
 
   function editDay(day, isOpen, capZ, capT, capCh) {
@@ -238,15 +257,24 @@
     });
     const jePrichut = (p) => pocty[p.category_id + '|' + p.name] > 1;
 
+    // V tabuľke hľadá človek podľa názvu, nie podľa poradia na webe.
+    // Poradie na webe určuje stĺpec Poradie vo formulári, nie toto.
+    const zoradene = [...products].sort((a, b) =>
+      a.name.localeCompare(b.name, 'sk') || String(a.sub || '').localeCompare(String(b.sub || ''), 'sk'));
+
+    // Cena sa píše rovnako ako na webe: "od" len pri tortách.
+    const cena = (p) => (p.category_id === 'torty' ? `od ${p.price} €` : `${p.price} €`);
+
     el.innerHTML = `<table class="admin-table"><thead><tr>
         <th>Fotka</th><th>Názov</th><th>Kategória</th><th>Cena</th><th>Zobrazené</th><th></th>
-      </tr></thead><tbody>${products.map((p) => `
+      </tr></thead><tbody>${zoradene.map((p) => `
         <tr>
           <td><img src="${p.image_url}" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:8px"></td>
           <td>${p.name}<br><span class="muted">${p.sub || ''}</span>${
-            jePrichut(p) ? `<br><span class="muted" style="font-size:.74rem">jedna z príchutí karty „${p.name}“</span>` : ''}</td>
+            jePrichut(p) ? `<br><span class="muted" style="font-size:.74rem">jedna z ${
+              p.category_id === 'torty' ? 'veľkostí' : 'príchutí'} karty „${p.name}“</span>` : ''}</td>
           <td>${CATS_BY_ID[p.category_id] || p.category_id}</td>
-          <td>od ${p.price} €</td>
+          <td>${cena(p)}</td>
           <td>${p.active ? 'Áno' : 'Nie'}</td>
           <td><button class="btn ghost sm" onclick='Admin.editProduct(${JSON.stringify(p).replace(/'/g, "&#39;")})'>Upraviť</button></td>
         </tr>`).join('')}</tbody></table>`;
@@ -404,7 +432,7 @@
   window.Admin = {
     login, logout, showTab,
     updateOrderStatus, editDay, saveDay,
-    editProduct, resetProductForm, saveProduct,
+    deleteDay, editProduct, resetProductForm, saveProduct,
     saveSettings,
   };
 

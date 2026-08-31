@@ -100,6 +100,12 @@ section{padding:20px 0}
 /* Poznámka pod zoznamom príchutí patrí celej karte, nie poslednej príchuti. */
 .flavours + .alt{margin-top:11px;padding-top:10px;border-top:1px dashed var(--line)}
 
+/* Dve tlačidlá v jednej bunke tabuľky v správe webu. Zrušenie je
+   nezvratné, tak sa farbou odlišuje od bežnej úpravy. */
+.admin-table .akcie{display:flex;gap:8px;flex-wrap:wrap}
+.btn.ghost.zmazat{color:#a33;border-color:#e0b3b3}
+.btn.ghost.zmazat:hover{background:#a33;color:#fff8ef;border-color:#a33}
+
 /* Vysvetlivka pod poľom vo formulári v správe webu. */
 .fieldhint{display:block;margin-top:5px;font-size:.76rem;color:var(--ink-soft);line-height:1.4}
 
@@ -153,7 +159,10 @@ section{padding:20px 0}
 .oitem .info h5{margin:0;font-family:var(--serif);font-size:1.02rem;text-transform:uppercase;letter-spacing:.02em}
 .oitem .info .l2{font-size:.8rem;color:var(--ink-soft)}
 .oitem .info .l3{font-size:.78rem;color:var(--peach-deep);font-weight:600;margin-top:2px}
-.cap-msg{font-size:.77rem;color:var(--terra);margin-top:4px}
+/* Hláška, prečo sa výrobok pridať nedá. Ako obyčajný farebný text splývala
+   s riadkom ceny hneď nad ňou — najmä na mobile, kde sú tesne pri sebe. */
+.cap-msg{font-size:.79rem;color:var(--terra);font-weight:600;margin-top:7px;
+  background:#fbeede;border:1px solid var(--peach);border-radius:9px;padding:7px 10px}
 .stepper{display:flex;align-items:center;gap:9px;flex:none}
 .stepper button{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--peach);background:var(--card);color:var(--peach-deep);font-size:1.2rem;line-height:1;cursor:pointer;font-family:var(--sans)}
 .stepper button:hover:not(:disabled){background:var(--peach-deep);color:#fff}

@@ -51,6 +51,24 @@ module.exports = withErrors(
       const url = new URL(req.url, "http://x");
       const day = url.searchParams.get("day");
       if (!day || !DAY_RE.test(day)) return sendJson(res, 400, { error: "invalid_day" });
+
+      // Objednávky na tabuľku dní neodkazujú, takže zmazanie dňa ich
+      // nezmaže — ostali by v Objednávkach, ale z kalendára by deň zmizol
+      // a nikto by nevidel, že sa naň ešte pečie. Deň s prijatými
+      // objednávkami preto nemažeme; najprv ich treba zrušiť.
+      const zive = await rest(
+        `orders?day=eq.${day}&status=neq.zrusena&select=id&limit=50`
+      );
+      if (zive && zive.length) {
+        return sendJson(res, 409, {
+          error: "day_has_orders",
+          count: zive.length,
+          message: zive.length === 1
+            ? "Na tento deň je prijatá 1 objednávka. Najprv ju v Objednávkach zruš, potom sa dá termín zmazať."
+            : `Na tento deň sú prijaté objednávky (${zive.length}). Najprv ich v Objednávkach zruš, potom sa dá termín zmazať.`,
+        });
+      }
+
       await rest(`open_days?day=eq.${day}`, { method: "DELETE" });
       return sendJson(res, 200, { ok: true });
     }

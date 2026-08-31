@@ -58,7 +58,7 @@ function startFakeSupabase() {
     const filters = [];
     for (const [key, value] of searchParams.entries()) {
       if (["select", "order", "limit", "on_conflict"].includes(key)) continue;
-      const m = value.match(/^(eq|gte|lte|gt|lt|is)\.(.*)$/);
+      const m = value.match(/^(eq|neq|gte|lte|gt|lt|is)\.(.*)$/);
       if (m) filters.push({ field: key, op: m[1], value: m[2] });
     }
     return filters;
@@ -71,6 +71,7 @@ function startFakeSupabase() {
         if (f.field === "day" && v && v.length > 10) v = v.slice(0, 10);
         switch (f.op) {
           case "eq": return String(v) === f.value;
+          case "neq": return String(v) !== f.value;
           case "gte": return v >= f.value;
           case "lte": return v <= f.value;
           case "gt": return v > f.value;
