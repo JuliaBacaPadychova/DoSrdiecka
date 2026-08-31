@@ -29,6 +29,9 @@ header{position:sticky;top:0;z-index:40;backdrop-filter:blur(8px);background:rgb
 .btn:hover{background:var(--terra);transform:translateY(-1px)}
 .btn:disabled{background:#dccbb6;color:#fff;cursor:not-allowed;transform:none}
 .btn.ghost{background:transparent;color:var(--peach-deep);border:1.5px solid var(--peach)}
+/* .btn:disabled mení pozadie, lenže .btn.ghost ho vzápätí prebije — nedostupné
+   tlačidlo tak vyzeralo úplne rovnako ako dostupné. */
+.btn.ghost:disabled{opacity:.42;cursor:not-allowed}
 .btn.ghost:hover{background:var(--card);color:var(--terra)}
 .btn.sm{padding:8px 15px;font-size:.86rem}
 :focus-visible{outline:2.5px solid var(--terra);outline-offset:2px;border-radius:6px}
@@ -156,6 +159,16 @@ label{display:block;font-size:.8rem;font-weight:600;color:var(--ink-soft);margin
 input,textarea,select{width:100%;font-family:var(--sans);font-size:.95rem;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 13px}
 input:focus,textarea:focus,select:focus{border-color:var(--peach)} textarea{resize:vertical;min-height:74px}
 @media(max-width:560px){.form{grid-template-columns:1fr}}
+
+/* Na úzkom displeji sa riadok v kroku Výrobky nezmestí do jedného pásu:
+   tlačidlo sa nezalamuje, tak vytlačí názov výrobku do stĺpčeka po jednom
+   slove. Ovládanie preto ide na vlastný riadok pod fotku a text. */
+@media(max-width:560px){
+  .oitem{flex-wrap:wrap;gap:12px}
+  .oitem .info{flex:1 1 calc(100% - 78px)}
+  .oitem .addbtn,.oitem .stepper{flex:1 1 100%}
+  .oitem .addbtn{width:100%}
+}
 .flownav{display:flex;justify-content:space-between;gap:10px;margin-top:20px;flex-wrap:wrap}
 
 .success{text-align:center;padding:22px 10px}

@@ -86,15 +86,20 @@ module.exports = withErrors(async function handler(req, res) {
   // odložené), aby v e-mailoch nefigurovali len vnútorné identifikátory.
   // Keď sa nepodarí načítať, e-mail aj tak odíde — len s množstvami.
   let itemsText = cleanItems.map((it) => `- ${it.qty}x`).join("\n");
+  // "od" pri cene má zmysel len vtedy, keď je v objednávke torta — pri nej
+  // sa cena ešte dolaďuje. Keď sa položky nepodarí načítať, necháme "od":
+  // radšej opatrnejší údaj než sľúbená konečná cena.
+  let maTortu = true;
   try {
     const rows = await rest(
       `order_items?order_id=eq.${encodeURIComponent(result.order_id)}` +
-      `&select=name_snapshot,sub_snapshot,qty&order=name_snapshot.asc`
+      `&select=name_snapshot,sub_snapshot,qty,category_id&order=name_snapshot.asc`
     );
     if (rows && rows.length) {
       itemsText = rows
         .map((r) => `- ${r.qty}x ${r.name_snapshot}${r.sub_snapshot ? ` (${r.sub_snapshot})` : ""}`)
         .join("\n");
+      maTortu = rows.some((r) => r.category_id === "torty");
     }
   } catch (itemsErr) {
     // eslint-disable-next-line no-console
@@ -108,6 +113,7 @@ module.exports = withErrors(async function handler(req, res) {
   // Poradové číslo pre ľudí. Keby ho starší záznam nemal, e-mail radšej
   // odíde bez neho než by mal v predmete "undefined".
   const cislo = result.order_no ? `#${result.order_no}` : "";
+  const cenaSpolu = `${maTortu ? "od " : ""}${result.total} €`;
 
   if (notifyTo) {
     try {
@@ -126,7 +132,7 @@ module.exports = withErrors(async function handler(req, res) {
           `E-mail: ${email}\n` +
           `Poznámka: ${note || "—"}\n\n` +
           `Položky:\n${itemsText}\n\n` +
-          `Orientačná cena: od ${result.total} €\n\n` +
+          `Orientačná cena: ${cenaSpolu}\n\n` +
           `Detaily nájdeš v admin časti webu.`,
       });
     } catch (mailErr) {
@@ -146,7 +152,7 @@ module.exports = withErrors(async function handler(req, res) {
           (cislo ? `Číslo objednávky: ${cislo}\n` : "") +
           `Termín: ${dlhyDatum(day)}\n` +
           `Objednávka:\n${itemsText}\n\n` +
-          `Orientačná cena: od ${result.total} €\n` +
+          `Orientačná cena: ${cenaSpolu}\n` +
           (note ? `Poznámka: ${note}\n` : "") +
           `\n` +
           `Výrobky si vyzdvihneš osobne na adrese ${ODBER}.\n` +

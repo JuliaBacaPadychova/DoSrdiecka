@@ -276,8 +276,8 @@ children.push(table(
   ["Chcem", "Kam idem"],
   [
     [["Otvoriť nový deň na objednávky, zmeniť limit, zavrieť deň"], [["Správa → Dni a limity", true]]],
-    [["Zmeniť cenu, popis, alergény alebo fotku výrobku"], [["Správa → Ponuka", true]]],
-    [["Pridať k výrobku ďalšiu príchuť"], [["Správa → Ponuka → Nový výrobok s rovnakým názvom", true], ["Podnadpis je názov príchute. Web ich spojí do jednej karty. Minimálny odber platí pri každej príchuti zvlášť.", false, true]]],
+    [["Zmeniť cenu, popis, alergény alebo fotku výrobku"], [["Správa → Ponuka", true], ["Čo majú všetky možnosti karty rovnaké (popis, alergény, cenu), web napíše raz. Čo sa líši, dá k jednotlivým možnostiam.", false, true]]],
+    [["Pridať k výrobku ďalšiu príchuť"], [["Správa → Ponuka → Nový výrobok s rovnakým názvom", true], ["Podnadpis je názov príchute — pri tortách veľkosť. Web ich spojí do jednej karty. Minimálny odber platí pri každej možnosti zvlášť.", false, true]]],
     [["Ponúknuť pri výrobku možnosť na želanie"], [["To isté, len alergény nechaj prázdne", true], ["Karta ich potom vôbec nespomenie. Zloženie sa dohodne z poznámky, ktorú zákazníčka k objednávke musí napísať.", false, true]]],
     [["Zmeniť poradie výrobkov a príchutí na webe"], [["Správa → Ponuka → Poradie", true], ["Každý riadok potrebuje vlastné číslo, inak sa príchute môžu poprehadzovať.", false, true]]],
     [["Pozrieť objednávky, označiť vybavenú alebo zrušenú"], [["Správa → Objednávky", true], ["Zrušená objednávka automaticky uvoľní kapacitu dňa", false, true]]],
@@ -334,9 +334,10 @@ children.push(H1("Kde stojíme"));
   ["hotovo", "Číslo objednávky", "v predmete oboch e-mailov aj na potvrdzovacej obrazovke"],
   ["hotovo", "Najbližší voľný termín", "ukazuje skutočný dátum, aj keď je až v ďalšom mesiaci"],
   ["hotovo", "Príchute pri výrobku", "všetky zákusky majú príchute v jednej karte, každá s vlastným minimom 6 ks"],
+  ["hotovo", "Veľkosti pri tortách", "brownie torta od Ø 12 do Ø 22 cm, každá s vlastnou cenou; na deň stále 1 torta"],
+  ["hotovo", "Cena bez „od“", "„od“ ostáva len pri tortách, kde sa cena ešte dolaďuje"],
   ["hotovo", "Objednávka na želanie", "pri Choux aj pavlove si zákazníčka vypýta vlastnú kombináciu a napíše ju do poznámky"],
   ["zostáva", "Ochrana proti uniknutým heslám", "je za plateným programom Supabase; heslo si over na haveibeenpwned.com/Passwords"],
-  ["zostáva", "Príchute pri tortách", "keď mi povieš, aké majú byť"],
 ].forEach(([stav, co, detail]) => {
   children.push(new Paragraph({
     spacing: { after: 90, line: 276 },

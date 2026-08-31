@@ -337,15 +337,34 @@ insert into products (category_id, name, sub, description, alt_text, price, min_
    '',
    3, 6, 'min. 6 ks', '1, 3, 6, 7, 8', '/assets/img/veternik.jpg', 2),
 
+  -- Brownie torta sa objednáva v piatich veľkostiach. Sú to samostatné
+  -- riadky s rovnakým názvom — web ich spojí do jednej karty a keďže
+  -- ide o torty, pomenuje ich "Veľkosti". Popis aj alergény má karta
+  -- spoločné a napíše ich raz; cena je pri každej veľkosti zvlášť.
   ('torty', 'Brownie torta', 'Ø 12 cm',
    'Vanilkový krém, ovocné coulis, slaný karamel, čokoládová ganache z horkej čokolády.',
-   'Alt.: bez laktózy · veľkosti Ø 16 / 18 / 20 / 22 cm.',
-   40, 1, 'za tortu', '1, 3, 6, 7', '/assets/img/brownie.jpg', 1),
+   '', 40, 1, '', '1, 3, 6, 7', '/assets/img/brownie.jpg', 1),
+
+  ('torty', 'Brownie torta', 'Ø 16 cm',
+   'Vanilkový krém, ovocné coulis, slaný karamel, čokoládová ganache z horkej čokolády.',
+   '', 50, 1, '', '1, 3, 6, 7', '/assets/img/brownie.jpg', 2),
+
+  ('torty', 'Brownie torta', 'Ø 18 cm',
+   'Vanilkový krém, ovocné coulis, slaný karamel, čokoládová ganache z horkej čokolády.',
+   '', 60, 1, '', '1, 3, 6, 7', '/assets/img/brownie.jpg', 3),
+
+  ('torty', 'Brownie torta', 'Ø 20 cm',
+   'Vanilkový krém, ovocné coulis, slaný karamel, čokoládová ganache z horkej čokolády.',
+   '', 70, 1, '', '1, 3, 6, 7', '/assets/img/brownie.jpg', 4),
+
+  ('torty', 'Brownie torta', 'Ø 22 cm',
+   'Vanilkový krém, ovocné coulis, slaný karamel, čokoládová ganache z horkej čokolády.',
+   '', 80, 1, '', '1, 3, 6, 7', '/assets/img/brownie.jpg', 5),
 
   ('torty', 'Pavlova torta', 'Ø 20 cm',
    'Vanilkový krém, ovocné coulis.',
-   'Alt.: bez laktózy · veľkosť aj ovocie podľa preferencií.',
-   35, 1, 'za tortu', '3, 7', '/assets/img/pavlovaT.jpg', 2)
+   'Napíš mi do poznámky predstavu aké ovocie preferuješ.',
+   35, 1, '', '3, 7', '/assets/img/pavlovaT.jpg', 6)
 on conflict do nothing;
 
 -- Pár ukážkových otvorených dní, aby si po nasadení hneď videla, ako to

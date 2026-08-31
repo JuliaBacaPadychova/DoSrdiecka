@@ -222,3 +222,62 @@ test("bez poznámky sa objednávka na želanie neodošle", async (t) => {
     "pri tejto možnosti je poznámka jediné, z čoho sa dá upiecť");
   assert.equal(sent.length, 0);
 });
+
+// --- "od" pri cene ---------------------------------------------------
+//
+// Cena zákuskov a chlebíka je za kus a platí, tak sa píše bez "od".
+// Pri torte sa veľkosť aj úpravy ešte dolaďujú, tak "od" ostáva.
+
+async function sTortou(t) {
+  const fake = await startFakeSupabase();
+  const day = iso(25);
+  fake.db.open_days.push({ day, is_open: true, cap_zakusky: 18, cap_torty: 1, cap_chlebik: 1 });
+
+  process.env.SUPABASE_URL = fake.url;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "fake";
+  process.env.SMTP_USER = "kolacik@dosrdiecka.sk";
+  const handler = require("../api/orders");
+  t.after(async () => { await fake.close(); });
+
+  sent.length = 0;
+  return async function objednaj(items) {
+    const res = fakeRes();
+    await handler({
+      method: "POST", url: "/api/orders", headers: {},
+      body: {
+        day, name: "Jana", phone: "0900123456",
+        email: "jana@example.sk", note: "bez orechov", items,
+      },
+    }, res);
+    return res.out;
+  };
+}
+
+test("pri samotných zákuskoch je cena v e-mailoch bez „od“", async (t) => {
+  const objednaj = await sTortou(t);
+
+  const out = await objednaj([{ product_id: "p-choux", qty: 6 }]);
+  assert.equal(out.code, 200);
+  assert.equal(out.body.total, 18);
+
+  for (const sprava of sent) {
+    assert.match(sprava.text, /Orientačná cena: 18 €/);
+    assert.doesNotMatch(sprava.text, /od 18 €/, "cena za kus platí, netreba „od“");
+  }
+});
+
+test("keď je v objednávke torta, „od“ pri cene ostáva", async (t) => {
+  const objednaj = await sTortou(t);
+
+  const out = await objednaj([
+    { product_id: "p-brownie", qty: 1 },
+    { product_id: "p-choux", qty: 6 },
+  ]);
+  assert.equal(out.code, 200);
+  assert.equal(out.body.total, 58);
+
+  for (const sprava of sent) {
+    assert.match(sprava.text, /Orientačná cena: od 58 €/,
+      "veľkosť aj úpravy torty sa ešte dolaďujú");
+  }
+});

@@ -28,6 +28,17 @@
   function fmtDate(y, m, d) { return `${y}-${pad2(m)}-${pad2(d)}`; }
   function euro(n) { return `${n} €`; }
 
+  // Cena sa píše podľa kategórie. Torta je jeden kus a jej cena je
+  // orientačná — veľkosť aj úpravy sa doladia, tak "od". Zákusky
+  // a chlebík majú cenu za kus a tá platí, tak bez "od".
+  function jeTorta(p) { return p.category_id === 'torty'; }
+  function cenaHtml(p) {
+    return jeTorta(p) ? `od ${p.price} €` : `${p.price} €<small> /ks</small>`;
+  }
+  function cenaText(p) {
+    return jeTorta(p) ? `od ${p.price} €` : `${p.price} € /ks`;
+  }
+
   async function fetchJson(url, opts) {
     const res = await fetch(url, opts);
     let data = null;
@@ -106,7 +117,7 @@
             <div class="desc">${p.description || ''}</div>
             ${p.alt_text ? `<div class="alt">${p.alt_text}</div>` : ''}
             <div class="meta">
-              <div class="price">od ${p.price} €<small> /ks</small>${p.min_label ? `<br><small>${p.min_label}</small>` : ''}</div>
+              <div class="price">${cenaHtml(p)}${p.min_label ? `<br><small>${p.min_label}</small>` : ''}</div>
               <div><span class="tag">Alergény: ${p.allergens || '—'}</span></div>
             </div>
             <div class="mctrl" id="mc-${p.id}"></div>
@@ -114,33 +125,35 @@
         </article>`;
   }
 
-  // Karta s viacerými príchuťami. Fotka a názov sú spoločné; popis,
-  // alergény aj tlačidlo má každá príchuť vlastné, lebo minimálny odber
-  // platí pri každej zvlášť — 3 karamelové a 3 pistáciové nestačia.
+  // Karta, kde má výrobok viac možností: pri zákuskoch príchute, pri
+  // tortách veľkosti. Fotka a názov sú spoločné, každá možnosť má vlastné
+  // tlačidlo — minimálny odber totiž platí pri každej zvlášť.
   //
-  // Cenu a minimum píšeme raz dole, kým sú pri všetkých príchutiach
-  // rovnaké. Len čo sa niektorá odlíši, presunú sa k jednotlivým
-  // príchutiam, nech pri žiadnej nesvieti cudzí údaj.
+  // Čo majú všetky možnosti rovnaké, píšeme raz: popis pod názov, cenu
+  // a alergény dole. Čo sa líši, ide k jednotlivým možnostiam. Bez toho
+  // by karta brownie torty päťkrát zopakovala ten istý popis aj alergény.
   function kartaPrichuti(skupina) {
     const hlavny = skupina[0];
-    const rovnakaCena = skupina.every((p) => p.price === hlavny.price);
-    const rovnakeMin = skupina.every((p) => p.min_qty === hlavny.min_qty);
-    const spolocne = rovnakaCena && rovnakeMin;
-    const najnizsia = Math.min.apply(null, skupina.map((p) => p.price));
+    const rovnake = (klic) => skupina.every((p) => p[klic] === hlavny[klic]);
 
-    const prichute = skupina.map((p) => {
-      // Príchuť bez vyplnených alergénov ich vôbec nespomenie — je to
-      // možnosť "podľa želania", kde sa zloženie dohodne až z poznámky
-      // v objednávke. Prázdne "Alergény: —" by tam iba mýlilo.
+    const spolocnyPopis = rovnake('description') ? hlavny.description : '';
+    const spolocneAlergeny = rovnake('allergens') ? hlavny.allergens : '';
+    const spolocnaCena = rovnake('price') && rovnake('min_qty');
+    const nadpis = jeTorta(hlavny) ? 'Veľkosti' : 'Príchute';
+
+    const moznosti = skupina.map((p) => {
+      // Do riadku ide len to, čím sa táto možnosť odlišuje. Príchuť bez
+      // vyplnených alergénov ich nespomenie vôbec — je to možnosť
+      // "podľa želania", kde sa zloženie dohodne až z poznámky.
       const udaje = [];
-      if (p.allergens) udaje.push(`Alergény: ${p.allergens}`);
-      if (!spolocne) {
-        udaje.push(`od ${p.price} € /ks${p.min_qty > 1 ? ` · min. ${p.min_qty} ks` : ''}`);
+      if (!spolocneAlergeny && p.allergens) udaje.push(`Alergény: ${p.allergens}`);
+      if (!spolocnaCena) {
+        udaje.push(cenaText(p) + (p.min_qty > 1 ? ` · min. ${p.min_qty} ks` : ''));
       }
       return `
           <div class="fl">
             <div class="fname">${p.sub || p.name}</div>
-            ${p.description ? `<div class="fdesc">${p.description}</div>` : ''}
+            ${!spolocnyPopis && p.description ? `<div class="fdesc">${p.description}</div>` : ''}
             <div class="frow">
               ${udaje.length ? `<span class="ftag">${udaje.join(' · ')}</span>` : ''}
               <div class="mctrl" id="mc-${p.id}"></div>
@@ -148,20 +161,22 @@
           </div>`;
     }).join('');
 
-    const minPopis = spolocne && hlavny.min_qty > 1
+    const minPopis = spolocnaCena && hlavny.min_qty > 1
       ? `min. ${hlavny.min_qty} ks z každej príchute` : '';
+    const dole = (spolocnaCena ? `<div class="price">${cenaHtml(hlavny)}${
+        minPopis ? `<br><small>${minPopis}</small>` : ''}</div>` : '')
+      + (spolocneAlergeny ? `<div><span class="tag">Alergény: ${spolocneAlergeny}</span></div>` : '');
 
     return `
         <article class="card">
           <div class="ph"><img src="${hlavny.image_url}" alt="${hlavny.name}" loading="lazy"></div>
           <div class="body">
             <h4>${hlavny.name}</h4>
-            <div class="fl-head">Príchute</div>
-            <div class="flavours">${prichute}</div>
+            ${spolocnyPopis ? `<div class="desc">${spolocnyPopis}</div>` : ''}
+            <div class="fl-head">${nadpis}</div>
+            <div class="flavours">${moznosti}</div>
             ${hlavny.alt_text ? `<div class="alt">${hlavny.alt_text}</div>` : ''}
-            <div class="meta">
-              <div class="price">od ${najnizsia} €<small> /ks</small>${minPopis ? `<br><small>${minPopis}</small>` : ''}</div>
-            </div>
+            ${dole ? `<div class="meta">${dole}</div>` : ''}
           </div>
         </article>`;
   }
@@ -377,23 +392,33 @@
       html += items.map((p) => {
         const q = state.qty[p.id], b = budget(p);
         const canAdd = (b >= p.min_qty), canPlus = (b >= 1);
+        // Tlačidlo je len "Pridať" — koľko kusov, to hovorí riadok s cenou
+        // hneď nad ním. Dlhší popis na mobile vytláčal názov výrobku.
         let ctrl = q === 0
-          ? `<button class="btn ghost sm addbtn" ${canAdd ? '' : 'disabled'} onclick="DoSrdiecka.addItem('${p.id}')">Pridať${p.min_qty > 1 ? ' · od ' + p.min_qty + ' ks' : ''}</button>`
+          ? `<button class="btn ghost sm addbtn" ${canAdd ? '' : 'disabled'} onclick="DoSrdiecka.addItem('${p.id}')">Pridať</button>`
           : `<div class="stepper"><button onclick="DoSrdiecka.decItem('${p.id}')" aria-label="Ubrať">−</button>
              <span class="q">${q}</span><button onclick="DoSrdiecka.incItem('${p.id}')" ${canPlus ? '' : 'disabled'} aria-label="Pridať">+</button></div>`;
+        // Torta aj chlebík majú strop jeden kus na deň. Keď ho zaberá vlastný
+        // košík, netreba posielať zákazníčku hľadať iný termín — stačí jej
+        // povedať, prečo sa ďalšia veľkosť pridať nedá. Pri piatich
+        // veľkostiach torty by inak štyri razy svietilo „skús iný deň“.
         let msg = '';
         if (q === 0 && !canAdd) {
           if (p.category_id === 'torty') {
-            msg = `<div class="cap-msg">Na tento termín je torta už obsadená — skús iný deň.</div>`;
+            msg = usedT() > 0
+              ? `<div class="cap-msg">Na deň stíham jednu tortu — tú v košíku najprv uber.</div>`
+              : `<div class="cap-msg">Na tento termín je torta už obsadená — skús iný deň.</div>`;
           } else if (p.category_id === 'chlebik') {
-            msg = `<div class="cap-msg">Na tento termín je chlebík už obsadený — skús iný deň.</div>`;
+            msg = usedCh() > 0
+              ? `<div class="cap-msg">Na deň stíham jeden chlebík — jeden už máš v košíku.</div>`
+              : `<div class="cap-msg">Na tento termín je chlebík už obsadený — skús iný deň.</div>`;
           } else {
             msg = `<div class="cap-msg">Na tento termín sa už nezmestí (min. ${p.min_qty} ks). Skús iný deň alebo menej iných kúskov.</div>`;
           }
         }
         return `<div class="oitem"><img class="th" src="${p.image_url}" alt="">
           <div class="info"><h5>${p.name}</h5><div class="l2">${p.sub || ''}</div>
-          <div class="l3">od ${p.price} € /ks${p.min_label ? ' · ' + p.min_label : ''}</div>${msg}</div>${ctrl}</div>`;
+          <div class="l3">${cenaText(p)}${p.min_label ? ' · ' + p.min_label : ''}</div>${msg}</div>${ctrl}</div>`;
       }).join('');
     });
     document.getElementById('orderItems').innerHTML = html;
@@ -426,13 +451,17 @@
   function renderSummary() {
     const rows = PRODUCTS.filter((p) => state.qty[p.id] > 0).map((p) => {
       const q = state.qty[p.id];
-      return `<div class="sumline"><span>${p.name} — ${p.sub || ''} · ${q} ks</span><span>od ${q * p.price} €</span></div>`;
+      return `<div class="sumline"><span>${p.name} — ${p.sub || ''} · ${q} ks</span><span>${
+        jeTorta(p) ? 'od ' : ''}${q * p.price} €</span></div>`;
     }).join('');
     const [y, m, d] = state.day.split('-').map(Number);
     document.getElementById('sumList').innerHTML =
       `<div class="sumline" style="color:var(--peach-deep);font-weight:600"><span>Termín odberu</span><span>${d}. ${MONTHS[m].toLowerCase()} ${y}</span></div>` + rows;
     const total = PRODUCTS.reduce((s, p) => s + state.qty[p.id] * p.price, 0);
-    document.getElementById('sumTotal').textContent = 'od ' + total + ' €';
+    // "od" má zmysel len vtedy, keď je v košíku torta — pri nej sa cena
+    // ešte dolaďuje. Cena zákuskov a chlebíka je za kus a platí.
+    const maTortu = PRODUCTS.some((p) => state.qty[p.id] > 0 && jeTorta(p));
+    document.getElementById('sumTotal').textContent = (maTortu ? 'od ' : '') + total + ' €';
   }
 
   function setStep(n) {
