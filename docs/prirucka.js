@@ -276,7 +276,7 @@ children.push(table(
   ["Chcem", "Kam idem"],
   [
     [["Otvoriť nový deň na objednávky alebo zmeniť limit"], [["Správa → Dni a limity", true]]],
-    [["Zrušiť termín, na ktorý už piecť nebudeš"], [["Správa → Dni a limity → Zrušiť", true], ["Deň zmizne z kalendára úplne. Kým sú naň prijaté objednávky, zrušiť sa nedá — najprv ich zruš v Objednávkach.", false, true]]],
+    [["Zrušiť termín, na ktorý už piecť nebudeš"], [["Správa → Dni a limity → Zrušiť", true], ["Deň zmizne z kalendára úplne. Tlačidlo je len pri dni bez objednávok — deň s objednávkou sa dá už len zavrieť cez Upraviť → Stav.", false, true]]],
     [["Zmeniť cenu, popis, alergény alebo fotku výrobku"], [["Správa → Ponuka", true]]],
     [["Pridať k výrobku ďalšiu príchuť"], [["Správa → Ponuka → Nový výrobok s rovnakým názvom", true], ["Podnadpis je názov príchute — pri tortách veľkosť. Web ich spojí do jednej karty. Minimálny odber platí pri každej možnosti zvlášť.", false, true]]],
     [["Ponúknuť pri výrobku možnosť na želanie"], [["To isté, len alergény nechaj prázdne", true], ["Karta ich potom vôbec nespomenie. Zloženie sa dohodne z poznámky, ktorú zákazníčka k objednávke musí napísať.", false, true]]],
@@ -337,7 +337,7 @@ children.push(H1("Kde stojíme"));
   ["hotovo", "Príchute pri výrobku", "všetky zákusky majú príchute v jednej karte, každá s vlastným minimom 6 ks"],
   ["hotovo", "Veľkosti pri tortách", "brownie torta od Ø 12 do Ø 22 cm sa prepína, cena sa mení podľa nej; na deň stále 1 torta"],
   ["hotovo", "Cena bez „od“", "„od“ ostáva len pri tortách, kde sa cena ešte dolaďuje"],
-  ["hotovo", "Zrušenie termínu", "deň sa dá z kalendára odstrániť, nielen zavrieť; s prijatými objednávkami to nepustí"],
+  ["hotovo", "Zrušenie termínu", "deň bez objednávok sa dá z kalendára odstrániť; deň s objednávkou sa dá už len zavrieť"],
   ["hotovo", "Objednávka na želanie", "pri Choux aj pavlove si zákazníčka vypýta vlastnú kombináciu a napíše ju do poznámky"],
   ["zostáva", "Ochrana proti uniknutým heslám", "je za plateným programom Supabase; heslo si over na haveibeenpwned.com/Passwords"],
 ].forEach(([stav, co, detail]) => {

@@ -157,6 +157,12 @@
     }
   }
 
+  function objednavokText(n) {
+    if (n === 1) return '1 objednávku';
+    if (n < 5) return `${n} objednávky`;
+    return `${n} objednávok`;
+  }
+
   function renderDays(days) {
     const el = document.getElementById('daysList');
     if (!days.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne otvorené dni. Pridaj prvý deň vyššie.</p>'; return; }
@@ -172,13 +178,16 @@
           <td>${d.remaining_zakusky} ks · ${d.remaining_torty} torta · ${d.remaining_chlebik} chlebík</td>
           <td class="akcie">
             <button class="btn ghost sm" onclick="Admin.editDay('${d.day}', ${d.is_open}, ${d.cap_zakusky}, ${d.cap_torty}, ${d.cap_chlebik})">Upraviť</button>
-            <button class="btn ghost sm zmazat" onclick="Admin.deleteDay('${d.day}')">Zrušiť</button>
+            ${d.pocet_objednavok
+              ? `<span class="denpozn">Má ${objednavokText(d.pocet_objednavok)} — dá sa už len zavrieť.</span>`
+              : `<button class="btn ghost sm zmazat" onclick="Admin.deleteDay('${d.day}')">Zrušiť</button>`}
           </td>
         </tr>`).join('')}</tbody></table>`;
   }
 
-  // Zrušenie termínu ho z tabuľky odstráni úplne. Deň s prijatými
-  // objednávkami server odmietne zmazať a povie prečo.
+  // Zrušenie termínu ho z tabuľky odstráni úplne. Ponúka sa len pri dni
+  // bez objednávok; server to kontroluje ešte raz, keby zoznam medzitým
+  // zostarol a objednávka prišla práve teraz.
   async function deleteDay(day) {
     if (!confirm(`Naozaj zrušiť termín ${day}? Z kalendára zmizne úplne.`)) return;
     const errEl = document.getElementById('dayErr');

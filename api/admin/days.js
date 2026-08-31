@@ -11,10 +11,24 @@ module.exports = withErrors(
       const from = url.searchParams.get("from");
       const to = url.searchParams.get("to");
       let query = "day_capacity?select=*&order=day.asc";
-      if (from) query += `&day=gte.${from}`;
-      if (to) query += `&day=lt.${to}`;
-      const days = await rest(query);
-      return sendJson(res, 200, { days });
+      // Ku každému dňu treba vedieť, či naň už je prijatá objednávka:
+      // taký deň sa nemaže, dá sa iba zavrieť. Bez toho by správa webu
+      // ponúkla tlačidlo, ktoré by aj tak neprešlo.
+      let objednavky = "orders?status=neq.zrusena&select=day";
+      if (from) { query += `&day=gte.${from}`; objednavky += `&day=gte.${from}`; }
+      if (to) { query += `&day=lt.${to}`; objednavky += `&day=lt.${to}`; }
+
+      const [days, prijate] = await Promise.all([rest(query), rest(objednavky)]);
+      const pocty = {};
+      (prijate || []).forEach((o) => {
+        const den = String(o.day).slice(0, 10);
+        pocty[den] = (pocty[den] || 0) + 1;
+      });
+      const sPoctom = (days || []).map((d) => ({
+        ...d,
+        pocet_objednavok: pocty[String(d.day).slice(0, 10)] || 0,
+      }));
+      return sendJson(res, 200, { days: sPoctom });
     }
 
     if (req.method === "POST" || req.method === "PATCH") {

@@ -105,6 +105,7 @@ section{padding:20px 0}
 .admin-table .akcie{display:flex;gap:8px;flex-wrap:wrap}
 .btn.ghost.zmazat{color:#a33;border-color:#e0b3b3}
 .btn.ghost.zmazat:hover{background:#a33;color:#fff8ef;border-color:#a33}
+.admin-table .denpozn{font-size:.76rem;color:var(--ink-soft);align-self:center;max-width:22ch}
 
 /* Vysvetlivka pod poľom vo formulári v správe webu. */
 .fieldhint{display:block;margin-top:5px;font-size:.76rem;color:var(--ink-soft);line-height:1.4}
