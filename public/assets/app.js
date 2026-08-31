@@ -604,6 +604,9 @@
   function resetAll() {
     state.day = null;
     PRODUCTS.forEach((p) => { state.qty[p.id] = 0; });
+    // Aj prepínač veľkostí späť na predvolenú — ďalšia objednávka má
+    // začínať rovnako ako tá prvá.
+    Object.keys(VYBER).forEach((k) => { delete VYBER[k]; });
     document.getElementById('fname').value = '';
     document.getElementById('fphone').value = '';
     document.getElementById('femail').value = '';
