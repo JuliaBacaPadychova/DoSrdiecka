@@ -106,9 +106,10 @@ module.exports = withErrors(async function handler(req, res) {
     console.error("Načítanie názvov položiek pre e-mail zlyhalo:", itemsErr);
   }
 
-  // Dve samostatné správy: interná pre majiteľku a potvrdenie zákazníčke.
-  // Posielajú sa nezávisle — keď zlyhá jedna, druhá sa aj tak pokúsi odísť
-  // a objednávka je v oboch prípadoch uložená v databáze.
+  // Tri samostatné správy: interná pre majiteľku, potvrdenie zákazníčke
+  // a kópia toho potvrdenia pre majiteľku. Posielajú sa nezávisle — keď
+  // zlyhá jedna, ďalšie sa aj tak pokúsia odísť a objednávka je v každom
+  // prípade uložená v databáze.
   const notifyTo = process.env.SMTP_USER;
   // Poradové číslo pre ľudí. Keby ho starší záznam nemal, e-mail radšej
   // odíde bez neho než by mal v predmete "undefined".
@@ -140,29 +141,49 @@ module.exports = withErrors(async function handler(req, res) {
       console.error("Odoslanie e-mailovej notifikácie zlyhalo:", mailErr);
     }
 
+    // Text potvrdenia sa skladá raz a odchádza dvakrát: zákazníčke
+    // a v nezmenenej podobe aj majiteľke.
+    const potvrdenie = {
+      subject: cislo
+        ? `Ďakujem za objednávku ${cislo} na ${dlhyDatum(day)}`
+        : `Ďakujem za objednávku na ${dlhyDatum(day)}`,
+      text:
+        `Ďakujem za objednávku!\n\n` +
+        `Tvoju predbežnú objednávku mám. Ozvem sa ti s potvrdením termínu a konečnou cenou.\n\n` +
+        (cislo ? `Číslo objednávky: ${cislo}\n` : "") +
+        `Termín: ${dlhyDatum(day)}\n` +
+        `Objednávka:\n${itemsText}\n\n` +
+        `Orientačná cena: ${cenaSpolu}\n` +
+        (note ? `Poznámka: ${note}\n` : "") +
+        `\n` +
+        `Výrobky si vyzdvihneš osobne na adrese ${ODBER}.\n` +
+        `Na čase odberu sa dohodneme, keď ti termín potvrdím.\n\n` +
+        `Ak niečo nesedí, stačí odpovedať na tento e-mail.\n\n` +
+        `Od srdiečka, Júlia`,
+    };
+
     try {
-      await sendMail({
-        to: email,
-        subject: cislo
-          ? `Ďakujem za objednávku ${cislo} na ${dlhyDatum(day)}`
-          : `Ďakujem za objednávku na ${dlhyDatum(day)}`,
-        text:
-          `Ďakujem za objednávku!\n\n` +
-          `Tvoju predbežnú objednávku mám. Ozvem sa ti s potvrdením termínu a konečnou cenou.\n\n` +
-          (cislo ? `Číslo objednávky: ${cislo}\n` : "") +
-          `Termín: ${dlhyDatum(day)}\n` +
-          `Objednávka:\n${itemsText}\n\n` +
-          `Orientačná cena: ${cenaSpolu}\n` +
-          (note ? `Poznámka: ${note}\n` : "") +
-          `\n` +
-          `Výrobky si vyzdvihneš osobne na adrese ${ODBER}.\n` +
-          `Na čase odberu sa dohodneme, keď ti termín potvrdím.\n\n` +
-          `Ak niečo nesedí, stačí odpovedať na tento e-mail.\n\n` +
-          `Od srdiečka, Júlia`,
-      });
+      await sendMail({ to: email, ...potvrdenie });
     } catch (mailErr) {
       // eslint-disable-next-line no-console
       console.error("Odoslanie potvrdenia zákazníčke zlyhalo:", mailErr);
+    }
+
+    // Kópia potvrdenia pre majiteľku, slovo za slovom tá istá správa, akú
+    // dostala zákazníčka. Odpovedať sa z nej dá rovno zákazníčke (Reply-To),
+    // takže v odpovedi vidí presne ten e-mail, ktorý jej prišiel — nie
+    // internú poznámku o objednávke.
+    //
+    // Posiela sa ako samostatná správa, nie ako skrytá kópia: pri skrytej
+    // kópii by tlačidlo Odpovedať mierilo na kolacik@, čiže na majiteľku
+    // samú, a adresu zákazníčky by musela dopisovať ručne.
+    if (email.toLowerCase() !== String(notifyTo).toLowerCase()) {
+      try {
+        await sendMail({ to: notifyTo, replyTo: email, ...potvrdenie });
+      } catch (mailErr) {
+        // eslint-disable-next-line no-console
+        console.error("Odoslanie kópie potvrdenia majiteľke zlyhalo:", mailErr);
+      }
     }
   }
 

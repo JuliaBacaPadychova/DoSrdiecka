@@ -40,7 +40,7 @@ async function objednaj(handler, body) {
   return res.out;
 }
 
-test("po objednávke odídu dva e-maily s názvami výrobkov", async (t) => {
+test("po objednávke odídu tri e-maily s názvami výrobkov", async (t) => {
   const fake = await startFakeSupabase();
   const day = iso(7);
   fake.db.open_days.push({ day, is_open: true, cap_zakusky: 18, cap_torty: 1 });
@@ -63,9 +63,9 @@ test("po objednávke odídu dva e-maily s názvami výrobkov", async (t) => {
   });
 
   assert.equal(out.statusCode, 200, "objednávka má prejsť");
-  assert.equal(sent.length, 2, "majú odísť práve dve správy");
+  assert.equal(sent.length, 3, "interná, potvrdenie zákazníčke a jeho kópia");
 
-  const [interny, zakaznicky] = sent;
+  const [interny, zakaznicky, kopia] = sent;
 
   // --- interná správa pre majiteľku ---
   assert.equal(interny.to, "kolacik@dosrdiecka.sk");
@@ -87,6 +87,40 @@ test("po objednávke odídu dva e-maily s názvami výrobkov", async (t) => {
   // Zákazníčka nesmie dostať nič o správe webu ani cudzie údaje.
   assert.doesNotMatch(zakaznicky.text, /admin/i, "o admin časti nesmie vedieť");
   assert.doesNotMatch(zakaznicky.text, /kolacik@/, "interná adresa tam nepatrí");
+
+  // --- kópia potvrdenia pre majiteľku ---
+  // Musí byť slovo za slovom tá istá správa, akú dostala zákazníčka —
+  // inak by jej v odpovedi ukázala iný text, než jej naozaj prišiel.
+  assert.equal(kopia.to, "kolacik@dosrdiecka.sk", "kópia ide majiteľke");
+  assert.equal(kopia.subject, zakaznicky.subject, "rovnaký predmet ako zákazníčke");
+  assert.equal(kopia.text, zakaznicky.text, "rovnaký text ako zákazníčke");
+  assert.equal(kopia.replyTo, "jana@example.sk",
+    "odpoveď z kópie musí ísť zákazníčke, nie majiteľke samej");
+});
+
+test("keď si objedná sama majiteľka, kópia sa neposiela dvakrát", async (t) => {
+  const fake = await startFakeSupabase();
+  const day = iso(19);
+  fake.db.open_days.push({ day, is_open: true, cap_zakusky: 18, cap_torty: 1 });
+
+  process.env.SUPABASE_URL = fake.url;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "fake";
+  process.env.SMTP_USER = "kolacik@dosrdiecka.sk";
+  const handler = require("../api/orders");
+  t.after(async () => { await fake.close(); });
+
+  sent.length = 0;
+  const out = await objednaj(handler, {
+    day,
+    name: "Júlia",
+    phone: "0900123456",
+    email: "KOLACIK@dosrdiecka.sk",
+    note: "skúšobná objednávka",
+    items: [{ product_id: "p-choux", qty: 6 }],
+  });
+
+  assert.equal(out.statusCode, 200);
+  assert.equal(sent.length, 2, "kópia by bola tretia rovnaká správa do tej istej schránky");
 });
 
 test("dátum je pre zákazníčku po slovensky, interne zostáva strojový", async (t) => {
@@ -142,8 +176,9 @@ test("keď interná správa zlyhá, potvrdenie zákazníčke aj tak odíde", asy
   });
 
   assert.equal(out.statusCode, 200, "objednávka sa uloží aj tak");
-  assert.equal(sent.length, 1, "druhá správa sa odošle nezávisle");
-  assert.equal(sent[0].to, "jana@example.sk");
+  assert.equal(sent.length, 2, "ďalšie správy sa odošlú nezávisle");
+  assert.equal(sent[0].to, "jana@example.sk", "potvrdenie zákazníčke");
+  assert.equal(sent[1].to, "kolacik@dosrdiecka.sk", "aj jeho kópia majiteľke");
 });
 
 test("druhý chlebík na ten istý deň sa neprijme", async (t) => {
@@ -171,7 +206,7 @@ test("druhý chlebík na ten istý deň sa neprijme", async (t) => {
   const druha = await objednaj(handler, zakaznicka("eva@example.sk"));
   assert.equal(druha.statusCode, 409, "druhý chlebík sa odmietne");
   assert.match(druha.body.message, /chlebík/i, "hláška má vysvetliť prečo");
-  assert.equal(sent.length, 2, "za odmietnutú objednávku sa nič neposiela");
+  assert.equal(sent.length, 3, "za odmietnutú objednávku sa nič neposiela navyše");
 });
 
 test("chlebík a zákusky sa nemiešajú — každý má vlastný limit", async (t) => {

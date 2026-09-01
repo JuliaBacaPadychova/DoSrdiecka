@@ -101,10 +101,10 @@ test("6 z jednej a 6 z druhej príchute prejde a v e-mailoch sú obe", async (t)
 
   assert.equal(out.code, 200);
   assert.equal(out.body.total, 36, "12 kusov po 3 €");
-  assert.equal(sent.length, 2);
+  assert.equal(sent.length, 3);
 
-  const [interny, zakaznicky] = sent;
-  for (const sprava of [interny, zakaznicky]) {
+  const [interny, zakaznicky, kopia] = sent;
+  for (const sprava of [interny, zakaznicky, kopia]) {
     assert.match(sprava.text, /6x Veterník \(Karamelový\)/);
     assert.match(sprava.text, /6x Veterník \(Pistáciovo-malinový\)/);
   }
@@ -194,14 +194,15 @@ test("objednávka na želanie prejde a jej predstava je v oboch e-mailoch", asyn
   );
 
   assert.equal(out.code, 200);
-  assert.equal(sent.length, 2);
-  const [interny, zakaznicky] = sent;
+  assert.equal(sent.length, 3);
+  const [interny, zakaznicky, kopia] = sent;
   assert.match(interny.text, /6x Choux \(Chcem inú kombináciu chutí\)/,
     "majiteľka musí vidieť, že ide o objednávku na želanie");
   assert.match(interny.text, /Slaný karamel a vanilka/,
     "bez poznámky by nevedela, čo má upiecť");
   assert.match(zakaznicky.text, /Slaný karamel a vanilka/,
     "zákazníčka si má prečítať, čo si vlastne vypýtala");
+  assert.equal(kopia.text, zakaznicky.text, "kópia je tá istá správa");
 });
 
 test("na želanie platí rovnaké minimum ako pri ostatných príchutiach", async (t) => {
