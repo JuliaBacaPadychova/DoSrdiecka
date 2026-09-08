@@ -290,6 +290,7 @@ children.push(table(
     [["Zistiť, prečo niečo nefunguje"], [["Vercel → do-srdiecka → Logs", true], ["Len hodinu dozadu — choď tam hneď, ako problém nastane", false, true]]],
     [["Zmeniť heslo k e-mailovej schránke"], [["Websupport, a hneď potom Vercel → Environment Variables", true], ["Inak prestanú chodiť notifikácie o objednávkach", false, true]]],
     [["Zmeniť e-mail, ktorým sa hlásim do správy"], [["Supabase → Authentication → Users, a hneď potom ADMIN_EMAILS vo Verceli", true], ["Keď sa tie dve adresy rozídu, správa nepustí dnu ani teba", false, true]]],
+    [["Zmeniť titulok alebo popis vo výsledkoch Google"], [["Napíš mi — je to v kóde, nie v Nastaveniach", true], ["Pozor: sú to iné texty než nadpis na stránke. Nadpis si meníš v Nastaveniach.", false, true]]],
     [["Zmeniť texty, vzhľad alebo správanie webu"], [["Napíš mi — mením to v kóde na GitHube", true]]],
   ]
 ));
@@ -341,6 +342,8 @@ children.push(H1("Kde stojíme"));
   ["hotovo", "Cena bez „od“", "„od“ ostáva len pri tortách, kde sa cena ešte dolaďuje"],
   ["hotovo", "Zrušenie termínu", "deň bez objednávok sa dá z kalendára odstrániť; deň s objednávkou sa dá už len zavrieť"],
   ["hotovo", "Objednávka na želanie", "pri Choux aj pavlove si zákazníčka vypýta vlastnú kombináciu a napíše ju do poznámky"],
+  ["hotovo", "Nájditeľnosť na Google", "titulok a popis s Petržalkou, údaje o podniku, náhľad pri zdieľaní, ikonka, robots.txt a mapa stránky"],
+  ["zostáva", "Ponuka sa načítava až dodatočne", "názvy výrobkov nie sú v prvom HTML, Google si ich zaraďuje s odstupom"],
   ["hotovo", "Objednávanie vopred", "predvolene 4 dni kvôli nákupu surovín; lehotu si meníš v Nastaveniach"],
   ["zostáva", "Ochrana proti uniknutým heslám", "je za plateným programom Supabase; heslo si over na haveibeenpwned.com/Passwords"],
 ].forEach(([stav, co, detail]) => {

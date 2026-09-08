@@ -1,0 +1,8 @@
+# Vyhľadávače sem smú. Správa webu (/admin/) má vo svojej stránke značku
+# noindex — preto ju tu zámerne NEzakazujeme: keby sme ju zakázali, Google
+# by si ju nemohol otvoriť, nevidel by tú značku a adresa by mu aj tak
+# mohla ostať v zozname.
+User-agent: *
+Allow: /
+
+Sitemap: https://dosrdiecka.sk/sitemap.xml
