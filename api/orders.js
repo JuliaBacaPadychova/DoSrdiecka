@@ -18,9 +18,6 @@ function dlhyDatum(day) {
   return `${d}. ${MESIACE[m]} ${y}`;
 }
 
-// Adresa osobného odberu. Keby sa menila, stačí prepísať tu a v pätičke webu.
-const ODBER = "Vavilovova 4, Petržalka, Bratislava";
-
 const ERROR_MESSAGES = {
   day_closed: "Na tento termín sa už žiaľ nedá objednať. Vyber si prosím iný deň.",
   too_soon: "Na tento termín je už neskoro — objednávky prijímam niekoľko dní vopred. Vyber si prosím neskorší deň.",
@@ -157,8 +154,11 @@ module.exports = withErrors(async function handler(req, res) {
         `Orientačná cena: ${cenaSpolu}\n` +
         (note ? `Poznámka: ${note}\n` : "") +
         `\n` +
-        `Výrobky si vyzdvihneš osobne na adrese ${ODBER}.\n` +
-        `Na čase odberu sa dohodneme, keď ti termín potvrdím.\n\n` +
+        // Zámerne len mestská časť. Presnú adresu posiela majiteľka až
+        // v osobnej odpovedi, keď termín potvrdzuje — objednávku môže
+        // odoslať ktokoľvek a tým by ju dostal automaticky.
+        `Výrobky si vyzdvihneš osobne v Petržalke.\n` +
+        `Presnú adresu a čas ti pošlem, keď ti termín potvrdím.\n\n` +
         `Ak niečo nesedí, stačí odpovedať na tento e-mail.\n\n` +
         `Od srdiečka, Júlia`,
     };

@@ -80,7 +80,9 @@ test("po objednávke odídu tri e-maily s názvami výrobkov", async (t) => {
   assert.match(zakaznicky.subject, /Ďakujem za objednávku/);
   assert.match(zakaznicky.text, /Ďakujem za objednávku!/);
   assert.match(zakaznicky.text, /6x Choux/);
-  assert.match(zakaznicky.text, /Vavilovova 4/, "adresa osobného odberu");
+  assert.match(zakaznicky.text, /osobne v Petržalke/, "kde sa vyzdvihuje");
+  assert.doesNotMatch(zakaznicky.text, /Vavilovova/i,
+    "presnú adresu posiela majiteľka až v osobnej odpovedi");
   assert.match(zakaznicky.text, /Od srdiečka, Júlia/, "podpis");
   assert.match(zakaznicky.text, /malinové/, "poznámka zákazníčky");
 
