@@ -19,6 +19,10 @@
   let PRODUCTS = [];
   let DAYS_BY_DATE = {}; // 'YYYY-MM-DD' -> {is_open, cap_zakusky, cap_torty, remaining_zakusky, remaining_torty}
   let NEXT_FREE = null;  // najbližší voľný termín, počíta ho server naprieč všetkými dňami
+  // Prvý dátum, na ktorý sa ešte dá objednať — počíta ho server, aby sa
+  // časové pásmo neriešilo aj tu. Kým ho nepoznáme, nepúšťame nič.
+  let EARLIEST = null;
+  let LEAD_DNI = 0;
   let prveNacitanie = true;
   // Výrobky, ktoré sú príchuťou v spoločnej karte — tlačidlo tam má
   // menej miesta, tak je aj kratšie.
@@ -232,6 +236,9 @@
     DAYS_BY_DATE = {};
     (data.days || []).forEach((d) => { DAYS_BY_DATE[d.day] = d; });
     NEXT_FREE = data.next_free || null;
+    EARLIEST = data.earliest || null;
+    LEAD_DNI = Number.isInteger(data.lead_days) ? data.lead_days : 0;
+    updateLeadNote();
 
     // Pri prvom otvorení skočiť rovno na mesiac najbližšieho termínu.
     // Inak by zákazníčka pozerala na prázdny august a musela hádať, že
@@ -253,6 +260,29 @@
     updateCartNote();
   }
 
+  // Na tento deň sa objednáva už neskoro?
+  function jePriliSkoro(key) {
+    return Boolean(EARLIEST) && key < EARLIEST;
+  }
+
+  function dniSlovom(n) {
+    if (n === 1) return '1 deň';
+    if (n < 5) return `${n} dni`;
+    return `${n} dní`;
+  }
+
+  // Veta nad kalendárom aj položka v legende sa ukážu len vtedy, keď
+  // lehota naozaj platí — pri nule by tam visel nezmysel.
+  function updateLeadNote() {
+    const veta = document.getElementById('leadNote');
+    const legenda = document.getElementById('leadLegend');
+    if (veta) {
+      veta.textContent = LEAD_DNI > 0
+        ? ` Je potrebné objednať ${dniSlovom(LEAD_DNI)} dopredu.` : '';
+    }
+    if (legenda) legenda.hidden = (LEAD_DNI <= 0);
+  }
+
   function isFreeEntry(d) {
     return d && d.is_open
       && (d.remaining_zakusky >= 6 || d.remaining_torty >= 1 || d.remaining_chlebik >= 1);
@@ -264,7 +294,8 @@
     if (!el) return;
     const n = totalItems();
     if (n === 0) { el.hidden = true; el.innerHTML = ''; return; }
-    const open = Object.values(DAYS_BY_DATE).filter((d) => d.is_open);
+    const open = Object.values(DAYS_BY_DATE)
+      .filter((d) => d.is_open && !jePriliSkoro(d.day));
     const anyFits = open.some((d) => cartFits(d));
     el.hidden = false;
     el.innerHTML = anyFits || !open.length
@@ -296,7 +327,10 @@
       const dateObj = new Date(y, m - 1, d);
       const isPastDay = dateObj < new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-      if (entry && entry.is_open && !isPastDay) {
+      if (entry && entry.is_open && !isPastDay && jePriliSkoro(key)) {
+        html += `<div class="cell soon" aria-label="${d}. ${MONTHS[m]}, na objednanie už neskoro">
+          <span class="dnum">${d}</span><small>Neskoro</small></div>`;
+      } else if (entry && entry.is_open && !isPastDay) {
         const free = isFreeEntry(entry);
         if (free) {
           let lines = '';
@@ -334,7 +368,7 @@
 
   function pickDay(key) {
     const entry = DAYS_BY_DATE[key];
-    if (!entry) return;
+    if (!entry || jePriliSkoro(key)) return;
     state.day = key;
     state.capZ = entry.remaining_zakusky;
     state.capT = entry.remaining_torty;

@@ -22,7 +22,7 @@ function startFakeSupabase() {
     orders: [],
     order_items: [],
     // Nadpis je zámerne dvojriadkový — zalomenie je súčasťou textu.
-    site_settings: [{ id: true, hero_title: "Niečo sladké bez výčitky?\nJasné! Každý kúsok ide predsa do srdiečka.", hero_lead: "Testovací úvod.", about_text: "Testovacia pätička." }],
+    site_settings: [{ id: true, hero_title: "Niečo sladké bez výčitky?\nJasné! Každý kúsok ide predsa do srdiečka.", hero_lead: "Testovací úvod.", about_text: "Testovacia pätička.", lead_days: 4 }],
   };
 
   const ADMIN_EMAIL = "test-admin@dosrdiecka.sk";
@@ -113,7 +113,22 @@ function startFakeSupabase() {
     res.end(body === undefined ? "" : JSON.stringify(body));
   }
 
+  // Musí sedieť s kontrolou vo funkcii create_order v supabase/schema.sql:
+  // objednáva sa niekoľko dní vopred a dnešok sa počíta v našom čase.
+  function dnesLokalne() {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Bratislava" })
+      .format(new Date());
+  }
+  function plusDni(den, pocet) {
+    const d = new Date(`${den}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + pocet);
+    return d.toISOString().slice(0, 10);
+  }
+
   function createOrderRpc(args) {
+    const lead = db.site_settings[0].lead_days || 0;
+    if (args.p_day < plusDni(dnesLokalne(), lead)) throw { message: "too_soon" };
+
     const day = db.open_days.find((d) => d.day === args.p_day);
     if (!day || !day.is_open) throw { message: "day_closed" };
     if (!Array.isArray(args.p_items) || args.p_items.length === 0) throw { message: "no_items" };

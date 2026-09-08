@@ -84,7 +84,10 @@ create table if not exists site_settings (
   id boolean primary key default true check (id),
   hero_title text not null default E'Niečo sladké bez výčitky?\nJasné! Každý kúsok ide predsa do srdiečka.',
   hero_lead text not null default 'Chlebík, zákusky aj torty z čerstvých surovín — pracujem prevažne s bezlaktózovými produktami a príchute rada prispôsobím tvojim preferenciám.',
-  about_text text not null default 'Pracujem prevažne s bezlaktózovými produktami.'
+  about_text text not null default 'Pracujem prevažne s bezlaktózovými produktami.',
+  -- Koľko dní vopred sa musí objednať (kvôli nákupu surovín).
+  -- Mení sa v Správa → Nastavenia, nie v kóde.
+  lead_days int not null default 4 check (lead_days between 0 and 60)
 );
 insert into site_settings (id) values (true) on conflict (id) do nothing;
 
@@ -177,7 +180,21 @@ declare
   v_order_no bigint;
   v_total numeric(10,2) := 0;
   v_qty int;
+  v_lead int := 0;
+  v_dnes date;
 begin
+  -- Objednávať treba pár dní vopred, kvôli nákupu surovín. Počet dní je
+  -- v nastaveniach webu, aby sa dal meniť bez zásahu do kódu.
+  --
+  -- Dnešok sa musí počítať v našom čase, nie vo svetovom: databáza beží
+  -- v UTC a medzi polnocou a druhou ráno je o deň pozadu, takže by v noci
+  -- prepustila termín, ktorý je už príliš blízko.
+  select coalesce(lead_days, 0) into v_lead from site_settings where id = true;
+  v_dnes := (now() at time zone 'Europe/Bratislava')::date;
+  if p_day < v_dnes + v_lead then
+    raise exception 'too_soon';
+  end if;
+
   select * into v_day from open_days where day = p_day for update;
   if not found or not v_day.is_open then
     raise exception 'day_closed';

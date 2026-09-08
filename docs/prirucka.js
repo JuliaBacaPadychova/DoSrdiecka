@@ -283,6 +283,7 @@ children.push(table(
     [["Zmeniť poradie výrobkov a príchutí na webe"], [["Správa → Ponuka → Poradie", true], ["Každý riadok potrebuje vlastné číslo, inak sa príchute môžu poprehadzovať.", false, true]]],
     [["Pozrieť objednávky, označiť vybavenú alebo zrušenú"], [["Správa → Objednávky", true], ["Zrušená objednávka automaticky uvoľní kapacitu dňa", false, true]]],
     [["Odpísať zákazníčke tak, aby videla svoj e-mail"], [["Odpovedz na kópiu potvrdenia, ktorá ti prišla", true], ["Predmet je „Ďakujem za objednávku #…“. Odpoveď ide rovno zákazníčke a ona v nej vidí presne to, čo jej prišlo. Na internú notifikáciu (predmet „Objednávka #…“) neodpovedaj — má iný text.", false, true]]],
+    [["Zmeniť, koľko dní vopred sa musí objednať"], [["Správa → Nastavenia → Objednať najmenej (dní vopred)", true], ["Pri 4 platí: keď je dnes pondelok, najbližší termín je piatok. Nula znamená bez obmedzenia.", false, true]]],
     [["Prepísať úvodný text na titulke"], [["Správa → Nastavenia", true], ["Hlavný nadpis môže mať viac riadkov — kde stlačíš Enter, tam sa na webe zalomí.", false, true]]],
     [["Zmeniť denný limit zákuskov, tort alebo chlebíkov"], [["Správa → Dni a limity", true], ["Každý deň má tri samostatné limity", false, true]]],
     [["Obnoviť si zabudnuté heslo do správy"], [["Supabase → Authentication → Users", true]]],
@@ -340,6 +341,7 @@ children.push(H1("Kde stojíme"));
   ["hotovo", "Cena bez „od“", "„od“ ostáva len pri tortách, kde sa cena ešte dolaďuje"],
   ["hotovo", "Zrušenie termínu", "deň bez objednávok sa dá z kalendára odstrániť; deň s objednávkou sa dá už len zavrieť"],
   ["hotovo", "Objednávka na želanie", "pri Choux aj pavlove si zákazníčka vypýta vlastnú kombináciu a napíše ju do poznámky"],
+  ["hotovo", "Objednávanie vopred", "predvolene 4 dni kvôli nákupu surovín; lehotu si meníš v Nastaveniach"],
   ["zostáva", "Ochrana proti uniknutým heslám", "je za plateným programom Supabase; heslo si over na haveibeenpwned.com/Passwords"],
 ].forEach(([stav, co, detail]) => {
   children.push(new Paragraph({

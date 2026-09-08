@@ -116,6 +116,10 @@
           <span class="fieldhint">Môže mať viac riadkov — kde stlačíš Enter, tam sa nadpis na webe zalomí.</span></div>
         <div class="full"><label for="sHeroLead">Úvodný text</label><textarea id="sHeroLead"></textarea></div>
         <div class="full"><label for="sAbout">Text v pätičke (o mne)</label><textarea id="sAbout"></textarea></div>
+        <div><label for="sLeadDays">Objednať najmenej (dní vopred)</label>
+          <input id="sLeadDays" type="number" min="0" max="60">
+          <span class="fieldhint">Kvôli nákupu surovín. Pri 4 platí: keď je dnes pondelok,
+            najbližší možný termín je piatok. Nula znamená bez obmedzenia.</span></div>
       </div>
       <button class="btn" style="margin-top:14px" onclick="Admin.saveSettings()">Uložiť texty</button>
       <p class="err" id="settingsErr" style="display:none"></p>

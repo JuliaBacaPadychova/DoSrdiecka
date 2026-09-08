@@ -14,13 +14,48 @@ function jeVolny(d) {
   );
 }
 
+// Dnešok sa musí počítať v našom čase, nie vo svetovom. Server beží v UTC
+// a medzi polnocou a druhou ráno je o deň pozadu — v noci by teda ponúkol
+// termín o deň skorší, než na aký sa dá objednať.
+const ZONA = "Europe/Bratislava";
+
+function dnesLokalne() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: ZONA }).format(new Date());
+}
+
+function plusDni(den, pocet) {
+  const d = new Date(`${den}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + pocet);
+  return d.toISOString().slice(0, 10);
+}
+
+// Koľko dní vopred sa musí objednať. Nastavuje sa v Správa → Nastavenia;
+// keď sa hodnotu nepodarí načítať, radšej nepustíme nič bližšie než
+// predvolené štyri dni, ako by sme mali prijať objednávku na zajtra.
+const LEAD_DNI_PREDVOLENE = 4;
+
+async function najskorsiTermin() {
+  let lead = LEAD_DNI_PREDVOLENE;
+  try {
+    const rows = await rest("site_settings?select=lead_days&limit=1");
+    const hodnota = rows && rows[0] && rows[0].lead_days;
+    if (Number.isInteger(hodnota) && hodnota >= 0) lead = hodnota;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("Načítanie lehoty na objednanie zlyhalo, beriem predvolenú:", err);
+  }
+  return { lead, najskorsi: plusDni(dnesLokalne(), lead) };
+}
+
 // Najbližší voľný termín naprieč všetkými dňami, nielen zobrazeným
 // mesiacom — inak by zákazníčka v auguste nevidela, že piecť sa začína
 // až v septembri, a musela by kalendár preklikávať naslepo.
-async function najblizsiVolny() {
-  const dnes = new Date().toISOString().slice(0, 10);
+//
+// Dni, ktoré sú už bližšie než lehota, sa preskočia: ukázať termín, na
+// ktorý sa aj tak nedá objednať, by ju len poslalo klikať naprázdno.
+async function najblizsiVolny(najskorsi) {
   const dni = await rest(
-    `day_capacity?select=*&is_open=is.true&day=gte.${dnes}&order=day.asc&limit=400`
+    `day_capacity?select=*&is_open=is.true&day=gte.${najskorsi}&order=day.asc&limit=400`
   );
   const volny = (dni || []).find(jeVolny);
   return volny ? volny.day : null;
@@ -48,10 +83,14 @@ module.exports = withErrors(async function handler(req, res) {
   const nextYear = month === 12 ? year + 1 : year;
   const to = `${nextYear}-${pad2(nextMonth)}-01`;
 
+  const { lead, najskorsi } = await najskorsiTermin();
   const [days, nextFree] = await Promise.all([
     rest(`day_capacity?select=*&day=gte.${from}&day=lt.${to}&order=day.asc`),
-    najblizsiVolny(),
+    najblizsiVolny(najskorsi),
   ]);
 
-  sendJson(res, 200, { days, next_free: nextFree });
+  // "earliest" je prvý dátum, na ktorý sa ešte dá objednať. Kalendár
+  // podľa neho zošedne dni, ktoré sú už príliš blízko — počítať to
+  // v prehliadači by znamenalo riešiť časové pásmo aj tam.
+  sendJson(res, 200, { days, next_free: nextFree, earliest: najskorsi, lead_days: lead });
 });

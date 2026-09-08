@@ -23,6 +23,7 @@ const ODBER = "Vavilovova 4, Petržalka, Bratislava";
 
 const ERROR_MESSAGES = {
   day_closed: "Na tento termín sa už žiaľ nedá objednať. Vyber si prosím iný deň.",
+  too_soon: "Na tento termín je už neskoro — objednávky prijímam niekoľko dní vopred. Vyber si prosím neskorší deň.",
   no_items: "Objednávka je prázdna — pridaj aspoň jeden výrobok.",
   product_not_found: "Niektorý vybraný výrobok už nie je dostupný. Obnov stránku a skús to znova.",
   invalid_qty: "Neplatné množstvo pri niektorom výrobku.",

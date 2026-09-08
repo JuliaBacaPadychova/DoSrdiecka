@@ -411,6 +411,8 @@
       document.getElementById('sHeroTitle').value = s.hero_title || '';
       document.getElementById('sHeroLead').value = s.hero_lead || '';
       document.getElementById('sAbout').value = s.about_text || '';
+      document.getElementById('sLeadDays').value =
+        Number.isInteger(s.lead_days) ? s.lead_days : 4;
     } catch (err) {
       document.getElementById('settingsErr').textContent = err.message;
       document.getElementById('settingsErr').style.display = 'block';
@@ -426,6 +428,7 @@
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          lead_days: parseInt(document.getElementById('sLeadDays').value, 10),
           hero_title: document.getElementById('sHeroTitle').value.trim(),
           hero_lead: document.getElementById('sHeroLead').value.trim(),
           about_text: document.getElementById('sAbout').value.trim(),

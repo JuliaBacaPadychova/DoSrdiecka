@@ -74,12 +74,14 @@
             <button class="btn ghost sm" onclick="shiftMonth(1)" aria-label="Nasledujúci mesiac">→</button>
           </div>
         </div>
-        <div class="caplimit">Čísla v kalendári ukazujú, koľko sa na daný deň ešte zmestí.</div>
+        <div class="caplimit">Čísla v kalendári ukazujú, koľko sa na daný deň ešte zmestí.
+          <span id="leadNote"></span></div>
         <div class="cartnote" id="cartNote" hidden></div>
         <div class="legend">
           <span><i class="l-free"></i>Voľné</span>
           <span><i class="l-full"></i>Plný</span>
           <span><i class="l-closed"></i>Nepečiem</span>
+          <span id="leadLegend" hidden><i class="l-soon"></i>Príliš skoro</span>
         </div>
         <div class="dow"><span>Po</span><span>Ut</span><span>St</span><span>Št</span><span>Pi</span><span>So</span><span>Ne</span></div>
         <div class="cal" id="cal"><p class="muted">Načítavam kalendár…</p></div>
