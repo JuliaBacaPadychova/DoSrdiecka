@@ -22,7 +22,7 @@ function startFakeSupabase() {
     orders: [],
     order_items: [],
     // Nadpis je zámerne dvojriadkový — zalomenie je súčasťou textu.
-    site_settings: [{ id: true, hero_title: "Niečo sladké bez výčitky?\nJasné! Každý kúsok ide predsa do srdiečka.", hero_lead: "Testovací úvod.", about_text: "Testovacia pätička.", lead_days: 4 }],
+    site_settings: [{ id: true, hero_title: "Niečo sladké bez výčitky?\nJasné! Každý kúsok ide predsa do srdiečka.", hero_lead: "Testovací úvod.", about_text: "Pracujem prevažne s bezlaktózovými produktami.", lead_days: 4 }],
   };
 
   const ADMIN_EMAIL = "test-admin@dosrdiecka.sk";

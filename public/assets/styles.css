@@ -49,6 +49,13 @@ section{padding:20px 0}
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px}
 .sec-head h2{font-size:clamp(1.7rem,3.4vw,2.3rem)}
 .sec-head p{color:var(--ink-soft);margin:2px 0 0;font-size:.95rem;max-width:42ch}
+/* Informácia o bezlaktózových surovinách. Je to to prvé, čo chce vedieť
+   človek, ktorý ich rieši — nemá splývať s ostatným drobným textom. */
+.sec-head p.bezlak{color:var(--terra);font-weight:600;background:var(--ok-bg);
+  border:1px solid var(--line);border-radius:12px;padding:11px 15px;max-width:34ch}
+/* E-mail v pätičke. */
+footer a.mail{color:var(--peach-deep);font-weight:600;text-decoration:none;border-bottom:1px solid var(--peach)}
+footer a.mail:hover{color:var(--terra);border-bottom-color:var(--terra)}
 
 .catblock{margin-top:30px}
 .cathead{display:flex;align-items:center;gap:14px;margin-bottom:4px}
