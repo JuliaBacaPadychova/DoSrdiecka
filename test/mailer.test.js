@@ -126,6 +126,41 @@ test("sendMail sa úspešne prihlási cez AUTH LOGIN a odošle správu s diakrit
   const decoded = Buffer.from(bodyB64, "base64").toString("utf8");
   assert.match(decoded, /Jana Nováková/);
   assert.match(decoded, /pistácia–malina/);
+
+  // V hlavičkách nesmie ostať diakritika nezakódovaná. Websupport za to
+  // pripočítaval body v hodnotení spamu (FROM_NEEDS_ENCODING) a niektorí
+  // príjemcovia by namiesto "Do srdiečka" videli "Do srdieÄka".
+  const hlavicky = received.dataLines.slice(0, received.dataLines.indexOf(""));
+  const from = hlavicky.find((r) => r.startsWith("From:"));
+  const subject = hlavicky.find((r) => r.startsWith("Subject:"));
+
+  assert.equal(from, "From: =?UTF-8?B?RG8gc3JkaWXEjWth?= <kolacik@dosrdiecka.sk>",
+    "meno odosielateľa má byť zakódované");
+  assert.match(subject, /^Subject: =\?UTF-8\?B\?/, "predmet tiež");
+
+  for (const riadok of hlavicky) {
+    assert.ok(/^[\x20-\x7E]*$/.test(riadok),
+      `v hlavičke ostala diakritika: ${riadok}`);
+  }
+
+  // Rozkódované musia dať pôvodný text.
+  const rozkoduj = (r) => r.replace(/=\?UTF-8\?B\?(.*?)\?=/g,
+    (_, b) => Buffer.from(b, "base64").toString("utf8"));
+  assert.match(rozkoduj(from), /Do srdiečka/);
+  assert.match(rozkoduj(subject), /Nová objednávka na 2026-08-09/);
+});
+
+test("kóduje sa len to, čo sa kódovať musí", () => {
+  const { encodeHeader } = require("../lib/mailer");
+  // Zakódovaná hlavička je pre človeka nečitateľná, tak ju kódujeme len
+  // tam, kde je diakritika.
+  assert.equal(encodeHeader("New order #9"), "New order #9");
+  assert.equal(encodeHeader(""), "");
+  assert.equal(encodeHeader("Do srdiečka"), "=?UTF-8?B?RG8gc3JkaWXEjWth?=");
+  assert.equal(
+    Buffer.from(encodeHeader("Ďakujem za objednávku #9").slice(10, -2), "base64").toString("utf8"),
+    "Ďakujem za objednávku #9"
+  );
 });
 
 test("sendMail odmietne s jasnou chybou, keď server vráti zlé heslo", async () => {
