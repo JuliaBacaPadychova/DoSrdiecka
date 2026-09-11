@@ -293,6 +293,7 @@ children.push(table(
     [["Zmeniť heslo k e-mailovej schránke"], [["Websupport, a hneď potom Vercel → Environment Variables", true], ["Inak prestanú chodiť notifikácie o objednávkach", false, true]]],
     [["Zmeniť e-mail, ktorým sa hlásim do správy"], [["Supabase → Authentication → Users, a hneď potom ADMIN_EMAILS vo Verceli", true], ["Keď sa tie dve adresy rozídu, správa nepustí dnu ani teba", false, true]]],
     [["Zmeniť titulok alebo popis vo výsledkoch Google"], [["Napíš mi — je to v kóde, nie v Nastaveniach", true], ["Pozor: sú to iné texty než nadpis na stránke. Nadpis si meníš v Nastaveniach.", false, true]]],
+    [["Pridať alebo zrušiť CELÝ výrobok (nie príchuť)"], [["Správa → Ponuka, a potom mi napíš", true], ["V stránke je krátky súpis toho, čo pečieš — kvôli Googlu. Ten je v kóde a treba ho zosúladiť.", false, true]]],
     [["Zmeniť texty, vzhľad alebo správanie webu"], [["Napíš mi — mením to v kóde na GitHube", true]]],
   ]
 ));
@@ -350,7 +351,7 @@ children.push(H1("Kde stojíme"));
   ["zostáva", "Zaregistrovať web v Google Search Console", "search.google.com/search-console — tam Googlu povieš o mape stránky a uvidíš, ako ťa zaradil"],
   ["zostáva", "Založiť Firmu na Googli", "business.google.com — pri miestnom podnikaní spraví viac než všetko ostatné, dostane ťa do mapy"],
   ["hotovo", "E-mail na webe", "kolacik@dosrdiecka.sk je v pätičke ako odkaz, dá sa naň napísať aj bez objednávky"],
-  ["zostáva", "Ponuka sa načítava až dodatočne", "názvy výrobkov nie sú v prvom HTML, Google si ich zaraďuje s odstupom"],
+  ["hotovo", "Súpis ponuky priamo v stránke", "názvy výrobkov číta Google hneď; drží aj vtedy, keď sa ponuka nenačíta"],
   ["hotovo", "Objednávanie vopred", "predvolene 4 dni kvôli nákupu surovín; lehotu si meníš v Nastaveniach"],
   ["zostáva", "Ochrana proti uniknutým heslám", "je za plateným programom Supabase; heslo si over na haveibeenpwned.com/Passwords"],
 ].forEach(([stav, co, detail]) => {

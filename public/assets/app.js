@@ -665,6 +665,15 @@
   window.resetAll = resetAll;
   window.shiftMonth = shiftMonth;
 
-  loadMenu().catch(() => { document.getElementById('menu').innerHTML = '<p class="err">Ponuku sa nepodarilo načítať.</p>'; });
+  // Keď sa ponuka nenačíta, súpis v stránke zámerne NEPREPISUJEME — nech
+  // návštevník aspoň vidí, čo sa pečie, a vie napísať. Doplníme len
+  // vysvetlenie namiesto hlášky "Načítavam…".
+  loadMenu().catch(() => {
+    const stav = document.getElementById('menuStav');
+    if (!stav) return;
+    stav.className = 'err';
+    stav.innerHTML = 'Ceny a príchute sa teraz nepodarilo načítať. Skús stránku obnoviť, ' +
+      'alebo mi napíš na <a href="mailto:kolacik@dosrdiecka.sk">kolacik@dosrdiecka.sk</a>.';
+  });
   loadDaysForView().catch(() => { document.getElementById('cal').innerHTML = '<p class="err">Kalendár sa nepodarilo načítať.</p>'; });
 })();

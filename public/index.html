@@ -92,7 +92,22 @@
       <div><span class="eyebrow">Ponuka</span><h2>Čo momentálne pečiem</h2></div>
       <p class="bezlak" id="aboutText">Pracujem prevažne s bezlaktózovými produktami.</p>
     </div>
-    <div id="menu"><p class="muted">Načítavam ponuku…</p></div>
+    <!-- Súpis ponuky priamo v stránke. Karty s cenami a príchuťami doplní
+         app.js z databázy a tento text nahradí. Je tu z dvoch dôvodov:
+         vyhľadávače čítajú toto HTML hneď (vykreslenie JavaScriptu si
+         zaraďujú s odstupom), a keď sa ponuka nenačíta, návštevník aspoň
+         vidí, čo sa pečie, a vie napísať.
+         Zámerne bez cien a príchutí — tie sa menia v Správe a tu by
+         zastarali. Mení sa len vtedy, keď pribudne či zmizne celý výrobok. -->
+    <div id="menu">
+      <div class="menufallback">
+        <p>Pečiem <b>kváskový chlebík</b>, zákusky — <b>veterníky</b>, <b>Choux</b>,
+          <b>cupcakes</b> a <b>mini pavlovy</b> — a torty na objednávku:
+          <b>brownie tortu</b> a <b>pavlova tortu</b>. Pri každom výrobku si vyberáš
+          z príchutí alebo veľkostí.</p>
+        <p class="muted" id="menuStav">Načítavam aktuálnu ponuku aj ceny…</p>
+      </div>
+    </div>
   </section>
 
   <section class="wrap" id="objednavka">
