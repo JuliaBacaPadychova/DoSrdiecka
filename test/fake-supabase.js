@@ -26,7 +26,9 @@ function startFakeSupabase() {
   };
 
   const ADMIN_EMAIL = "test-admin@dosrdiecka.sk";
-  const ADMIN_PASSWORD = "tajneheslo123";
+  // Nie je to konštanta — heslo sa dá cez /auth/v1/user zmeniť, rovnako
+  // ako v skutočnom Supabase.
+  let ADMIN_PASSWORD = "tajneheslo123";
   let tokenCounter = 0;
   const validTokens = new Set();
   const validRefreshTokens = new Set();
@@ -196,6 +198,18 @@ function startFakeSupabase() {
       return send(res, 400, { message: "unsupported grant" });
     }
 
+    if (url.pathname === "/auth/v1/user" && req.method === "PUT") {
+      const auth = req.headers.authorization || "";
+      const token = auth.replace("Bearer ", "");
+      const body = await readBody(req);
+      if (!validTokens.has(token)) return send(res, 401, { msg: "invalid token" });
+      if (typeof body.password !== "string" || body.password.length < 6) {
+        return send(res, 422, { msg: "Password should be at least 6 characters" });
+      }
+      ADMIN_PASSWORD = body.password;
+      return send(res, 200, { email: ADMIN_EMAIL });
+    }
+
     if (url.pathname === "/auth/v1/user" && req.method === "GET") {
       const auth = req.headers.authorization || "";
       const token = auth.replace("Bearer ", "");
@@ -276,6 +290,8 @@ function startFakeSupabase() {
         close: () => new Promise((r) => server.close(r)),
         db,
         adminCredentials: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+        // Aktuálne heslo (po prípadnej zmene) — na overenie v testoch.
+        aktualneHeslo: () => ADMIN_PASSWORD,
       });
     });
   });

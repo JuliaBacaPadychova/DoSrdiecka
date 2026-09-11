@@ -126,6 +126,19 @@
       <p class="err" id="settingsErr" style="display:none"></p>
       <p class="muted" id="settingsOk" style="display:none">Uložené.</p>
     </div>
+
+    <div class="admin-card">
+      <h3>Zmena hesla</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Heslo, ktorým sa hlásiš sem do správy.</p>
+      <div class="form">
+        <div><label for="pwNew">Nové heslo</label><input id="pwNew" type="password" autocomplete="new-password">
+          <span class="fieldhint">Aspoň 10 znakov.</span></div>
+        <div><label for="pwAgain">Nové heslo ešte raz</label><input id="pwAgain" type="password" autocomplete="new-password"></div>
+      </div>
+      <button class="btn" style="margin-top:14px" onclick="Admin.savePassword()">Zmeniť heslo</button>
+      <p class="err" id="pwErr" style="display:none"></p>
+      <p class="muted" id="pwOk" style="display:none">Heslo je zmenené. Prihlásená zostávaš, nabudúce sa hlás už novým.</p>
+    </div>
   </div>
 </div>
 

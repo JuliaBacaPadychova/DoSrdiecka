@@ -403,6 +403,38 @@
     }
   }
 
+  // ---------- heslo ----------
+  async function savePassword() {
+    const errEl = document.getElementById('pwErr');
+    const okEl = document.getElementById('pwOk');
+    errEl.style.display = 'none'; okEl.style.display = 'none';
+
+    const nove = document.getElementById('pwNew').value;
+    const znova = document.getElementById('pwAgain').value;
+    const zastav = (sprava) => {
+      errEl.textContent = sprava;
+      errEl.style.display = 'block';
+    };
+
+    // Preklep v hesle sa inak zistí až pri ďalšom prihlásení, keď už
+    // nikto nevie, čo vlastne napísal.
+    if (nove !== znova) return zastav('Heslá sa nezhodujú — skontroluj ich prosím.');
+    if (nove.length < 10) return zastav('Heslo musí mať aspoň 10 znakov.');
+
+    try {
+      await apiFetch('/api/admin/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: nove }),
+      });
+      document.getElementById('pwNew').value = '';
+      document.getElementById('pwAgain').value = '';
+      okEl.style.display = 'block';
+    } catch (err) {
+      zastav(err.message);
+    }
+  }
+
   // ---------- settings ----------
   async function loadSettings() {
     try {
@@ -443,7 +475,7 @@
 
   window.Admin = {
     login, logout, showTab,
-    updateOrderStatus, editDay, saveDay,
+    updateOrderStatus, editDay, saveDay, savePassword,
     deleteDay, editProduct, resetProductForm, saveProduct,
     saveSettings,
   };
