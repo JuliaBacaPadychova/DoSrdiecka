@@ -174,11 +174,27 @@
 
   <div class="admin-panel" id="tab-recepty">
     <div class="admin-card">
-      <p class="muted" style="margin:0;font-size:.88rem">Výťažnosť je to, na koľko kusov je
-        recept napísaný — podľa nej sa prepočítava na objednaný počet. Pri coulis je
-        výťažnosť v gramoch, lebo recept je na 150 g, nie na kusy.</p>
+      <h3>Čo mám miešať</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Vyber príchuť a koľko kusov
+        ideš robiť. Vypíšu sa všetky recepty, ktoré k nej patria, s gramážou prepočítanou
+        na ten počet. Samotné recepty sa tým nemenia.</p>
+      <div class="form">
+        <div><label for="recPrichut">Príchuť</label><select id="recPrichut"></select></div>
+        <div><label for="recKusy">Koľko kusov robím</label><input id="recKusy" type="number" min="1" step="1" value="6"></div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn" onclick="Admin.zobrazRozpis()">Zobraziť recepty</button>
+        </div>
+      </div>
     </div>
     <div class="admin-card">
+      <div id="receptyRozpis"><p class="muted">Vyber príchuť a počet kusov.</p></div>
+    </div>
+    <div class="admin-card">
+      <h3>Úprava receptov</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Tu sa mení samotný recept:
+        gramáž surovín a to, <strong>na koľko kusov je recept napísaný</strong>. To druhé
+        prepisuj len vtedy, keď si recept naozaj prerobila — nie keď chceš upiecť iný
+        počet. Na to je výber hore.</p>
       <div id="receptyList"><p class="muted">Načítavam recepty…</p></div>
     </div>
   </div>
