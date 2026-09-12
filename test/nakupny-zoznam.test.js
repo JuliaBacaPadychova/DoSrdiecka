@@ -44,7 +44,7 @@ async function sReceptarom(t, fn) {
   process.env.ADMIN_EMAILS = fake.adminCredentials.email;
   t.after(async () => { await fake.close(); });
 
-  const handler = require("../api/admin/kalkulacia");
+  const handler = require("../api/admin/receptar");
   const relacia = await authLogin(fake.adminCredentials.email, fake.adminCredentials.password);
 
   const zavolaj = async (url, telo) => {
@@ -74,7 +74,7 @@ test("nákupný zoznam sa spočíta z objednávok dňa", async (t) => {
     objednavka(db, { id: "o1", day: "2026-10-18", status: "nova", kusy: 6 });
     objednavka(db, { id: "o2", day: "2026-10-18", status: "vybavena", kusy: 4 });
 
-    const odpoved = await zavolaj("/api/admin/kalkulacia?day=2026-10-18");
+    const odpoved = await zavolaj("/api/admin/receptar?den=2026-10-18");
     assert.equal(odpoved.code, 200);
     assert.equal(odpoved.body.pocet_objednavok, 2);
 
@@ -90,7 +90,7 @@ test("zrušená objednávka sa do nákupu neráta", async (t) => {
     objednavka(db, { id: "o1", day: "2026-10-18", status: "nova", kusy: 6 });
     objednavka(db, { id: "o2", day: "2026-10-18", status: "zrusena", kusy: 30 });
 
-    const odpoved = await zavolaj("/api/admin/kalkulacia?day=2026-10-18");
+    const odpoved = await zavolaj("/api/admin/receptar?den=2026-10-18");
     assert.equal(odpoved.body.pocet_objednavok, 1);
     const mascarpone = odpoved.body.zoznam.riadky.find((r) => r.surovina === "Mascarpone");
     assert.equal(mascarpone.mnozstvo, 156); // 260 × 6/10
@@ -102,7 +102,7 @@ test("objednávky iného dňa sa nemiešajú", async (t) => {
     objednavka(db, { id: "o1", day: "2026-10-18", status: "nova", kusy: 6 });
     objednavka(db, { id: "o2", day: "2026-10-19", status: "nova", kusy: 12 });
 
-    const odpoved = await zavolaj("/api/admin/kalkulacia?day=2026-10-19");
+    const odpoved = await zavolaj("/api/admin/receptar?den=2026-10-19");
     const mascarpone = odpoved.body.zoznam.riadky.find((r) => r.surovina === "Mascarpone");
     assert.equal(mascarpone.mnozstvo, 312); // 260 × 12/10
   });
@@ -112,7 +112,7 @@ test("surovina bez gramáže balenia sa vypíše, cena sa označí za neúplnú"
   await sReceptarom(t, async ({ db, zavolaj }) => {
     objednavka(db, { id: "o1", day: "2026-10-18", status: "nova", kusy: 10 });
 
-    const z = (await zavolaj("/api/admin/kalkulacia?day=2026-10-18")).body.zoznam;
+    const z = (await zavolaj("/api/admin/receptar?den=2026-10-18")).body.zoznam;
     assert.equal(z.uplna, false);
     assert.ok(z.nedopocitane.includes("Soľ"));
   });
@@ -122,8 +122,8 @@ test("ručný prepočet ráta to isté ako prepočet z objednávok", async (t) =
   await sReceptarom(t, async ({ db, zavolaj }) => {
     objednavka(db, { id: "o1", day: "2026-10-18", status: "nova", kusy: 14 });
 
-    const zoDna = (await zavolaj("/api/admin/kalkulacia?day=2026-10-18")).body.zoznam;
-    const rucne = (await zavolaj("/api/admin/kalkulacia", {
+    const zoDna = (await zavolaj("/api/admin/receptar?den=2026-10-18")).body.zoznam;
+    const rucne = (await zavolaj("/api/admin/receptar?co=kalkulacia", {
       polozky: [{ product_id: "p-choux", kusy: 14 }],
     })).body.zoznam;
 
@@ -134,9 +134,9 @@ test("ručný prepočet ráta to isté ako prepočet z objednávok", async (t) =
 
 test("bez prihlásenia sa nákupný zoznam nedá prečítať", async (t) => {
   await sReceptarom(t, async ({ zavolaj }) => {
-    const handler = require("../api/admin/kalkulacia");
+    const handler = require("../api/admin/receptar");
     const res = fakeRes();
-    await handler({ method: "GET", url: "/api/admin/kalkulacia?day=2026-10-18", headers: {} }, res);
+    await handler({ method: "GET", url: "/api/admin/receptar?den=2026-10-18", headers: {} }, res);
     assert.equal(res.out.code, 401);
   });
 });
@@ -149,7 +149,7 @@ test("výrobok vyradený z ponuky sa vypíše, nie zamlčí", async (t) => {
       name_snapshot: "Veterník", sub_snapshot: "Karamelový", price_snapshot: 3, qty: 6,
     });
 
-    const odpoved = await zavolaj("/api/admin/kalkulacia?day=2026-10-18");
+    const odpoved = await zavolaj("/api/admin/receptar?den=2026-10-18");
     assert.deepEqual(odpoved.body.bez_receptu, ["Veterník Karamelový"]);
   });
 });

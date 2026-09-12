@@ -622,7 +622,8 @@
     const el = document.getElementById('surovinyList');
     el.innerHTML = '<p class="muted">Načítavam suroviny…</p>';
     try {
-      const data = await apiFetch('/api/admin/suroviny');
+      const data = await apiFetch('/api/admin/receptar');
+      RECEPTAR = data;
       renderSuroviny(data.suroviny || []);
     } catch (err) {
       el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
@@ -700,7 +701,7 @@
     // doplní sám, keď sa mení cena.
     if (!telo.price_date) delete telo.price_date;
     try {
-      await apiFetch(`/api/admin/suroviny${id ? '?id=' + encodeURIComponent(id) : ''}`, {
+      await apiFetch(`/api/admin/receptar?co=surovina${id ? '&id=' + encodeURIComponent(id) : ''}`, {
         method: id ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(telo),
@@ -717,7 +718,7 @@
     const el = document.getElementById('receptyList');
     el.innerHTML = '<p class="muted">Načítavam recepty…</p>';
     try {
-      RECEPTAR = await apiFetch('/api/admin/recepty');
+      RECEPTAR = await apiFetch('/api/admin/receptar');
       if (!PRODUCTS_CACHE.length) {
         const p = await apiFetch('/api/admin/products');
         PRODUCTS_CACHE = p.products || [];
@@ -773,7 +774,7 @@
 
   async function ulozRecept(id, pole, hodnota) {
     try {
-      await apiFetch(`/api/admin/recepty?id=${encodeURIComponent(id)}`, {
+      await apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [pole]: hodnota }),
@@ -784,7 +785,7 @@
 
   async function ulozPolozku(id, hodnota) {
     try {
-      await apiFetch(`/api/admin/recepty?polozka=${encodeURIComponent(id)}`, {
+      await apiFetch(`/api/admin/receptar?co=polozka&id=${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: hodnota }),
@@ -826,7 +827,7 @@
     const el = document.getElementById('kalVysledok');
     el.innerHTML = '<p class="muted">Počítam…</p>';
     try {
-      const data = await apiFetch('/api/admin/kalkulacia', {
+      const data = await apiFetch('/api/admin/receptar?co=kalkulacia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ polozky }),
@@ -843,7 +844,7 @@
     if (!day) { el.innerHTML = '<p class="err">Vyber termín.</p>'; return; }
     el.innerHTML = '<p class="muted">Počítam…</p>';
     try {
-      const data = await apiFetch(`/api/admin/kalkulacia?day=${encodeURIComponent(day)}`);
+      const data = await apiFetch(`/api/admin/receptar?den=${encodeURIComponent(day)}`);
       const kusy = data.polozky.reduce((s, p) => s + p.kusy, 0);
       let hlavicka = `Termín ${day} — ${data.pocet_objednavok} objednávok, ${kusy} kusov`;
       if (data.bez_receptu.length) {

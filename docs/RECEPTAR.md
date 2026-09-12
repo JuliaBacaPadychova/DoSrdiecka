@@ -98,6 +98,11 @@ V správe webu pribudli tri záložky:
 Výpočet je v `lib/kalkulacia.js` a je pokrytý testami (`npm test`), takže
 sa dá overiť na známych číslach bez toho, aby sa musel spúšťať web.
 
+Obsluha je celá v jednej serverless funkcii `api/admin/receptar.js`, nie
+v troch. Vercel na bezplatnom pláne pustí najviac 12 funkcií na jedno
+nasadenie a projekt ich má práve toľko — trinásta by nasadenie zhodila.
+Stráži to test, aby sa na to neprišlo až na živom webe.
+
 ## Ktoré ceny sa oplatí sledovať
 
 Nie všetky. Takto sa rozdelí cena jedného choux podľa surovín — a koľko
