@@ -632,26 +632,47 @@
 
   function renderSuroviny(suroviny) {
     const el = document.getElementById('surovinyList');
+    SUROVINY_CACHE = suroviny;
     if (!suroviny.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne suroviny.</p>'; return; }
     const chyba = suroviny.filter((s) => !s.negligible && (s.pack_size === null || s.pack_price === null));
     el.innerHTML = `
       ${chyba.length ? `<p class="muted" style="margin:0 0 12px">Bez vyplneného balenia alebo ceny:
         <strong>${chyba.map((s) => esc(s.name)).join(', ')}</strong>. Kým tam nebudú,
         je vypočítaná cena spodná hranica, nie skutočnosť.</p>` : ''}
+      <div class="form" style="margin:0 0 16px">
+        <div class="full">
+          <label for="surHladat">Nájsť surovinu</label>
+          <select id="surHladat" onchange="Admin.vyberSurovinu(this.value)">
+            <option value="">— vyber surovinu —</option>
+            ${suroviny.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}
+          </select>
+          <span class="fieldhint">Vybraná surovina sa otvorí na úpravu hore.</span>
+        </div>
+      </div>
       <table class="admin-table"><thead><tr>
-        <th>Surovina</th><th>Balenie</th><th>Cena</th><th>Za jednotku</th><th>Platná od</th><th>Zdroj</th><th></th>
+        <th>Surovina</th><th>Balenie</th><th>Cena</th><th>Za jednotku</th><th>Platná od</th><th></th>
       </tr></thead><tbody>${suroviny.map((s) => `
-        <tr>
+        <tr id="sur-${s.id}">
           <td>${esc(s.name)}${s.kind !== 'surovina' ? ` <span class="muted">(${esc(s.kind)})</span>` : ''}
             ${s.note ? `<br><span class="muted" style="font-size:.85rem">${esc(s.note)}</span>` : ''}</td>
           <td>${s.pack_size === null ? '<span class="err">doplniť</span>' : esc(s.pack_size) + ' ' + esc(s.unit)}</td>
           <td>${s.pack_price === null ? (s.negligible ? '<span class="muted">neráta sa</span>' : '<span class="err">doplniť</span>') : euro(s.pack_price)}</td>
           <td>${s.pack_size && s.pack_price !== null ? (s.pack_price / s.pack_size).toFixed(4) + ' €/' + esc(s.unit) : '—'}</td>
           <td>${esc(s.price_date || '—')}</td>
-          <td>${esc(s.price_source || '—')}</td>
           <td class="akcie"><button class="btn ghost sm" onclick="Admin.editSurovina('${s.id}')">Upraviť</button></td>
         </tr>`).join('')}</tbody></table>`;
-    SUROVINY_CACHE = suroviny;
+  }
+
+  // Výber z rozbaľovacieho políčka otvorí surovinu na úpravu hore a
+  // zároveň označí jej riadok, nech je vidieť, kde v zozname je.
+  function vyberSurovinu(id) {
+    if (!id) return;
+    editSurovina(id);
+    const riadok = document.getElementById('sur-' + id);
+    if (riadok) {
+      riadok.style.background = 'rgba(0,0,0,.05)';
+      setTimeout(() => { riadok.style.background = ''; }, 2500);
+    }
   }
 
   function editSurovina(id) {
@@ -663,7 +684,6 @@
     document.getElementById('surPackSize').value = cislo(s.pack_size);
     document.getElementById('surPackPrice').value = cislo(s.pack_price);
     document.getElementById('surPriceDate').value = s.price_date || '';
-    document.getElementById('surPriceSource').value = s.price_source || '';
     document.getElementById('surKind').value = s.kind;
     document.getElementById('surNegligible').value = String(!!s.negligible);
     document.getElementById('surNote').value = s.note || '';
@@ -672,7 +692,7 @@
   }
 
   function resetSurovinaForm() {
-    ['surId', 'surName', 'surPackSize', 'surPackPrice', 'surPriceDate', 'surPriceSource', 'surNote']
+    ['surId', 'surName', 'surPackSize', 'surPackPrice', 'surPriceDate', 'surNote']
       .forEach((id) => { document.getElementById(id).value = ''; });
     document.getElementById('surUnit').value = 'g';
     document.getElementById('surKind').value = 'surovina';
@@ -691,7 +711,6 @@
       pack_size: document.getElementById('surPackSize').value,
       pack_price: document.getElementById('surPackPrice').value,
       price_date: document.getElementById('surPriceDate').value,
-      price_source: document.getElementById('surPriceSource').value.trim(),
       kind: document.getElementById('surKind').value,
       negligible: document.getElementById('surNegligible').value === 'true',
       note: document.getElementById('surNote').value.trim(),
@@ -895,7 +914,7 @@
     updateOrderStatus, saveOrder, resetOrderForm, editDay, saveDay, savePassword,
     deleteDay, editProduct, resetProductForm, saveProduct,
     saveSettings,
-    saveSurovina, resetSurovinaForm, editSurovina,
+    saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,
     ulozRecept, ulozPolozku,
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna,
   };
