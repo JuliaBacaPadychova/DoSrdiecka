@@ -51,6 +51,38 @@ Každá surovina má vlastnú jednotku (`g` / `ml` / `ks`). V exceli mal
 stĺpec názov „v gramoch", ale pri želatíne v ňom boli plátky — preto
 `Želatína plátková` je v kusoch (1 plátok Silver 180 bloom = 5 g).
 
+## Zloženie príchutí
+
+| Príchuť | Navrch | Dovnútra | Základ |
+|---|---|---|---|
+| Choux / Pistáciovo mangový | mangová šľahaná ganache | pistáciový krém + jablkové confit | cesto + craquelin svetlý |
+| Choux / Pistáciovo kávový | kávová ganache | pistáciový krém + malinové coulis | cesto + craquelin svetlý |
+
+Navrch ide **ganache, nie varený mangový krém**: má 27 % tuku proti 18 %,
+o 12 bodov menej vody a 5 % kakaového masla, ktoré drží tvar do ~30 °C.
+Želatína vo varenom kréme sa pri izbovej teplote začína topiť, takže krém
+je síce v chladničke pevnejší, ale na stole zmäkne skôr.
+
+Množstvo malinového coulis na kus (12 g) je **odhad** — upraviť po prvej
+skúške.
+
+## Čo z toho vyšlo
+
+Náklad na suroviny na jeden kus, pri predajnej cene 3 €:
+
+| Príchuť | Suroviny na kus | Zostane z 3 € |
+|---|---|---|
+| Pistáciovo mangový | 1,62 € | 1,38 € |
+| Pistáciovo kávový | 2,03 € | 0,97 € |
+
+A to ešte bez obalu, réžie, práce a bez surovín, ktoré nemajú vyplnené
+balenie (pektín, agar, citrónová šťava, jablkové pyré, soľ). Skutočné
+číslo bude vyššie.
+
+Najdrahšie časti kávového choux: pistáciový krém 0,78 €/ks a kávová
+ganache 0,74 €/ks. Keby kávová ganache naozaj vyšla na 20 ks namiesto 12
+(poznámka v exceli), klesla by na 0,44 €/ks — preto sa to oplatí overiť.
+
 ## Čo ešte treba doplniť
 
 Tieto veci sa dopĺňajú v správe webu, nie v kóde:
@@ -74,7 +106,8 @@ Tieto veci sa dopĺňajú v správe webu, nie v kóde:
 - **Kávová ganache**: poznámka v exceli hovorí, že dávka by vyšla aj na
   20 ks namiesto 12. Zapísaných je 12 — kým sa to neoverí, cena za kus
   by bola podhodnotená.
-- **Ceny** sú z excelu a sú približne pol roka staré. Každá surovina má
+- **Ceny** sú z excelu a sú približne pol roka staré. Špeciality (čokolády,
+  pyré, pasty) sa nakupujú na patisserie.sk, bežné suroviny v obchode. Každá surovina má
   preto `price_date` a `price_source`, aby bolo vidieť, ktorá cena je
   zastaraná.
 

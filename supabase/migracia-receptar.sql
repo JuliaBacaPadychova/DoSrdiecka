@@ -398,15 +398,44 @@ join ingredients i on i.name = p.surovina
 on conflict (recipe_id, ingredient_id) do nothing;
 
 -- ---------------------------------------------------------------------
+-- ZLOŽENIE PRÍCHUTÍ (čo tvorí jeden kus)
+--
+-- qty_per_piece je v jednotke výťažnosti receptu: pri receptoch písaných
+-- na kusy je 1 = "jeden kus z tej dávky", pri coulis (písané na 150 g) je
+-- to počet gramov na kus.
+-- ---------------------------------------------------------------------
+with vazba (prichut, recept, na_kus, pozn) as (values
+  ('Pistáciovo mangový', 'Odpalované cesto',        1,  ''),
+  ('Pistáciovo mangový', 'Craquelin svetlý',        1,  ''),
+  ('Pistáciovo mangový', 'Mango šľahaná ganache',   1,  'navrch — drží tvar lepšie než varený mangový krém'),
+  ('Pistáciovo mangový', 'Pistáciový krém',         1,  'dovnútra'),
+  ('Pistáciovo mangový', 'Jablkové confit',         1,  'dovnútra'),
+  ('Pistáciovo kávový',  'Odpalované cesto',        1,  ''),
+  ('Pistáciovo kávový',  'Craquelin svetlý',        1,  ''),
+  ('Pistáciovo kávový',  'Kávová ganache',          1,  'navrch'),
+  ('Pistáciovo kávový',  'Pistáciový krém',         1,  'dovnútra'),
+  ('Pistáciovo kávový',  'Malinové coulis',         12, 'ODHAD 12 g na kus — upraviť po prvej skúške')
+)
+insert into product_recipes (product_id, recipe_id, qty_per_piece, note)
+select p.id, r.id, v.na_kus::numeric, v.pozn
+from vazba v
+join products p on p.name = 'Choux' and p.sub = v.prichut
+join recipes r on r.name = v.recept
+on conflict (product_id, recipe_id) do nothing;
+
+-- ---------------------------------------------------------------------
 -- KONTROLA PO SPUSTENÍ
 --
--- Vypíše, koľko surovín má ktorý recept. Keby niektorý recept mal menej
--- riadkov, než má v exceli, znamená to preklep v názve suroviny — riadok
--- by sa potichu nevložil.
+-- Vypíše, koľko surovín má ktorý recept a v koľkých príchutiach sa
+-- používa. Keby mal recept menej surovín, než má v exceli, znamená to
+-- preklep v názve — riadok by sa potichu nevložil.
 -- ---------------------------------------------------------------------
 select r.name as recept, r.kind as druh, r.yield_qty as vytaznost,
-       r.yield_unit as jednotka, count(ri.id) as pocet_surovin
+       r.yield_unit as jednotka,
+       count(distinct ri.id) as pocet_surovin,
+       count(distinct pr.id) as v_prichutiach
 from recipes r
 left join recipe_items ri on ri.recipe_id = r.id
+left join product_recipes pr on pr.recipe_id = r.id
 group by r.id, r.name, r.kind, r.yield_qty, r.yield_unit
 order by r.kind, r.name;
