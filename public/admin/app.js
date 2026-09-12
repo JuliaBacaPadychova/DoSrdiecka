@@ -919,7 +919,9 @@
           ${pouzitie.length ? `<table class="admin-table"><tbody>${pouzitie.map((v) => `
             <tr>
               <td>${esc(nazovPrichute(v.product_id))}</td>
-              <td class="muted">${cisloSk(v.qty_per_piece)} ${esc(r.yield_unit)} na kus</td>
+              <td class="muted">${r.yield_unit === 'g'
+                ? cisloSk(v.qty_per_piece) + ' g do jedného kusu'
+                : cisloSk(v.qty_per_piece) + '× porcia na jeden kus'}</td>
               <td class="akcie" style="width:90px">
                 <button class="btn ghost sm zmazat" onclick="Admin.zrusPriradenie('${v.id}')">Odobrať</button>
               </td>
@@ -929,8 +931,13 @@
             <div><label>Priradiť k príchuti</label>
               <select id="nova-prichut-${r.id}"><option value="">— vyber —</option>${moznostiPrichuti}</select>
             </div>
-            <div><label>${r.yield_unit === 'g' ? 'Koľko gramov na jeden kus' : 'Koľko kusov z dávky na jeden kus'}</label>
-              <input type="number" min="0" step="0.1" id="nove-nakus-${r.id}" value="1">
+            <div><label>${r.yield_unit === 'g' ? 'Gramov do jedného zákusku' : 'Porcií z dávky na jeden zákusok'}</label>
+              <input type="number" min="0" step="0.1" id="nove-nakus-${r.id}"
+                value="${r.yield_unit === 'g' ? '' : '1'}"
+                placeholder="${r.yield_unit === 'g' ? 'napr. 12' : '1'}">
+              <span class="fieldhint">${r.yield_unit === 'g'
+                ? `Recept je na ${cisloSk(r.yield_qty)} g — napíš, koľko z toho ide do jedného kusu.`
+                : `Takmer vždy 1: dávka je na ${cisloSk(r.yield_qty)} kusov, takže na jeden zákusok ide jedna porcia. Iné číslo len pri dvojitej porcii (2) alebo pri polovičnej (0,5).`}</span>
             </div>
             <div style="display:flex;align-items:flex-end">
               <button class="btn ghost sm" onclick="Admin.priradPrichut('${r.id}')">Priradiť</button>
@@ -1010,6 +1017,13 @@
     const product_id = document.getElementById('nova-prichut-' + receptId).value;
     const qty = document.getElementById('nove-nakus-' + receptId).value;
     if (!product_id) { alert('Vyber príchuť.'); return; }
+    // Pri recepte písanom na gramy nemá predvolená jednotka zmysel —
+    // jeden gram coulis do zákusku by bola tichá nezmyselná hodnota.
+    const recept = RECEPTAR.recepty.find((r) => r.id === receptId);
+    if (recept && recept.yield_unit === 'g' && !(Number(qty) > 0)) {
+      alert('Napíš, koľko gramov z tohto receptu ide do jedného zákusku.');
+      return;
+    }
     try {
       await apiFetch('/api/admin/receptar?co=vazba', {
         method: 'POST',
