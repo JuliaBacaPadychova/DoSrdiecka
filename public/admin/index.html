@@ -98,7 +98,13 @@
 
   <div class="admin-panel" id="tab-products">
     <div class="admin-card">
-      <h3 id="productFormTitle">Nový výrobok</h3>
+      <div class="admin-row" style="margin-bottom:10px">
+        <h3 style="margin:0">Ponuka</h3>
+        <button class="btn ghost sm" onclick="Admin.resetProductForm(true)">Nový výrobok</button>
+      </div>
+      <details id="productForm">
+      <summary style="cursor:pointer"><strong id="productFormTitle">Nový výrobok</strong></summary>
+      <div style="padding-top:12px">
       <input type="hidden" id="productId">
       <div class="form">
         <div><label for="pCategory">Kategória</label>
@@ -133,6 +139,8 @@
         <button class="btn ghost" onclick="Admin.resetProductForm()">Nový / zrušiť úpravu</button>
       </div>
       <p class="err" id="productErr" style="display:none"></p>
+      </div>
+      </details>
     </div>
     <div class="admin-card">
       <div id="productsList"><p class="muted">Načítavam ponuku…</p></div>
@@ -142,6 +150,10 @@
 
   <div class="admin-panel" id="tab-suroviny">
     <div class="admin-card">
+      <div class="admin-row" style="margin-bottom:10px">
+        <h3 style="margin:0">Kartotéka surovín</h3>
+        <button class="btn ghost sm" onclick="Admin.resetSurovinaForm(true)">Nová surovina</button>
+      </div>
       <details id="surovinaForm">
       <summary style="cursor:pointer"><strong id="surovinaFormTitle">Nová surovina</strong></summary>
       <div style="padding-top:12px">

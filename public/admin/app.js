@@ -431,10 +431,14 @@
     document.getElementById('pImageUrl').value = p.image_url || '';
     document.getElementById('pImagePreview').innerHTML = p.image_url
       ? `<img src="${p.image_url}" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:10px">` : '';
+    // Formulár je zbalený — bez rozbalenia by kliknutie na Upraviť
+    // vyzeralo, že sa nič nestalo.
+    const formular = document.getElementById('productForm');
+    if (formular) formular.open = true;
     document.getElementById('tab-products').scrollIntoView({ behavior: 'smooth' });
   }
 
-  function resetProductForm() {
+  function resetProductForm(rozbalit) {
     document.getElementById('productFormTitle').textContent = 'Nový výrobok';
     document.getElementById('productId').value = '';
     ['pName', 'pSub', 'pPrice', 'pMinLabel', 'pDesc', 'pAlt', 'pAllerg', 'pImageUrl'].forEach((id) => { document.getElementById(id).value = ''; });
@@ -447,6 +451,8 @@
     document.getElementById('pActive').value = 'true';
     document.getElementById('pImagePreview').innerHTML = '';
     document.getElementById('pImageFile').value = '';
+    const formular = document.getElementById('productForm');
+    if (formular && rozbalit) { formular.open = true; window.scrollTo({ top: 0, behavior: 'smooth' }); }
   }
 
   function predvyplnPoradie() {
@@ -701,7 +707,7 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function resetSurovinaForm() {
+  function resetSurovinaForm(rozbalit) {
     ['surId', 'surName', 'surPackSize', 'surPackPrice', 'surPriceDate', 'surNote']
       .forEach((id) => { document.getElementById(id).value = ''; });
     document.getElementById('surUnit').value = 'g';
@@ -709,6 +715,8 @@
     document.getElementById('surNegligible').value = 'false';
     document.getElementById('surovinaFormTitle').textContent = 'Nová surovina';
     document.getElementById('surErr').style.display = 'none';
+    const formular = document.getElementById('surovinaForm');
+    if (formular && rozbalit) { formular.open = true; window.scrollTo({ top: 0, behavior: 'smooth' }); }
   }
 
   async function saveSurovina() {
