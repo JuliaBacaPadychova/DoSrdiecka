@@ -732,7 +732,7 @@
     }
   }
 
-  async function loadRecepty() {
+  async function loadRecepty(rozbalit) {
     const el = document.getElementById('receptyList');
     el.innerHTML = '<p class="muted">Načítavam recepty…</p>';
     try {
@@ -743,6 +743,10 @@
       }
       naplnPrichute();
       renderRecepty();
+      if (rozbalit) {
+        const box = document.getElementById('recept-' + rozbalit);
+        if (box) box.open = true;
+      }
     } catch (err) {
       el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
     }
@@ -791,13 +795,13 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ polozky: [{ product_id, kusy }] }),
       });
-      renderRozpis(data.rozpis || [], nazovPrichute(product_id), kusy);
+      renderRozpis(data.rozpis || [], product_id, nazovPrichute(product_id), kusy);
     } catch (err) {
       el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
     }
   }
 
-  function renderRozpis(rozpis, prichut, kusy) {
+  function renderRozpis(rozpis, product_id, prichut, kusy) {
     const el = document.getElementById('receptyRozpis');
     if (!rozpis.length) {
       el.innerHTML = `<p class="muted">${esc(prichut)} nemá priradené žiadne recepty.</p>`;
@@ -807,9 +811,13 @@
       PORADIE_DRUHOV.indexOf(a.recept.druh) - PORADIE_DRUHOV.indexOf(b.recept.druh));
 
     el.innerHTML = `
-      <h3 style="margin:0 0 4px">${esc(prichut)} — ${kusy} ks</h3>
+      <div class="admin-row" style="margin-bottom:4px">
+        <h3 style="margin:0">${esc(prichut)} — ${kusy} ks</h3>
+        <button class="btn ghost sm" onclick="Admin.doKalkulacky('${product_id}', ${kusy})">Poslať do kalkulačky</button>
+      </div>
       <p class="muted" style="margin:0 0 18px;font-size:.88rem">Gramáže sú prepočítané na
-        ${kusy} kusov. Stĺpec „v recepte" je pôvodná hodnota, tá sa nemení.</p>
+        ${kusy} kusov. Stĺpec „v recepte" je pôvodná hodnota, tá sa nemení.
+        Tlačidlo hore z toho istého počtu spraví nákupný zoznam s cenou.</p>
       ${zoradene.map((r) => `
         <div style="margin-bottom:24px">
           <h3 style="margin:0 0 2px">${esc(r.recept.nazov)}
@@ -836,64 +844,236 @@
         </div>`).join('')}`;
   }
 
+  // Zoznam receptov je zbalený — pri dvoch príchutiach sa to ešte dá
+  // prejsť očami, pri veterníkoch a tortách už nie. Rozbalí sa ten,
+  // ktorý sa ide upravovať.
   function renderRecepty() {
     const el = document.getElementById('receptyList');
+    if (!RECEPTAR) return;
     const { recepty, polozky, vazby, suroviny } = RECEPTAR;
     if (!recepty.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne recepty.</p>'; return; }
-    const surovinaPodlaId = new Map(suroviny.map((s) => [s.id, s]));
 
-    el.innerHTML = recepty.map((r) => {
+    const filter = (document.getElementById('recFilter') || {}).value || '';
+    const pouzite = new Set(vazby.map((v) => v.recipe_id));
+    const vybrane = recepty
+      .filter((r) => (filter === 'nepriradene' ? !pouzite.has(r.id) : (!filter || r.kind === filter)))
+      .sort((a, b) => (PORADIE_DRUHOV.indexOf(a.kind) - PORADIE_DRUHOV.indexOf(b.kind))
+        || a.name.localeCompare(b.name, 'sk'));
+
+    if (!vybrane.length) { el.innerHTML = '<p class="muted">Tomuto výberu nič nezodpovedá.</p>'; return; }
+
+    const surovinaPodlaId = new Map(suroviny.map((s) => [s.id, s]));
+    const moznostiSurovin = suroviny
+      .map((s) => `<option value="${s.id}">${esc(s.name)} (${esc(s.unit)})</option>`).join('');
+    const moznostiPrichuti = PRODUCTS_CACHE
+      .map((p) => `<option value="${p.id}">${esc(p.name)} — ${esc(p.sub)}</option>`).join('');
+
+    el.innerHTML = vybrane.map((r) => {
       const vlastne = polozky.filter((p) => p.recipe_id === r.id);
       const pouzitie = vazby.filter((v) => v.recipe_id === r.id);
       return `
-        <div style="margin-bottom:22px">
-          <h3 style="margin:0 0 4px">${esc(r.name)} <span class="muted" style="font-weight:400">(${esc(r.kind)})</span></h3>
-          <p class="muted" style="margin:0 0 8px;font-size:.88rem">
-            Recept je napísaný na
-            <input type="number" min="0" step="0.001" value="${esc(r.yield_qty)}" style="width:80px"
-              onchange="Admin.ulozRecept('${r.id}', 'yield_qty', this.value)">
-            ${esc(r.yield_unit)}.
-            ${pouzitie.length
-              ? 'Používa sa: ' + pouzitie.map((v) => esc(nazovPrichute(v.product_id)) + ` (${esc(v.qty_per_piece)} ${esc(r.yield_unit)}/ks)`).join(', ') + '.'
-              : '<strong>Zatiaľ nie je priradený k žiadnej príchuti.</strong>'}
-            ${r.note ? '<br>' + esc(r.note) : ''}
-          </p>
+      <details id="recept-${r.id}" style="margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:10px">
+        <summary style="cursor:pointer">
+          <strong>${esc(r.name)}</strong>
+          <span class="muted">· ${esc(r.kind)} · na ${cisloSk(r.yield_qty)} ${esc(r.yield_unit)}
+          · ${vlastne.length} surovín ·
+          ${pouzitie.length ? pouzitie.map((v) => esc(nazovPrichute(v.product_id))).join(', ')
+                            : 'nepriradený k príchuti'}</span>
+        </summary>
+
+        <div style="padding:12px 0 0 4px">
           <table class="admin-table"><tbody>${vlastne.map((p) => {
-            const s = surovinaPodlaId.get(p.ingredient_id);
+            const su = surovinaPodlaId.get(p.ingredient_id);
             return `<tr>
-              <td>${esc(s ? s.name : 'neznáma surovina')}${p.optional ? ' <span class="muted">(voliteľná)</span>' : ''}</td>
-              <td style="width:150px">
-                <input type="number" min="0" step="0.001" value="${cislo(p.amount)}" placeholder="podľa chuti"
-                  style="width:100px" onchange="Admin.ulozPolozku('${p.id}', this.value)">
-                ${esc(s ? s.unit : '')}
+              <td>${esc(su ? su.name : 'neznáma surovina')}${p.optional ? ' <span class="muted">(voliteľná)</span>' : ''}
+                ${p.note ? `<br><span class="muted" style="font-size:.85rem">${esc(p.note)}</span>` : ''}</td>
+              <td style="width:170px">
+                <input type="number" min="0" step="0.1" style="width:110px"
+                  data-polozka="${p.id}" data-povodne="${cislo(p.amount)}"
+                  value="${cislo(p.amount)}" placeholder="podľa chuti">
+                ${esc(su ? su.unit : '')}
               </td>
-              <td class="muted" style="font-size:.85rem">${esc(p.note || '')}</td>
+              <td class="akcie" style="width:90px">
+                <button class="btn ghost sm zmazat" onclick="Admin.zmazPolozku('${p.id}', '${esc(su ? su.name : '')}')">Odobrať</button>
+              </td>
             </tr>`;
           }).join('')}</tbody></table>
-        </div>`;
+
+          <div class="form" style="margin:12px 0 0">
+            <div><label>Pridať surovinu</label>
+              <select id="nova-surovina-${r.id}"><option value="">— vyber —</option>${moznostiSurovin}</select>
+            </div>
+            <div><label>Množstvo</label>
+              <input type="number" min="0" step="0.1" id="nove-mnozstvo-${r.id}" placeholder="prázdne = podľa chuti">
+            </div>
+            <div style="display:flex;align-items:flex-end">
+              <button class="btn ghost sm" onclick="Admin.pridajPolozku('${r.id}')">Pridať</button>
+            </div>
+            <div class="full"><label for="poznamka-${r.id}">Poznámka k receptu</label>
+              <textarea id="poznamka-${r.id}" rows="2" data-poznamka="${r.id}"
+                data-povodne="${esc(r.note || '')}">${esc(r.note || '')}</textarea>
+            </div>
+          </div>
+
+          <p class="muted" style="margin:14px 0 6px;font-size:.88rem">Patrí k príchutiam:</p>
+          ${pouzitie.length ? `<table class="admin-table"><tbody>${pouzitie.map((v) => `
+            <tr>
+              <td>${esc(nazovPrichute(v.product_id))}</td>
+              <td class="muted">${cisloSk(v.qty_per_piece)} ${esc(r.yield_unit)} na kus</td>
+              <td class="akcie" style="width:90px">
+                <button class="btn ghost sm zmazat" onclick="Admin.zrusPriradenie('${v.id}')">Odobrať</button>
+              </td>
+            </tr>`).join('')}</tbody></table>` : '<p class="muted">Zatiaľ k žiadnej.</p>'}
+
+          <div class="form" style="margin:10px 0 0">
+            <div><label>Priradiť k príchuti</label>
+              <select id="nova-prichut-${r.id}"><option value="">— vyber —</option>${moznostiPrichuti}</select>
+            </div>
+            <div><label>${r.yield_unit === 'g' ? 'Koľko gramov na jeden kus' : 'Koľko kusov z dávky na jeden kus'}</label>
+              <input type="number" min="0" step="0.1" id="nove-nakus-${r.id}" value="1">
+            </div>
+            <div style="display:flex;align-items:flex-end">
+              <button class="btn ghost sm" onclick="Admin.priradPrichut('${r.id}')">Priradiť</button>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+            <button class="btn" onclick="Admin.ulozRecept('${r.id}')">Uložiť zmeny</button>
+            <span class="muted" id="stav-${r.id}"></span>
+          </div>
+        </div>
+      </details>`;
     }).join('');
   }
 
-  async function ulozRecept(id, pole, hodnota) {
-    try {
-      await apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(id)}`, {
+  // Uloží naraz všetko, čo sa v rozbalenom recepte zmenilo: gramáže aj
+  // poznámku. Ukladá sa až na tlačidlo, nie pri každom kliknutí do
+  // políčka — inak sa dá recept prepísať šípkou a ani si to nevšimneš.
+  async function ulozRecept(receptId) {
+    const box = document.getElementById('recept-' + receptId);
+    const stav = document.getElementById('stav-' + receptId);
+    if (!box) return;
+
+    const ulohy = [];
+    box.querySelectorAll('[data-polozka]').forEach((inp) => {
+      if (inp.value === inp.dataset.povodne) return;
+      ulohy.push(apiFetch(`/api/admin/receptar?co=polozka&id=${encodeURIComponent(inp.dataset.polozka)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [pole]: hodnota }),
+        body: JSON.stringify({ amount: inp.value }),
+      }));
+    });
+    const pozn = box.querySelector('[data-poznamka]');
+    if (pozn && pozn.value !== pozn.dataset.povodne) {
+      ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: pozn.value }),
+      }));
+    }
+
+    if (!ulohy.length) { stav.textContent = 'Nič sa nezmenilo.'; return; }
+    stav.textContent = 'Ukladám…';
+    try {
+      await Promise.all(ulohy);
+      await loadRecepty(receptId);
+      const novyStav = document.getElementById('stav-' + receptId);
+      if (novyStav) novyStav.textContent = 'Uložené.';
+    } catch (err) {
+      stav.textContent = err.message;
+    }
+  }
+
+  async function pridajPolozku(receptId) {
+    const surovina = document.getElementById('nova-surovina-' + receptId).value;
+    const mnozstvo = document.getElementById('nove-mnozstvo-' + receptId).value;
+    if (!surovina) { alert('Vyber surovinu.'); return; }
+    try {
+      await apiFetch('/api/admin/receptar?co=polozka', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipe_id: receptId, ingredient_id: surovina, amount: mnozstvo }),
       });
-      loadRecepty();
+      await loadRecepty(receptId);
     } catch (err) { alert(err.message); }
   }
 
-  async function ulozPolozku(id, hodnota) {
+  async function zmazPolozku(id, nazov) {
+    if (!confirm(`Naozaj odobrať ${nazov || 'surovinu'} z receptu?`)) return;
     try {
-      await apiFetch(`/api/admin/receptar?co=polozka&id=${encodeURIComponent(id)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: hodnota }),
-      });
-      loadRecepty();
+      await apiFetch(`/api/admin/receptar?co=polozka&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await loadRecepty();
     } catch (err) { alert(err.message); }
+  }
+
+  async function priradPrichut(receptId) {
+    const product_id = document.getElementById('nova-prichut-' + receptId).value;
+    const qty = document.getElementById('nove-nakus-' + receptId).value;
+    if (!product_id) { alert('Vyber príchuť.'); return; }
+    try {
+      await apiFetch('/api/admin/receptar?co=vazba', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id, recipe_id: receptId, qty_per_piece: qty || 1 }),
+      });
+      await loadRecepty(receptId);
+    } catch (err) { alert(err.message); }
+  }
+
+  async function zrusPriradenie(id) {
+    if (!confirm('Naozaj odobrať recept z tejto príchute?')) return;
+    try {
+      await apiFetch(`/api/admin/receptar?co=vazba&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await loadRecepty();
+    } catch (err) { alert(err.message); }
+  }
+
+  function novyReceptForm(zobrazit = true) {
+    document.getElementById('novyReceptForm').style.display = zobrazit ? 'block' : 'none';
+    document.getElementById('nrErr').style.display = 'none';
+  }
+
+  async function ulozNovyRecept() {
+    const errEl = document.getElementById('nrErr');
+    errEl.style.display = 'none';
+    const telo = {
+      name: document.getElementById('nrNazov').value.trim(),
+      kind: document.getElementById('nrDruh').value,
+      yield_qty: document.getElementById('nrVytaznost').value,
+      yield_unit: document.getElementById('nrJednotka').value,
+      note: document.getElementById('nrPoznamka').value.trim(),
+      steps: document.getElementById('nrPostup').value.trim(),
+    };
+    if (!telo.name) { errEl.textContent = 'Vyplň názov receptu.'; errEl.style.display = 'block'; return; }
+    if (!(Number(telo.yield_qty) > 0)) {
+      errEl.textContent = 'Napíš, na koľko je recept napísaný.'; errEl.style.display = 'block'; return;
+    }
+    try {
+      const odpoved = await apiFetch('/api/admin/receptar?co=recept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(telo),
+      });
+      ['nrNazov', 'nrPoznamka', 'nrPostup'].forEach((id) => { document.getElementById(id).value = ''; });
+      novyReceptForm(false);
+      await loadRecepty(odpoved.zaznam && odpoved.zaznam.id);
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+    }
+  }
+
+  // Z rozpisu rovno do kalkulačky: tá istá príchuť a počet kusov, len
+  // namiesto gramáží vyjde nákupný zoznam a cena.
+  async function doKalkulacky(product_id, kusy) {
+    showTab('kalkulacka');
+    const box = document.getElementById('kalRucne');
+    box.innerHTML = '';
+    pridajKalRiadok();
+    const riadok = box.querySelector('.form');
+    riadok.querySelector('.kalProdukt').value = product_id;
+    riadok.querySelector('.kalKusy').value = kusy;
+    await kalkulaciaRucna();
   }
 
   async function pripravKalkulacku() {
@@ -934,7 +1114,12 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ polozky }),
       });
-      renderZoznam(data.zoznam, 'Ručný prepočet');
+      // Nadpis hovorí, čo sa počíta — nie len "ručný prepočet". Po
+      // odoslaní z receptov musí byť vidieť, že ide o tú istú objednávku.
+      const popis = polozky
+        .map((p) => `${nazovPrichute(p.product_id)} — ${p.kusy} ks`)
+        .join(' + ');
+      renderZoznam(data.zoznam, popis || 'Ručný prepočet');
     } catch (err) {
       el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
     }
@@ -998,7 +1183,8 @@
     deleteDay, editProduct, resetProductForm, saveProduct,
     saveSettings,
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,
-    ulozRecept, ulozPolozku,
+    renderRecepty, ulozRecept, pridajPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
+    novyReceptForm, ulozNovyRecept, doKalkulacky,
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
   };
 
