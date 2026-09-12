@@ -188,7 +188,10 @@
         body: JSON.stringify(body),
       });
       resetOrderForm();
-      okEl.textContent = `Zapísané ako objednávka #${odpoved.order_no}. Kapacita dňa je o ňu znížená.`;
+      okEl.textContent = `Zapísané ako objednávka #${odpoved.order_no}. Kapacita dňa je o ňu znížená.`
+        + (odpoved.day_created
+          ? ` Termín ${body.day} v kalendári ešte nebol — pridala som ho ako zatvorený, takže sa na webe neponúka.`
+          : '');
       okEl.style.display = 'block';
       loadOrders();
       loadDays();

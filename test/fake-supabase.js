@@ -134,8 +134,18 @@ function startFakeSupabase() {
     const lead = db.site_settings[0].lead_days || 0;
     if (!rucne && args.p_day < plusDni(dnesLokalne(), lead)) throw { message: "too_soon" };
 
-    const day = db.open_days.find((d) => d.day === args.p_day);
-    if (!day || !day.is_open) throw { message: "day_closed" };
+    // Ručná objednávka si deň založí sama, ale zavretý — musí sedieť
+    // s funkciou create_order v supabase/schema.sql.
+    let day = db.open_days.find((d) => d.day === args.p_day);
+    let novyDen = false;
+    if (!day) {
+      if (!rucne) throw { message: "day_closed" };
+      day = { day: args.p_day, is_open: false, cap_zakusky: 18, cap_torty: 1, cap_chlebik: 1 };
+      db.open_days.push(day);
+      novyDen = true;
+    } else if (!day.is_open && !rucne) {
+      throw { message: "day_closed" };
+    }
     if (!Array.isArray(args.p_items) || args.p_items.length === 0) throw { message: "no_items" };
 
     const cap = dayCapacityRows().find((d) => d.day === args.p_day);
@@ -171,7 +181,7 @@ function startFakeSupabase() {
         price_snapshot: product.price, qty,
       });
     }
-    return { order_id: orderId, order_no: orderNo, total };
+    return { order_id: orderId, order_no: orderNo, total, day_created: novyDen };
   }
 
   const server = http.createServer(async (req, res) => {

@@ -102,12 +102,57 @@ test("ručná objednávka zaberie kapacitu rovnako ako objednávka z webu", asyn
   });
 });
 
-test("na deň, ktorý nie je otvorený, sa zapísať nedá", async (t) => {
-  await sSpravou(t, [], async ({ zapis }) => {
+test("termín, ktorý v kalendári ešte nie je, si zapíše sám — ako zatvorený", async (t) => {
+  await sSpravou(t, [], async ({ fake, zapis }) => {
     const out = await zapis({ ...zaklad, day: den(9), items: [{ product_id: "p-choux", qty: 6 }] });
-    assert.equal(out.code, 409);
-    assert.equal(out.body.error, "day_closed");
-    assert.match(out.body.message, /Dni a limity/);
+    assert.equal(out.code, 200);
+    assert.equal(out.body.day_created, true, "správa webu to má povedať");
+
+    const novy = fake.db.open_days.find((d) => d.day === den(9));
+    assert.ok(novy, "deň musí v kalendári pribudnúť");
+    assert.equal(novy.is_open, false,
+      "na webe sa taký deň ponúkať nemá — dohodla sa osobne");
+  });
+});
+
+test("na deň pridaný takto sa z webu objednať nedá", async (t) => {
+  await sSpravou(t, [], async ({ zapis }) => {
+    await zapis({ ...zaklad, day: den(9), items: [{ product_id: "p-choux", qty: 6 }] });
+
+    // Objednávka z webu ide cez /api/orders, ktoré p_rucne neposiela.
+    const verejny = require("../api/orders");
+    const res = fakeRes();
+    await verejny({
+      method: "POST", url: "/api/orders", headers: {},
+      body: {
+        day: den(9), name: "Cudzia", phone: "0900123456",
+        email: "c@example.sk", note: "bez orechov",
+        items: [{ product_id: "p-choux", qty: 6 }],
+      },
+    }, res);
+    assert.equal(res.out.code, 409);
+    assert.equal(res.out.body.error, "day_closed");
+  });
+});
+
+test("na existujúci zatvorený deň sa zapísať dá a deň ostane zatvorený", async (t) => {
+  const zatvoreny = { day: den(9), is_open: false, cap_zakusky: 18, cap_torty: 1, cap_chlebik: 1 };
+  await sSpravou(t, [zatvoreny], async ({ fake, zapis }) => {
+    const out = await zapis({ ...zaklad, day: den(9), items: [{ product_id: "p-choux", qty: 6 }] });
+    assert.equal(out.code, 200);
+    assert.equal(out.body.day_created, false, "deň už existoval");
+    assert.equal(fake.db.open_days.find((d) => d.day === den(9)).is_open, false);
+  });
+});
+
+test("kapacita platí aj na deň, ktorý si zápis založil", async (t) => {
+  await sSpravou(t, [], async ({ fake, zapis }) => {
+    // Nový deň dostane predvolené limity: 18 zákuskov, 1 torta, 1 chlebík.
+    await zapis({ ...zaklad, day: den(9), items: [{ product_id: "p-choux", qty: 12 }] });
+    const cez = await zapis({ ...zaklad, day: den(9), items: [{ product_id: "p-choux", qty: 7 }] });
+    assert.equal(cez.code, 409, "zostávalo 6, žiadame 7");
+    assert.equal(cez.body.error, "capacity_zakusky");
+    assert.equal(fake.db.orders.length, 1);
   });
 });
 

@@ -7,7 +7,9 @@ const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 // Hlášky pre objednávku zapísanú ručne v správe. Znejú inak než tie pre
 // zákazníčku — majiteľke treba povedať, čo má spraviť ona.
 const CHYBY = {
-  day_closed: "Na tento deň sa zapísať nedá — najprv ho otvor v Dni a limity.",
+  // Pri ručnom zápise sa deň založí sám, takže sem by sa už nemalo dať
+  // dostať. Hláška ostáva pre istotu.
+  day_closed: "Na tento deň sa zapísať nedá — skús ho pridať v Dni a limity.",
   no_items: "Vyber aspoň jeden výrobok.",
   product_not_found: "Niektorý výrobok už v ponuke nie je. Obnov stránku a skús znova.",
   invalid_qty: "Neplatný počet kusov.",
@@ -83,7 +85,10 @@ module.exports = withErrors(
       }
 
       return sendJson(res, 200, {
-        ok: true, order_id: result.order_id, order_no: result.order_no, total: result.total,
+        ok: true, order_id: result.order_id, order_no: result.order_no,
+        total: result.total,
+        // Keď deň v kalendári ešte nebol, funkcia ho založila ako zavretý.
+        day_created: result.day_created === true,
       });
     }
 

@@ -4,6 +4,10 @@
 -- preskočí lehotu na objednanie aj minimálny odber: objednávku si
 -- majiteľka dohodla osobne a sama rozhodla, čo upečie.
 --
+-- Preskočí aj to, či je deň otvorený. Keď v kalendári ešte nie je,
+-- založí ho ako ZAVRETÝ — na webe sa taký deň neponúka, ale objednávka
+-- nevisí mimo prehľadu dní.
+--
 -- Kapacitu dňa NEPRESKAKUJE. Ručná objednávka zaberá miesto rovnako ako
 -- objednávka z webu — inak by si deň prebookovala a nevšimla si to.
 --
@@ -22,9 +26,9 @@ create or replace function create_order(
   p_note text,
   p_items jsonb,
   -- Objednávka zapísaná ručne v správe webu (dohodnutá mimo web).
-  -- Obchádza lehotu na objednanie aj minimálny odber — majiteľka si ju
-  -- dohodla osobne a sama rozhodla, čo upečie. Kapacitu dňa obchádzať
-  -- NESMIE, inak by si deň prebookovala.
+  -- Obchádza lehotu na objednanie, minimálny odber aj to, či je deň
+  -- otvorený — majiteľka si ju dohodla osobne a sama rozhodla, čo upečie.
+  -- Kapacitu dňa obchádzať NESMIE, inak by si deň prebookovala.
   p_rucne boolean default false
 ) returns jsonb
 language plpgsql
@@ -47,6 +51,7 @@ declare
   v_qty int;
   v_lead int := 0;
   v_dnes date;
+  v_novy_den boolean := false;
 begin
   -- Objednávať treba pár dní vopred, kvôli nákupu surovín. Počet dní je
   -- v nastaveniach webu, aby sa dal meniť bez zásahu do kódu.
@@ -63,7 +68,20 @@ begin
   end if;
 
   select * into v_day from open_days where day = p_day for update;
-  if not found or not v_day.is_open then
+
+  if not found then
+    if not p_rucne then
+      raise exception 'day_closed';
+    end if;
+    -- Ručná objednávka si deň v kalendári založí sama, ale ZAVRETÝ:
+    -- majiteľka sa dohodla osobne a na webe sa taký deň ponúkať nemá.
+    -- Zakladáme ho preto, aby objednávka nevisela mimo prehľadu dní
+    -- a aby aj na ňom platili limity, keby pribudla ďalšia.
+    insert into open_days (day, is_open) values (p_day, false)
+      on conflict (day) do nothing;
+    select * into v_day from open_days where day = p_day for update;
+    v_novy_den := true;
+  elsif not v_day.is_open and not p_rucne then
     raise exception 'day_closed';
   end if;
 
@@ -129,7 +147,9 @@ begin
   end loop;
 
   return jsonb_build_object(
-    'order_id', v_order_id, 'order_no', v_order_no, 'total', v_total);
+    'order_id', v_order_id, 'order_no', v_order_no, 'total', v_total,
+    -- Nech správa webu vie povedať, že deň v kalendári pribudol.
+    'day_created', v_novy_den);
 end;
 $$;
 
