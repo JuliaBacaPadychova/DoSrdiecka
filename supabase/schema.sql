@@ -160,7 +160,12 @@ create or replace function create_order(
   p_phone text,
   p_email text,
   p_note text,
-  p_items jsonb
+  p_items jsonb,
+  -- Objednávka zapísaná ručne v správe webu (dohodnutá mimo web).
+  -- Obchádza lehotu na objednanie aj minimálny odber — majiteľka si ju
+  -- dohodla osobne a sama rozhodla, čo upečie. Kapacitu dňa obchádzať
+  -- NESMIE, inak by si deň prebookovala.
+  p_rucne boolean default false
 ) returns jsonb
 language plpgsql
 security definer
@@ -189,10 +194,12 @@ begin
   -- Dnešok sa musí počítať v našom čase, nie vo svetovom: databáza beží
   -- v UTC a medzi polnocou a druhou ráno je o deň pozadu, takže by v noci
   -- prepustila termín, ktorý je už príliš blízko.
-  select coalesce(lead_days, 0) into v_lead from site_settings where id = true;
-  v_dnes := (now() at time zone 'Europe/Bratislava')::date;
-  if p_day < v_dnes + v_lead then
-    raise exception 'too_soon';
+  if not p_rucne then
+    select coalesce(lead_days, 0) into v_lead from site_settings where id = true;
+    v_dnes := (now() at time zone 'Europe/Bratislava')::date;
+    if p_day < v_dnes + v_lead then
+      raise exception 'too_soon';
+    end if;
   end if;
 
   select * into v_day from open_days where day = p_day for update;
@@ -225,7 +232,7 @@ begin
     if v_qty is null or v_qty <= 0 or v_qty > 200 then
       raise exception 'invalid_qty';
     end if;
-    if v_qty < v_product.min_qty then
+    if v_qty < v_product.min_qty and not p_rucne then
       raise exception 'below_minimum';
     end if;
 
@@ -270,9 +277,9 @@ $$;
 -- ju cez /rest/v1/rpc/create_order zavolá ktokoľvek s verejným kľúčom
 -- a obíde kontroly, ktoré robí /api/orders — a hlavne si vie zaplniť
 -- dni vymyslenými objednávkami.
-revoke execute on function create_order(date, text, text, text, text, jsonb)
+revoke execute on function create_order(date, text, text, text, text, jsonb, boolean)
   from public, anon, authenticated;
-grant execute on function create_order(date, text, text, text, text, jsonb)
+grant execute on function create_order(date, text, text, text, text, jsonb, boolean)
   to service_role;
 
 -- ---------------------------------------------------------------------

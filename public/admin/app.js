@@ -106,18 +106,113 @@
     } catch (err) {
       el.innerHTML = `<p class="err">${err.message}</p>`;
     }
+    // Formulár na ručný zápis potrebuje ponuku. Načíta sa raz.
+    try {
+      if (!PRODUCTS_CACHE.length) {
+        const data = await apiFetch('/api/admin/products');
+        PRODUCTS_CACHE = data.products || [];
+      }
+      renderOrderItems();
+    } catch (err) {
+      document.getElementById('oItems').innerHTML = `<p class="err">${err.message}</p>`;
+    }
   }
 
-  function renderOrders(orders) {
-    const el = document.getElementById('ordersList');
-    if (!orders.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne objednávky.</p>'; return; }
-    el.innerHTML = `<table class="admin-table"><thead><tr>
-        <th>Číslo</th><th>Termín</th><th>Zákazník</th><th>Položky</th><th>Cena</th><th>Stav</th><th></th>
-      </tr></thead><tbody>${orders.map((o) => `
+  // ---------- ručne zapísaná objednávka ----------
+  function renderOrderItems() {
+    const el = document.getElementById('oItems');
+    if (!el) return;
+    if (!PRODUCTS_CACHE.length) {
+      el.innerHTML = '<p class="muted">V ponuke zatiaľ nie sú žiadne výrobky.</p>';
+      return;
+    }
+    const poradie = ['chlebik', 'zakusky', 'torty'];
+    const zoradene = [...PRODUCTS_CACHE].sort((a, b) =>
+      poradie.indexOf(a.category_id) - poradie.indexOf(b.category_id)
+      || a.name.localeCompare(b.name, 'sk')
+      || String(a.sub || '').localeCompare(String(b.sub || ''), 'sk'));
+
+    let html = '';
+    let kategoria = null;
+    zoradene.filter((p) => p.active).forEach((p) => {
+      if (p.category_id !== kategoria) {
+        kategoria = p.category_id;
+        html += `<div class="okat">${CATS_BY_ID[kategoria] || kategoria}</div>`;
+      }
+      html += `<div class="orow">
+          <div class="nazov">${p.name}${p.sub ? `<small>${p.sub}</small>` : ''}</div>
+          <input type="number" min="0" step="1" placeholder="0"
+            data-produkt="${p.id}" aria-label="Počet kusov — ${p.name} ${p.sub || ''}">
+        </div>`;
+    });
+    el.innerHTML = html;
+  }
+
+  function zozbierajPolozky() {
+    return [...document.querySelectorAll('#oItems input[data-produkt]')]
+      .map((i) => ({ product_id: i.dataset.produkt, qty: parseInt(i.value, 10) || 0 }))
+      .filter((x) => x.qty > 0);
+  }
+
+  function resetOrderForm() {
+    ['oDay', 'oName', 'oPhone', 'oEmail', 'oNote'].forEach((id) => {
+      document.getElementById(id).value = '';
+    });
+    document.querySelectorAll('#oItems input[data-produkt]').forEach((i) => { i.value = ''; });
+    document.getElementById('orderErr').style.display = 'none';
+    document.getElementById('orderOk').style.display = 'none';
+  }
+
+  async function saveOrder() {
+    const errEl = document.getElementById('orderErr');
+    const okEl = document.getElementById('orderOk');
+    errEl.style.display = 'none'; okEl.style.display = 'none';
+
+    const body = {
+      day: document.getElementById('oDay').value,
+      name: document.getElementById('oName').value.trim(),
+      phone: document.getElementById('oPhone').value.trim(),
+      email: document.getElementById('oEmail').value.trim(),
+      note: document.getElementById('oNote').value.trim(),
+      items: zozbierajPolozky(),
+    };
+    const zastav = (sprava) => { errEl.textContent = sprava; errEl.style.display = 'block'; };
+    if (!body.day) return zastav('Vyber termín.');
+    if (!body.name) return zastav('Vyplň meno zákazníčky.');
+    if (!body.items.length) return zastav('Zadaj počet aspoň pri jednom výrobku.');
+
+    try {
+      const odpoved = await apiFetch('/api/admin/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      resetOrderForm();
+      okEl.textContent = `Zapísané ako objednávka #${odpoved.order_no}. Kapacita dňa je o ňu znížená.`;
+      okEl.style.display = 'block';
+      loadOrders();
+      loadDays();
+    } catch (err) {
+      zastav(err.message);
+    }
+  }
+
+  // Objednávky rozdelené podľa stavu: hore to, čo ešte treba upiecť.
+  // V jednom zozname sa v nich dalo ťažko vyznať.
+  const SKUPINY = [
+    { stav: 'nova', nadpis: 'Nové — čakajú na vybavenie', odNajblizsieho: true },
+    { stav: 'vybavena', nadpis: 'Vybavené', odNajblizsieho: false },
+    { stav: 'zrusena', nadpis: 'Zrušené', odNajblizsieho: false },
+  ];
+
+  function riadokObjednavky(o) {
+    return `
         <tr>
           <td class="ordno">${o.order_no ? '#' + o.order_no : '—'}</td>
           <td>${o.day}</td>
-          <td>${o.customer_name}<br><span class="muted">${o.phone}<br>${o.email}</span>${o.note ? `<br><span class="muted">Pozn.: ${o.note}</span>` : ''}</td>
+          <td>${o.customer_name}<br><span class="muted">${o.phone || '—'}${
+            o.email ? `<br>${o.email}` : ''}</span>${
+            o.note ? `<br><span class="muted">Pozn.: ${o.note}</span>` : ''}</td>
           <td>${(o.order_items || []).map((it) => `${it.qty}× ${it.name_snapshot}`).join('<br>')}</td>
           <td>${(o.order_items || []).some((it) => it.category_id === 'torty') ? 'od ' : ''}${o.total_estimate} €</td>
           <td><span class="badge ${o.status}">${o.status}</span></td>
@@ -128,7 +223,31 @@
               <option value="zrusena" ${o.status === 'zrusena' ? 'selected' : ''}>zrušená</option>
             </select>
           </td>
-        </tr>`).join('')}</tbody></table>`;
+        </tr>`;
+  }
+
+  function renderOrders(orders) {
+    const el = document.getElementById('ordersList');
+    if (!orders.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne objednávky.</p>'; return; }
+
+    el.innerHTML = SKUPINY.map((s) => {
+      const moje = orders
+        .filter((o) => o.status === s.stav)
+        // Pri nových je najdôležitejší najbližší termín — ten sa pečie ako prvý.
+        // Pri vybavených a zrušených je to história, tak od najnovšieho.
+        .sort((a, b) => (s.odNajblizsieho ? a.day.localeCompare(b.day) : b.day.localeCompare(a.day)));
+
+      const obsah = moje.length
+        ? `<table class="admin-table"><thead><tr>
+            <th>Číslo</th><th>Termín</th><th>Zákazník</th><th>Položky</th><th>Cena</th><th>Stav</th><th></th>
+          </tr></thead><tbody>${moje.map(riadokObjednavky).join('')}</tbody></table>`
+        : `<p class="prazdne">Žiadne.</p>`;
+
+      return `<div class="ordgrp${s.stav === 'nova' ? '' : ' hotove'}">
+          <h4>${s.nadpis} <span class="kolko">${moje.length}</span></h4>
+          ${obsah}
+        </div>`;
+    }).join('');
   }
 
   async function updateOrderStatus(id, status) {
@@ -475,7 +594,7 @@
 
   window.Admin = {
     login, logout, showTab,
-    updateOrderStatus, editDay, saveDay, savePassword,
+    updateOrderStatus, saveOrder, resetOrderForm, editDay, saveDay, savePassword,
     deleteDay, editProduct, resetProductForm, saveProduct,
     saveSettings,
   };

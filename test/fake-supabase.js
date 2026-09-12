@@ -128,8 +128,11 @@ function startFakeSupabase() {
   }
 
   function createOrderRpc(args) {
+    // Ručne zapísaná objednávka obchádza lehotu aj minimálny odber,
+    // kapacitu dňa nie — musí sedieť s funkciou v supabase/schema.sql.
+    const rucne = args.p_rucne === true;
     const lead = db.site_settings[0].lead_days || 0;
-    if (args.p_day < plusDni(dnesLokalne(), lead)) throw { message: "too_soon" };
+    if (!rucne && args.p_day < plusDni(dnesLokalne(), lead)) throw { message: "too_soon" };
 
     const day = db.open_days.find((d) => d.day === args.p_day);
     if (!day || !day.is_open) throw { message: "day_closed" };
@@ -143,7 +146,7 @@ function startFakeSupabase() {
       if (!product) throw { message: "product_not_found" };
       const qty = parseInt(item.qty, 10);
       if (!Number.isInteger(qty) || qty <= 0 || qty > 200) throw { message: "invalid_qty" };
-      if (qty < product.min_qty) throw { message: "below_minimum" };
+      if (qty < product.min_qty && !rucne) throw { message: "below_minimum" };
       if (product.category_id === "zakusky") addZ += qty;
       if (product.category_id === "torty") addT += qty;
       if (product.category_id === "chlebik") addCh += qty;
