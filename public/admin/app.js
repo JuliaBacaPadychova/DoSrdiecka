@@ -604,6 +604,15 @@
   let RECEPTAR = null;
   let SUROVINY_CACHE = [];
 
+  // Postgres radí diakritiku inak než slovenská abeceda, preto sa zoznamy
+  // radia ešte raz tu — nech je Čokoláda za Cukrom a nie na konci.
+  function podlaAbecedy(zoznam, kluc) {
+    return [...zoznam].sort((a, b) => String(kluc(a)).localeCompare(String(kluc(b)), 'sk'));
+  }
+  function prichuteAbecedne() {
+    return podlaAbecedy(PRODUCTS_CACHE.filter((p) => p.active !== false), (p) => `${p.name} — ${p.sub}`);
+  }
+
   function esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => (
       { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -687,6 +696,8 @@
     document.getElementById('surNegligible').value = String(!!s.negligible);
     document.getElementById('surNote').value = s.note || '';
     document.getElementById('surovinaFormTitle').textContent = 'Úprava: ' + s.name;
+    const formular = document.getElementById('surovinaForm');
+    if (formular) formular.open = true;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -763,7 +774,7 @@
     const el = document.getElementById('recPrichut');
     if (!el || !RECEPTAR) return;
     const maRecepty = new Set(RECEPTAR.vazby.map((v) => v.product_id));
-    const zoznam = PRODUCTS_CACHE.filter((p) => maRecepty.has(p.id));
+    const zoznam = podlaAbecedy(PRODUCTS_CACHE.filter((p) => maRecepty.has(p.id)), (p) => `${p.name} — ${p.sub}`);
     const doteraz = el.value;
     el.innerHTML = zoznam.length
       ? zoznam.map((p) => `<option value="${p.id}">${esc(p.name)} — ${esc(p.sub)}</option>`).join('')
@@ -863,9 +874,9 @@
     if (!vybrane.length) { el.innerHTML = '<p class="muted">Tomuto výberu nič nezodpovedá.</p>'; return; }
 
     const surovinaPodlaId = new Map(suroviny.map((s) => [s.id, s]));
-    const moznostiSurovin = suroviny
+    const moznostiSurovin = podlaAbecedy(suroviny, (x) => x.name)
       .map((s) => `<option value="${s.id}">${esc(s.name)} (${esc(s.unit)})</option>`).join('');
-    const moznostiPrichuti = PRODUCTS_CACHE
+    const moznostiPrichuti = prichuteAbecedne()
       .map((p) => `<option value="${p.id}">${esc(p.name)} — ${esc(p.sub)}</option>`).join('');
 
     el.innerHTML = vybrane.map((r) => {
@@ -1186,7 +1197,7 @@
     if (!product_id) riadok.dataset.predvoleny = '1';
     riadok.innerHTML = `
       <div><label>Príchuť</label><select class="kalProdukt">
-        ${PRODUCTS_CACHE.filter((p) => p.active !== false)
+        ${prichuteAbecedne()
           .map((p) => `<option value="${p.id}">${esc(p.name)} — ${esc(p.sub)}</option>`).join('')}
       </select></div>
       <div><label>Počet kusov</label><input type="number" min="0" step="1" value="${kusy || 6}" class="kalKusy"></div>
@@ -1233,6 +1244,9 @@
     if (!(z.items || []).length) pridajKalRiadok();
     document.getElementById('zozStav').textContent = '';
     naplnZoznamy();
+    // Výsledok dole musí patriť k otvorenému zoznamu. Keby tam ostal
+    // výpočet z predošlého, nakúpilo by sa podľa cudzieho zoznamu.
+    kalkulaciaRucna();
   }
 
   async function ulozZoznam() {

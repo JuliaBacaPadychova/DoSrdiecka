@@ -44,7 +44,9 @@
 
   <div class="admin-panel on" id="tab-orders">
     <div class="admin-card">
-      <h3>Zapísať objednávku dohodnutú mimo web</h3>
+      <details id="rucnaObjednavka">
+      <summary style="cursor:pointer"><strong>Zapísať objednávku dohodnutú mimo web</strong></summary>
+      <div style="padding-top:12px">
       <p class="muted" style="margin:0 0 12px;font-size:.88rem">Zaberie kapacitu dňa rovnako ako
         objednávka z webu. Lehota na objednanie ani minimálny odber sa tu neuplatňujú
         a zákazníčke neodíde žiadny e-mail. Keď termín ešte nie je v kalendári,
@@ -65,6 +67,8 @@
       </div>
       <p class="err" id="orderErr" style="display:none"></p>
       <p class="muted" id="orderOk" style="display:none"></p>
+      </div>
+      </details>
     </div>
 
     <div class="admin-card">
@@ -138,7 +142,9 @@
 
   <div class="admin-panel" id="tab-suroviny">
     <div class="admin-card">
-      <h3 id="surovinaFormTitle">Nová surovina</h3>
+      <details id="surovinaForm">
+      <summary style="cursor:pointer"><strong id="surovinaFormTitle">Nová surovina</strong></summary>
+      <div style="padding-top:12px">
       <p class="muted" style="margin:0 0 12px;font-size:.88rem">Gramáž balenia je to, v akom
         sa surovina kupuje — z nej sa počíta, koľko balení treba a koľko stojí to,
         čo sa naozaj minie. Keď ju necháš prázdnu, surovina sa v kalkulácii vypíše
@@ -166,6 +172,8 @@
         <button class="btn ghost" onclick="Admin.resetSurovinaForm()">Nová / zrušiť úpravu</button>
       </div>
       <p class="err" id="surErr" style="display:none"></p>
+      </div>
+      </details>
     </div>
     <div class="admin-card">
       <div id="surovinyList"><p class="muted">Načítavam suroviny…</p></div>
@@ -244,6 +252,23 @@
 
   <div class="admin-panel" id="tab-kalkulacka">
     <div class="admin-card">
+      <details>
+      <summary style="cursor:pointer"><strong>Pomôcka: čo je objednané na deň</strong></summary>
+      <div style="padding-top:12px">
+        <p class="muted" style="margin:0 0 12px;font-size:.88rem">Vypíše, čo je na ten termín
+          naozaj objednané (zrušené sa nerátajú). Nákupný zoznam to neurčuje — dá sa tým len
+          skontrolovať, či si na niečo nezabudla, alebo si to prevziať do zoznamu.</p>
+        <div class="form">
+          <div><label for="kalDay">Termín</label><input id="kalDay" type="date"></div>
+          <div style="display:flex;align-items:flex-end;gap:8px">
+            <button class="btn ghost sm" onclick="Admin.kalkulaciaDna()">Spočítať z objednávok</button>
+            <button class="btn ghost sm" onclick="Admin.objednavkyDoZoznamu()">Prevziať do zoznamu</button>
+          </div>
+        </div>
+      </div>
+      </details>
+    </div>
+    <div class="admin-card">
       <div class="admin-row" style="margin-bottom:10px">
         <h3 style="margin:0">Uložené nákupné zoznamy</h3>
         <button class="btn ghost sm" onclick="Admin.novyZoznam()">Nový zoznam</button>
@@ -273,17 +298,6 @@
     <div class="admin-card">
       <div id="kalVysledok"><p class="muted">Zostav zoznam a daj Spočítať.</p></div>
     </div>
-    <div class="admin-card">
-      <h3>Pomôcka: čo je objednané na deň</h3>
-      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Vypíše, čo je na ten termín
-        naozaj objednané (zrušené sa nerátajú). Nákupný zoznam to neurčuje — dá sa tým len
-        skontrolovať, či si na niečo nezabudla, alebo si to prevziať do zoznamu.</p>
-      <div class="form">
-        <div><label for="kalDay">Termín</label><input id="kalDay" type="date"></div>
-        <div style="display:flex;align-items:flex-end;gap:8px">
-          <button class="btn ghost sm" onclick="Admin.kalkulaciaDna()">Spočítať z objednávok</button>
-          <button class="btn ghost sm" onclick="Admin.objednavkyDoZoznamu()">Prevziať do zoznamu</button>
-        </div>
       </div>
     </div>
   </div>
