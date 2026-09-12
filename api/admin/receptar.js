@@ -15,7 +15,7 @@
 const { rest } = require("../../lib/supabase");
 const { sendJson, readJson, withErrors } = require("../../lib/http");
 const { requireAdmin } = require("../../lib/auth");
-const { nakupnyZoznam } = require("../../lib/kalkulacia");
+const { nakupnyZoznam, rozpisReceptov } = require("../../lib/kalkulacia");
 
 // Čo sa dá meniť. Čokoľvek mimo týchto zoznamov sa z tela požiadavky
 // zahodí — aby sa cez formulár nedalo prepísať id ani cudzí stĺpec.
@@ -120,14 +120,21 @@ module.exports = withErrors(
         polozky: objednane.polozky,
         bez_receptu: objednane.bez_receptu,
         zoznam: nakupnyZoznam(objednane.polozky, preVypocet(receptar)),
+        rozpis: rozpisReceptov(objednane.polozky, preVypocet(receptar)),
       });
     }
 
+    // Prepočet vracia oboje naraz: nákupný zoznam (čo kúpiť) aj rozpis
+    // receptov (čo namiešať). Sú to dva pohľady na ten istý výpočet,
+    // takže sa nemôžu rozísť.
     if (req.method === "POST" && co === "kalkulacia") {
       const body = await readJson(req);
       const polozky = Array.isArray(body.polozky) ? body.polozky : [];
-      const receptar = await nacitatReceptar();
-      return sendJson(res, 200, { zoznam: nakupnyZoznam(polozky, preVypocet(receptar)) });
+      const data = preVypocet(await nacitatReceptar());
+      return sendJson(res, 200, {
+        zoznam: nakupnyZoznam(polozky, data),
+        rozpis: rozpisReceptov(polozky, data),
+      });
     }
 
     if (!typ) return sendJson(res, 400, { error: "unknown_type" });

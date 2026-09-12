@@ -8,7 +8,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { STAV, nakupnyZoznam, cenaZaKus } = require("../lib/kalkulacia");
+const { STAV, nakupnyZoznam, rozpisReceptov, cenaZaKus } = require("../lib/kalkulacia");
 
 const SUROVINY = [
   { id: "mas", name: "Mascarpone", unit: "g", pack_size: 250, pack_price: 2.53 },
@@ -157,4 +157,62 @@ test("cena za kus vychádza zo spotreby a povie, či je úplná", () => {
   assert.equal(c.spotreba_na_kus, 0.78);
   assert.equal(c.uplna, false);
   assert.deepEqual(c.nedopocitane, ["Soľ", "Vanilka"]);
+});
+
+// --- rozpis receptov (bunky C1 a C2 z excelu) ---
+
+test("recept sa prepočíta na želaný počet kusov, sám sa nezmení", () => {
+  const r = rozpisReceptov([{ product_id: "pistaciovy", kusy: 14 }], DATA);
+  assert.equal(r.length, 1);
+
+  const krem = r[0];
+  assert.equal(krem.recept.nazov, "Pistáciový krém");
+  assert.equal(krem.recept.vytaznost, 10, "výťažnosť receptu ostáva 10 ks");
+  assert.equal(krem.davky, 1.4);
+
+  const mascarpone = krem.polozky.find((p) => p.surovina === "Mascarpone");
+  assert.equal(mascarpone.zakladne, 260, "základ z receptu ostáva");
+  assert.equal(mascarpone.mnozstvo, 364, "prepočet na 14 kusov");
+});
+
+test("recept písaný na gramy sa prepočíta cez gramy na kus", () => {
+  const r = rozpisReceptov([{ product_id: "kavovy", kusy: 6 }], DATA);
+  const coulis = r.find((x) => x.recept.nazov === "Malinové coulis");
+
+  // 12 g na kus × 6 kusov = 72 g z dávky na 150 g
+  assert.equal(coulis.davky, 0.48);
+  assert.equal(coulis.vytazok, 72);
+  assert.equal(coulis.polozky.find((p) => p.surovina === "Pyré malina").mnozstvo, 72);
+});
+
+test("recept použitý v dvoch príchutiach sa mieša raz", () => {
+  const r = rozpisReceptov(
+    [{ product_id: "pistaciovy", kusy: 10 }, { product_id: "kavovy", kusy: 10 }],
+    DATA,
+  );
+  const krem = r.filter((x) => x.recept.nazov === "Pistáciový krém");
+  assert.equal(krem.length, 1, "nie dva samostatné rozpisy");
+  assert.equal(krem[0].davky, 2);
+  assert.equal(krem[0].polozky.find((p) => p.surovina === "Mascarpone").mnozstvo, 520);
+});
+
+test("surovina bez gramáže ostane v rozpise bez množstva", () => {
+  const r = rozpisReceptov([{ product_id: "pistaciovy", kusy: 14 }], DATA);
+  const sol = r[0].polozky.find((p) => p.surovina === "Soľ");
+  assert.equal(sol.zakladne, null);
+  assert.equal(sol.mnozstvo, null);
+});
+
+test("rozpis a nákupný zoznam sa nerozchádzajú", () => {
+  const kusy = 14;
+  const rozpis = rozpisReceptov([{ product_id: "pistaciovy", kusy }], DATA);
+  const zoznam = nakupnyZoznam([{ product_id: "pistaciovy", kusy }], DATA);
+
+  for (const r of rozpis) {
+    for (const p of r.polozky) {
+      if (p.mnozstvo === null) continue;
+      const v = zoznam.riadky.find((x) => x.surovina === p.surovina);
+      assert.equal(v.mnozstvo, p.mnozstvo, `${p.surovina} musí sedieť v oboch pohľadoch`);
+    }
+  }
 });
