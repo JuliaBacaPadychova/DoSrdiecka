@@ -634,11 +634,10 @@
     const el = document.getElementById('surovinyList');
     SUROVINY_CACHE = suroviny;
     if (!suroviny.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne suroviny.</p>'; return; }
-    const chyba = suroviny.filter((s) => !s.negligible && (s.pack_size === null || s.pack_price === null));
+    // Zoznam nedoplnených surovín sa tu nevypisuje: v tabuľke ich značí
+    // červené "doplniť" a pri samotnom prepočte ich kalkulačka zhrnie do
+    // riadku "Nedopočítané" — tam to aj niečo mení.
     el.innerHTML = `
-      ${chyba.length ? `<p class="muted" style="margin:0 0 12px">Bez vyplneného balenia alebo ceny:
-        <strong>${chyba.map((s) => esc(s.name)).join(', ')}</strong>. Kým tam nebudú,
-        je vypočítaná cena spodná hranica, nie skutočnosť.</p>` : ''}
       <div class="form" style="margin:0 0 16px">
         <div class="full">
           <label for="surHladat">Nájsť surovinu</label>
