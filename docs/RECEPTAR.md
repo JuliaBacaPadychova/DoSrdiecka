@@ -89,8 +89,17 @@ V správe webu pribudli tri záložky:
 
 - **Suroviny** — kartotéka: balenie, cena, dátum ceny a odkiaľ je. Keď sa
   zmení cena a dátum sa nevyplní, doplní sa dnešok sám.
-- **Recepty** — výťažnosť a množstvá. Zmena sa uloží hneď po prepísaní
-  políčka. Pri každom recepte je vidieť, v ktorých príchutiach sa používa.
+- **Recepty** — dve časti. Hore *Čo mám miešať*: vyberie sa príchuť a
+  počet kusov a vypíšu sa všetky recepty tej príchute s gramážou
+  prepočítanou na ten počet (tlačidlo pošle ten istý počet do Kalkulačky).
+  Dole *Úprava receptov*: zbalený zoznam, kde sa menia gramáže, poznámka,
+  suroviny a priradenie k príchutiam; ukladá sa tlačidlom.
+
+  Výťažnosť („recept je napísaný na 20 ks") sa v správe **nedá prepísať**
+  zámerne. Je to vlastnosť receptu, nie objednávky, a keď bola editovateľná,
+  dala sa šípkou posunúť na 20,002 a ticho tým zmeniť cenu za kus. Ak sa
+  recept naozaj prerobí, mení sa cez `supabase/migracia-oprava-vytaznosti.sql`
+  alebo priamo v databáze.
 - **Kalkulačka** — dva režimy: *nákupný zoznam na deň* (počty sa vezmú
   z prijatých objednávok, zrušené sa nerátajú) a *ručný prepočet*
   (príchuť + počet kusov).

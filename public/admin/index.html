@@ -190,11 +190,54 @@
       <div id="receptyRozpis"><p class="muted">Vyber príchuť a počet kusov.</p></div>
     </div>
     <div class="admin-card">
-      <h3>Úprava receptov</h3>
-      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Tu sa mení samotný recept:
-        gramáž surovín a to, <strong>na koľko kusov je recept napísaný</strong>. To druhé
-        prepisuj len vtedy, keď si recept naozaj prerobila — nie keď chceš upiecť iný
-        počet. Na to je výber hore.</p>
+      <div class="admin-row" style="margin-bottom:10px">
+        <h3 style="margin:0">Úprava receptov</h3>
+        <button class="btn ghost sm" onclick="Admin.novyReceptForm()">Nový recept</button>
+      </div>
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Tu sa mení samotný recept —
+        gramáže, poznámka, suroviny a to, ku ktorým príchutiam patrí. Recepty sú zbalené;
+        rozbalíš ten, ktorý chceš upraviť. Prepočet na iný počet kusov robí výber hore,
+        recept sa tým nemení.</p>
+
+      <div id="novyReceptForm" style="display:none;margin-bottom:18px">
+        <div class="form">
+          <div><label for="nrNazov">Názov receptu</label><input id="nrNazov"></div>
+          <div><label for="nrDruh">Druh</label>
+            <select id="nrDruh">
+              <option value="cesto">cesto</option>
+              <option value="krem" selected>krém</option>
+              <option value="vklad">vklad</option>
+              <option value="poleva">poleva</option>
+              <option value="ozdoba">ozdoba</option>
+              <option value="ine">iné</option>
+            </select>
+          </div>
+          <div><label for="nrVytaznost">Recept je napísaný na</label><input id="nrVytaznost" type="number" min="0" step="1" value="10"></div>
+          <div><label for="nrJednotka">Čoho</label>
+            <select id="nrJednotka"><option value="ks">kusov</option><option value="g">gramov</option></select>
+          </div>
+          <div class="full"><label for="nrPoznamka">Poznámka</label><input id="nrPoznamka"></div>
+          <div class="full"><label for="nrPostup">Postup</label><textarea id="nrPostup" rows="3"></textarea></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:10px">
+          <button class="btn" onclick="Admin.ulozNovyRecept()">Založiť recept</button>
+          <button class="btn ghost" onclick="Admin.novyReceptForm(false)">Zrušiť</button>
+        </div>
+        <p class="err" id="nrErr" style="display:none"></p>
+      </div>
+
+      <div class="form" style="margin:0 0 14px">
+        <div><label for="recFilter">Ukázať</label>
+          <select id="recFilter" onchange="Admin.renderRecepty()">
+            <option value="">všetky recepty</option>
+            <option value="cesto">len cestá</option>
+            <option value="krem">len krémy</option>
+            <option value="vklad">len vklady</option>
+            <option value="poleva">len polevy</option>
+            <option value="nepriradene">nepriradené k príchuti</option>
+          </select>
+        </div>
+      </div>
       <div id="receptyList"><p class="muted">Načítavam recepty…</p></div>
     </div>
   </div>
