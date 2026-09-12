@@ -245,19 +245,20 @@
   <div class="admin-panel" id="tab-kalkulacka">
     <div class="admin-card">
       <div class="admin-row" style="margin-bottom:10px">
-        <h3 style="margin:0">Nákupný zoznam</h3>
-        <div style="display:flex;gap:8px">
-          <button class="btn ghost sm" onclick="Admin.novyZoznam()">Nový zoznam</button>
-          <button class="btn ghost sm zmazat" onclick="Admin.zmazZoznam()">Zmazať zoznam</button>
-        </div>
+        <h3 style="margin:0">Uložené nákupné zoznamy</h3>
+        <button class="btn ghost sm" onclick="Admin.novyZoznam()">Nový zoznam</button>
       </div>
       <p class="muted" style="margin:0 0 12px;font-size:.88rem">Zoznam si zostavíš sama a
         objednávkami nie je obmedzený — suroviny treba nakúpiť vopred. Na jeden termín
         môžeš mať viac príchutí a uložených zoznamov môže byť koľko chceš.</p>
+      <div id="zozZoznamy"></div>
+    </div>
+    <div class="admin-card">
+      <div class="admin-row" style="margin-bottom:10px">
+        <h3 style="margin:0" id="zozOtvoreny">Nový zoznam</h3>
+        <button class="btn ghost sm zmazat" onclick="Admin.zmazZoznam()">Zmazať tento zoznam</button>
+      </div>
       <div class="form">
-        <div><label for="zozVyber">Uložené zoznamy</label>
-          <select id="zozVyber" onchange="Admin.vyberZoznam(this.value)"></select>
-        </div>
         <div><label for="zozDen">Termín</label><input id="zozDen" type="date"></div>
         <div><label for="zozNazov">Názov</label><input id="zozNazov" placeholder="napr. sobota — Kováčovci"></div>
       </div>

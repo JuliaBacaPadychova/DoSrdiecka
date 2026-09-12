@@ -1137,13 +1137,35 @@
     if (!document.getElementById('zozPolozky').children.length) pridajKalRiadok();
   }
 
+  // Prehľad všetkých zoznamov je vidieť stále, nie schovaný v rozbaľovačke —
+  // inak sa po skoku do objednávok nedá povedať, v čom vlastne pracujem.
   function naplnZoznamy() {
-    const el = document.getElementById('zozVyber');
+    const el = document.getElementById('zozZoznamy');
     if (!el) return;
     const zoznamy = (RECEPTAR && RECEPTAR.zoznamy) || [];
-    el.innerHTML = '<option value="">— nový, neuložený —</option>'
-      + zoznamy.map((z) => `<option value="${z.id}">${esc(popisZoznamu(z))}</option>`).join('');
-    el.value = AKTUALNY_ZOZNAM || '';
+    el.innerHTML = zoznamy.length
+      ? `<table class="admin-table"><thead><tr>
+          <th>Termín</th><th>Názov</th><th>Príchute</th><th>Kusov</th><th></th>
+        </tr></thead><tbody>${zoznamy.map((z) => {
+          const otvoreny = z.id === AKTUALNY_ZOZNAM;
+          const kusov = (z.items || []).reduce((c, p) => c + (Number(p.kusy) || 0), 0);
+          return `<tr${otvoreny ? ' style="background:rgba(0,0,0,.05)"' : ''}>
+            <td>${esc(z.day || 'bez termínu')}</td>
+            <td>${esc(z.name || '—')}</td>
+            <td class="muted">${(z.items || []).map((p) => esc(nazovPrichute(p.product_id))).join(', ') || '—'}</td>
+            <td>${kusov}</td>
+            <td class="akcie">${otvoreny
+              ? '<span class="muted">otvorený</span>'
+              : `<button class="btn ghost sm" onclick="Admin.vyberZoznam('${z.id}')">Otvoriť</button>`}</td>
+          </tr>`;
+        }).join('')}</tbody></table>`
+      : '<p class="muted">Zatiaľ žiadny uložený zoznam.</p>';
+
+    const nadpis = document.getElementById('zozOtvoreny');
+    if (nadpis) {
+      const z = zoznamy.find((x) => x.id === AKTUALNY_ZOZNAM);
+      nadpis.textContent = z ? `Otvorený zoznam: ${popisZoznamu(z)}` : 'Nový zoznam (zatiaľ neuložený)';
+    }
   }
 
   function popisZoznamu(z) {
@@ -1210,6 +1232,7 @@
     (z.items || []).forEach((p) => pridajKalRiadok(p.product_id, p.kusy));
     if (!(z.items || []).length) pridajKalRiadok();
     document.getElementById('zozStav').textContent = '';
+    naplnZoznamy();
   }
 
   async function ulozZoznam() {
@@ -1294,10 +1317,17 @@
     try {
       const data = await apiFetch(`/api/admin/receptar?den=${encodeURIComponent(day)}`);
       if (!data.polozky.length) { stav.textContent = 'Na ten termín nie je nič objednané.'; return; }
-      document.getElementById('zozDen').value = day;
-      document.getElementById('zozPolozky').innerHTML = '';
-      data.polozky.forEach((p) => pridajKalRiadok(p.product_id, p.kusy));
-      stav.textContent = `Prevzaté z ${data.pocet_objednavok} objednávok. Uprav počty a ulož.`;
+      if (!document.getElementById('zozDen').value) document.getElementById('zozDen').value = day;
+      zahodPredvoleneRiadky();
+      let pribudlo = 0;
+      data.polozky.forEach((p) => {
+        const uz = [...document.querySelectorAll('#zozPolozky .form')]
+          .find((r) => r.querySelector('.kalProdukt').value === p.product_id);
+        if (uz) { uz.querySelector('.kalKusy').value = p.kusy; } else { pridajKalRiadok(p.product_id, p.kusy); }
+        pribudlo += 1;
+      });
+      stav.textContent = `Prevzaté z ${data.pocet_objednavok} objednávok (${pribudlo} príchutí).`
+        + ' Doplň, čo pečieš navyše, a ulož.';
     } catch (err) { stav.textContent = err.message; }
   }
 
