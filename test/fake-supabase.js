@@ -28,6 +28,7 @@ function startFakeSupabase() {
     recipes: [],
     recipe_items: [],
     product_recipes: [],
+    shopping_plans: [],
     // Nadpis je zámerne dvojriadkový — zalomenie je súčasťou textu.
     site_settings: [{ id: true, hero_title: "Niečo sladké bez výčitky?\nJasné! Každý kúsok ide predsa do srdiečka.", hero_lead: "Testovací úvod.", about_text: "Pracujem prevažne s bezlaktózovými produktami.", lead_days: 4 }],
   };

@@ -244,26 +244,46 @@
 
   <div class="admin-panel" id="tab-kalkulacka">
     <div class="admin-card">
-      <h3>Nákupný zoznam na deň</h3>
-      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Počty sa berú z prijatých
-        objednávok na ten deň, zrušené sa nerátajú. Nič sa neprepisuje ručne.</p>
-      <div class="form">
-        <div><label for="kalDay">Termín</label><input id="kalDay" type="date"></div>
-        <div style="display:flex;align-items:flex-end">
-          <button class="btn" onclick="Admin.kalkulaciaDna()">Spočítať</button>
+      <div class="admin-row" style="margin-bottom:10px">
+        <h3 style="margin:0">Nákupný zoznam</h3>
+        <div style="display:flex;gap:8px">
+          <button class="btn ghost sm" onclick="Admin.novyZoznam()">Nový zoznam</button>
+          <button class="btn ghost sm zmazat" onclick="Admin.zmazZoznam()">Zmazať zoznam</button>
         </div>
       </div>
-    </div>
-    <div class="admin-card">
-      <h3>Ručný prepočet</h3>
-      <div id="kalRucne"></div>
-      <div style="margin-top:14px;display:flex;gap:10px">
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Zoznam si zostavíš sama a
+        objednávkami nie je obmedzený — suroviny treba nakúpiť vopred. Na jeden termín
+        môžeš mať viac príchutí a uložených zoznamov môže byť koľko chceš.</p>
+      <div class="form">
+        <div><label for="zozVyber">Uložené zoznamy</label>
+          <select id="zozVyber" onchange="Admin.vyberZoznam(this.value)"></select>
+        </div>
+        <div><label for="zozDen">Termín</label><input id="zozDen" type="date"></div>
+        <div><label for="zozNazov">Názov</label><input id="zozNazov" placeholder="napr. sobota — Kováčovci"></div>
+      </div>
+      <div id="zozPolozky" style="margin-top:14px"></div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button class="btn ghost sm" onclick="Admin.pridajKalRiadok()">Pridať príchuť</button>
+        <button class="btn" onclick="Admin.ulozZoznam()">Uložiť zoznam</button>
         <button class="btn" onclick="Admin.kalkulaciaRucna()">Spočítať</button>
+        <span class="muted" id="zozStav"></span>
       </div>
     </div>
     <div class="admin-card">
-      <div id="kalVysledok"><p class="muted">Vyber termín alebo zadaj príchute a počty.</p></div>
+      <div id="kalVysledok"><p class="muted">Zostav zoznam a daj Spočítať.</p></div>
+    </div>
+    <div class="admin-card">
+      <h3>Pomôcka: čo je objednané na deň</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Vypíše, čo je na ten termín
+        naozaj objednané (zrušené sa nerátajú). Nákupný zoznam to neurčuje — dá sa tým len
+        skontrolovať, či si na niečo nezabudla, alebo si to prevziať do zoznamu.</p>
+      <div class="form">
+        <div><label for="kalDay">Termín</label><input id="kalDay" type="date"></div>
+        <div style="display:flex;align-items:flex-end;gap:8px">
+          <button class="btn ghost sm" onclick="Admin.kalkulaciaDna()">Spočítať z objednávok</button>
+          <button class="btn ghost sm" onclick="Admin.objednavkyDoZoznamu()">Prevziať do zoznamu</button>
+        </div>
+      </div>
     </div>
   </div>
 

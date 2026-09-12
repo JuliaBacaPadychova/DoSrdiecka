@@ -41,6 +41,11 @@ const TYPY = {
     polia: ["product_id", "recipe_id", "qty_per_piece", "note"],
     texty: ["note"],
   },
+  zoznam: {
+    tabulka: "shopping_plans",
+    polia: ["day", "name", "note", "items"],
+    texty: ["name", "note"],
+  },
 };
 
 // Prázdne políčko z formulára znamená "nevyplnené", nie nulu. Pri
@@ -55,13 +60,14 @@ function pick(body, typ) {
 }
 
 async function nacitatReceptar() {
-  const [suroviny, recepty, polozky, vazby] = await Promise.all([
+  const [suroviny, recepty, polozky, vazby, zoznamy] = await Promise.all([
     rest("ingredients?select=*&order=name.asc"),
     rest("recipes?select=*&order=kind.asc,name.asc"),
     rest("recipe_items?select=*"),
     rest("product_recipes?select=*"),
+    rest("shopping_plans?select=*&order=day.desc.nullslast,created_at.desc"),
   ]);
-  return { suroviny, recepty, polozky, vazby };
+  return { suroviny, recepty, polozky, vazby, zoznamy };
 }
 
 // Tvar, v akom počíta lib/kalkulacia.js.
@@ -144,6 +150,9 @@ module.exports = withErrors(
       if ((co === "surovina" || co === "recept") && !fields.name) {
         return sendJson(res, 400, { error: "missing_name" });
       }
+      if (co === "zoznam" && fields.items !== undefined && !Array.isArray(fields.items)) {
+        return sendJson(res, 400, { error: "items_must_be_array" });
+      }
       const created = await rest(typ.tabulka, {
         method: "POST",
         body: fields,
@@ -165,6 +174,9 @@ module.exports = withErrors(
       const fields = pick(body, typ);
       if (Object.keys(fields).length === 0) {
         return sendJson(res, 400, { error: "no_fields" });
+      }
+      if (co === "zoznam" && fields.items !== undefined && !Array.isArray(fields.items)) {
+        return sendJson(res, 400, { error: "items_must_be_array" });
       }
       // Zmena ceny bez dátumu je cena bez platnosti — doplní sa dnešok.
       if (co === "surovina" && fields.pack_price !== undefined && body.price_date === undefined) {

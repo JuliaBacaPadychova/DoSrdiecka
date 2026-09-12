@@ -50,7 +50,7 @@ test("čítanie vráti suroviny aj recepty naraz", async (t) => {
   await sReceptarom(t, async ({ zavolaj }) => {
     const o = await zavolaj("GET", "/api/admin/receptar");
     assert.equal(o.code, 200);
-    assert.deepEqual(Object.keys(o.body).sort(), ["polozky", "recepty", "suroviny", "vazby"]);
+    assert.deepEqual(Object.keys(o.body).sort(), ["polozky", "recepty", "suroviny", "vazby", "zoznamy"]);
     assert.equal(o.body.suroviny[0].name, "Mascarpone");
   });
 });
@@ -107,4 +107,61 @@ test("počet serverless funkcií sa zmestí do limitu nasadenia", () => {
 
   const pocet = spocitaj(koren);
   assert.ok(pocet <= 12, `api/ má ${pocet} funkcií, Vercel Hobby pustí najviac 12`);
+});
+
+// --- nákupné zoznamy ---
+//
+// Zoznam je samostatná vec, nie odvodenina od objednávok: suroviny sa
+// kupujú vopred, keď objednávky ešte nie sú.
+
+test("nákupný zoznam sa dá uložiť, upraviť aj zmazať", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    const vytvorenie = await zavolaj("POST", "/api/admin/receptar?co=zoznam", {
+      day: "2026-10-18",
+      name: "sobota",
+      items: [{ product_id: "p-choux", kusy: 12 }],
+    });
+    assert.equal(vytvorenie.code, 200);
+    const id = vytvorenie.body.zaznam.id;
+    assert.equal(db.shopping_plans.length, 1);
+
+    const uprava = await zavolaj("PATCH", `/api/admin/receptar?co=zoznam&id=${id}`, {
+      items: [{ product_id: "p-choux", kusy: 12 }, { product_id: "p-brownie", kusy: 1 }],
+    });
+    assert.equal(uprava.code, 200);
+    assert.equal(db.shopping_plans[0].items.length, 2);
+
+    const zmazanie = await zavolaj("DELETE", `/api/admin/receptar?co=zoznam&id=${id}`);
+    assert.equal(zmazanie.code, 200);
+    assert.equal(db.shopping_plans.length, 0);
+  });
+});
+
+test("zoznam bez termínu sa uloží tiež", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    const o = await zavolaj("POST", "/api/admin/receptar?co=zoznam", {
+      day: "", name: "", items: [{ product_id: "p-choux", kusy: 6 }],
+    });
+    assert.equal(o.code, 200);
+    assert.equal(db.shopping_plans[0].day, null, "prázdny termín je prázdny, nie dnešok");
+  });
+});
+
+test("položky musia byť zoznam, nie čokoľvek", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    const o = await zavolaj("POST", "/api/admin/receptar?co=zoznam", { items: "12 choux" });
+    assert.equal(o.code, 400);
+    assert.equal(db.shopping_plans.length, 0, "nič sa neuloží");
+  });
+});
+
+test("uložené zoznamy chodia spolu s receptárom", async (t) => {
+  await sReceptarom(t, async ({ zavolaj }) => {
+    await zavolaj("POST", "/api/admin/receptar?co=zoznam", {
+      day: "2026-10-18", items: [{ product_id: "p-choux", kusy: 12 }],
+    });
+    const o = await zavolaj("GET", "/api/admin/receptar");
+    assert.equal(o.body.zoznamy.length, 1);
+    assert.equal(o.body.zoznamy[0].day, "2026-10-18");
+  });
 });
