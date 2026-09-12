@@ -882,6 +882,16 @@
         </summary>
 
         <div style="padding:12px 0 0 4px">
+          <div class="form" style="margin:0 0 12px">
+            <div><label for="vytaznost-${r.id}">Recept je napísaný na</label>
+              <input type="number" min="0" step="1" id="vytaznost-${r.id}"
+                data-vytaznost="${r.id}" data-povodne="${esc(r.yield_qty)}"
+                value="${esc(r.yield_qty)}">
+              <span class="fieldhint">${r.yield_unit === 'g' ? 'gramov' : 'kusov'} —
+                mení sa len vtedy, keď si recept naozaj prerobila alebo po pečení zistila,
+                že vydá iný počet. Prepočet na inú objednávku robí výber hore.</span>
+            </div>
+          </div>
           <table class="admin-table"><tbody>${vlastne.map((p) => {
             const su = surovinaPodlaId.get(p.ingredient_id);
             return `<tr>
@@ -945,8 +955,9 @@
             </div>
           </div>
 
-          <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <button class="btn" onclick="Admin.ulozRecept('${r.id}')">Uložiť zmeny</button>
+            <button class="btn ghost sm zmazat" onclick="Admin.zmazRecept('${r.id}')">Zmazať recept</button>
             <span class="muted" id="stav-${r.id}"></span>
           </div>
         </div>
@@ -971,6 +982,14 @@
         body: JSON.stringify({ amount: inp.value }),
       }));
     });
+    const vyt = box.querySelector('[data-vytaznost]');
+    if (vyt && vyt.value !== vyt.dataset.povodne) {
+      ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ yield_qty: vyt.value }),
+      }));
+    }
     const pozn = box.querySelector('[data-poznamka]');
     if (pozn && pozn.value !== pozn.dataset.povodne) {
       ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
@@ -990,6 +1009,23 @@
     } catch (err) {
       stav.textContent = err.message;
     }
+  }
+
+  // Recept priradený k príchuti sa zmazať nedá — databáza to odmietne a
+  // je to tak správne: príchuť by prišla o časť zloženia bez varovania.
+  async function zmazRecept(receptId) {
+    const recept = RECEPTAR.recepty.find((r) => r.id === receptId);
+    const pouzitie = RECEPTAR.vazby.filter((v) => v.recipe_id === receptId);
+    if (pouzitie.length) {
+      alert(`Recept sa používa pri: ${pouzitie.map((v) => nazovPrichute(v.product_id)).join(', ')}.`
+        + '\nNajprv ho odober z týchto príchutí, potom sa dá zmazať.');
+      return;
+    }
+    if (!confirm(`Naozaj zmazať recept „${recept ? recept.name : ''}" aj s jeho surovinami?`)) return;
+    try {
+      await apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, { method: 'DELETE' });
+      await loadRecepty();
+    } catch (err) { alert(err.message); }
   }
 
   async function pridajPolozku(receptId) {
@@ -1082,50 +1118,141 @@
     }
   }
 
-  // Z rozpisu rovno do kalkulačky: tá istá príchuť a počet kusov, len
-  // namiesto gramáží vyjde nákupný zoznam a cena.
-  async function doKalkulacky(product_id, kusy) {
-    showTab('kalkulacka');
-    const box = document.getElementById('kalRucne');
-    box.innerHTML = '';
-    pridajKalRiadok();
-    const riadok = box.querySelector('.form');
-    riadok.querySelector('.kalProdukt').value = product_id;
-    riadok.querySelector('.kalKusy').value = kusy;
-    await kalkulaciaRucna();
-  }
+  // ---------- nákupné zoznamy ----------
+
+  let AKTUALNY_ZOZNAM = null; // id uloženého zoznamu, alebo null pre nový
 
   async function pripravKalkulacku() {
-    if (!PRODUCTS_CACHE.length) {
+    if (!PRODUCTS_CACHE.length || !RECEPTAR) {
       try {
-        const p = await apiFetch('/api/admin/products');
-        PRODUCTS_CACHE = p.products || [];
+        const [p, r] = await Promise.all([
+          apiFetch('/api/admin/products'),
+          apiFetch('/api/admin/receptar'),
+        ]);
+        PRODUCTS_CACHE = p.products || PRODUCTS_CACHE;
+        RECEPTAR = r;
       } catch { /* zoznam príchutí sa doplní po načítaní ponuky */ }
     }
-    if (!document.getElementById('kalRucne').children.length) pridajKalRiadok();
+    naplnZoznamy();
+    if (!document.getElementById('zozPolozky').children.length) pridajKalRiadok();
   }
 
-  function pridajKalRiadok() {
-    const box = document.getElementById('kalRucne');
+  function naplnZoznamy() {
+    const el = document.getElementById('zozVyber');
+    if (!el) return;
+    const zoznamy = (RECEPTAR && RECEPTAR.zoznamy) || [];
+    el.innerHTML = '<option value="">— nový, neuložený —</option>'
+      + zoznamy.map((z) => `<option value="${z.id}">${esc(popisZoznamu(z))}</option>`).join('');
+    el.value = AKTUALNY_ZOZNAM || '';
+  }
+
+  function popisZoznamu(z) {
+    const kusov = (z.items || []).reduce((s, p) => s + (Number(p.kusy) || 0), 0);
+    return `${z.day || 'bez termínu'}${z.name ? ' — ' + z.name : ''} (${kusov} ks)`;
+  }
+
+  // Riadok, ktorý pridal program (prázdny zoznam pri otvorení), je
+  // označený ako "predvolený". Keď príde príchuť z receptov alebo
+  // z objednávok, predvolené riadky sa zahodia — inak by sa do nákupu
+  // započítalo šesť kusov príchute, ktorú nikto nevybral. Len čo do
+  // riadku niekto siahne, prestáva byť predvolený.
+  function pridajKalRiadok(product_id, kusy) {
+    const box = document.getElementById('zozPolozky');
     const riadok = document.createElement('div');
     riadok.className = 'form';
     riadok.style.marginBottom = '8px';
+    if (!product_id) riadok.dataset.predvoleny = '1';
     riadok.innerHTML = `
       <div><label>Príchuť</label><select class="kalProdukt">
         ${PRODUCTS_CACHE.filter((p) => p.active !== false)
           .map((p) => `<option value="${p.id}">${esc(p.name)} — ${esc(p.sub)}</option>`).join('')}
       </select></div>
-      <div><label>Počet kusov</label><input type="number" min="0" step="1" value="6" class="kalKusy"></div>`;
+      <div><label>Počet kusov</label><input type="number" min="0" step="1" value="${kusy || 6}" class="kalKusy"></div>
+      <div style="display:flex;align-items:flex-end">
+        <button class="btn ghost sm zmazat" onclick="this.closest('.form').remove()">Odobrať</button>
+      </div>`;
     box.appendChild(riadok);
+    if (product_id) riadok.querySelector('.kalProdukt').value = product_id;
+    riadok.addEventListener('input', () => { delete riadok.dataset.predvoleny; });
+    riadok.addEventListener('change', () => { delete riadok.dataset.predvoleny; });
   }
 
-  async function kalkulaciaRucna() {
-    const polozky = [...document.querySelectorAll('#kalRucne .form')].map((r) => ({
+  function zahodPredvoleneRiadky() {
+    document.querySelectorAll('#zozPolozky .form[data-predvoleny]').forEach((r) => r.remove());
+  }
+
+  function zozPolozkyZoStranky() {
+    return [...document.querySelectorAll('#zozPolozky .form')].map((r) => ({
       product_id: r.querySelector('.kalProdukt').value,
       kusy: parseInt(r.querySelector('.kalKusy').value, 10) || 0,
     })).filter((p) => p.product_id && p.kusy > 0);
+  }
 
+  function novyZoznam() {
+    AKTUALNY_ZOZNAM = null;
+    document.getElementById('zozDen').value = '';
+    document.getElementById('zozNazov').value = '';
+    document.getElementById('zozPolozky').innerHTML = '';
+    document.getElementById('zozStav').textContent = '';
+    document.getElementById('kalVysledok').innerHTML = '<p class="muted">Zostav zoznam a daj Spočítať.</p>';
+    pridajKalRiadok();
+    naplnZoznamy();
+  }
+
+  function vyberZoznam(id) {
+    AKTUALNY_ZOZNAM = id || null;
+    if (!id) { novyZoznam(); return; }
+    const z = (RECEPTAR.zoznamy || []).find((x) => x.id === id);
+    if (!z) return;
+    document.getElementById('zozDen').value = z.day || '';
+    document.getElementById('zozNazov').value = z.name || '';
+    document.getElementById('zozPolozky').innerHTML = '';
+    (z.items || []).forEach((p) => pridajKalRiadok(p.product_id, p.kusy));
+    if (!(z.items || []).length) pridajKalRiadok();
+    document.getElementById('zozStav').textContent = '';
+  }
+
+  async function ulozZoznam() {
+    const stav = document.getElementById('zozStav');
+    const telo = {
+      day: document.getElementById('zozDen').value || null,
+      name: document.getElementById('zozNazov').value.trim(),
+      items: zozPolozkyZoStranky(),
+    };
+    if (!telo.items.length) { stav.textContent = 'Zoznam je prázdny.'; return; }
+    stav.textContent = 'Ukladám…';
+    try {
+      const odpoved = await apiFetch(
+        `/api/admin/receptar?co=zoznam${AKTUALNY_ZOZNAM ? '&id=' + encodeURIComponent(AKTUALNY_ZOZNAM) : ''}`,
+        {
+          method: AKTUALNY_ZOZNAM ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(telo),
+        });
+      AKTUALNY_ZOZNAM = (odpoved.zaznam && odpoved.zaznam.id) || AKTUALNY_ZOZNAM;
+      RECEPTAR = await apiFetch('/api/admin/receptar');
+      naplnZoznamy();
+      stav.textContent = 'Uložené.';
+    } catch (err) {
+      stav.textContent = err.message;
+    }
+  }
+
+  async function zmazZoznam() {
+    if (!AKTUALNY_ZOZNAM) { document.getElementById('zozStav').textContent = 'Tento zoznam ešte nie je uložený.'; return; }
+    const z = (RECEPTAR.zoznamy || []).find((x) => x.id === AKTUALNY_ZOZNAM);
+    if (!confirm(`Naozaj zmazať nákupný zoznam „${z ? popisZoznamu(z) : ''}"?`)) return;
+    try {
+      await apiFetch(`/api/admin/receptar?co=zoznam&id=${encodeURIComponent(AKTUALNY_ZOZNAM)}`, { method: 'DELETE' });
+      RECEPTAR = await apiFetch('/api/admin/receptar');
+      novyZoznam();
+    } catch (err) { alert(err.message); }
+  }
+
+  async function kalkulaciaRucna() {
+    const polozky = zozPolozkyZoStranky();
     const el = document.getElementById('kalVysledok');
+    if (!polozky.length) { el.innerHTML = '<p class="err">Zoznam je prázdny.</p>'; return; }
     el.innerHTML = '<p class="muted">Počítam…</p>';
     try {
       const data = await apiFetch('/api/admin/receptar?co=kalkulacia', {
@@ -1133,15 +1260,45 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ polozky }),
       });
-      // Nadpis hovorí, čo sa počíta — nie len "ručný prepočet". Po
-      // odoslaní z receptov musí byť vidieť, že ide o tú istú objednávku.
-      const popis = polozky
-        .map((p) => `${nazovPrichute(p.product_id)} — ${p.kusy} ks`)
-        .join(' + ');
-      renderZoznam(data.zoznam, popis || 'Ručný prepočet');
+      const den = document.getElementById('zozDen').value;
+      const popis = polozky.map((p) => `${nazovPrichute(p.product_id)} — ${p.kusy} ks`).join(' + ');
+      renderZoznam(data.zoznam, (den ? den + ': ' : '') + popis);
     } catch (err) {
       el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
     }
+  }
+
+  // Z receptov: príchuť sa do zoznamu PRIDÁ, nie ním nahradí — na jeden
+  // deň sa často pečie viac príchutí naraz.
+  async function doKalkulacky(product_id, kusy) {
+    showTab('kalkulacka');
+    await pripravKalkulacku();
+    zahodPredvoleneRiadky();
+    const uz = [...document.querySelectorAll('#zozPolozky .form')]
+      .find((r) => r.querySelector('.kalProdukt').value === product_id);
+    if (uz) {
+      uz.querySelector('.kalKusy').value = kusy;
+    } else {
+      pridajKalRiadok(product_id, kusy);
+    }
+    document.getElementById('zozStav').textContent =
+      'Príchuť pridaná do zoznamu. Vyber termín a ulož ho — alebo pridaj ďalšiu príchuť.';
+  }
+
+  // Objednávky sú len pomôcka: prevezmú sa do zoznamu, kde sa dajú
+  // doplniť o to, čo sa pečie navyše.
+  async function objednavkyDoZoznamu() {
+    const day = document.getElementById('kalDay').value;
+    const stav = document.getElementById('zozStav');
+    if (!day) { stav.textContent = 'Vyber termín v spodnej časti.'; return; }
+    try {
+      const data = await apiFetch(`/api/admin/receptar?den=${encodeURIComponent(day)}`);
+      if (!data.polozky.length) { stav.textContent = 'Na ten termín nie je nič objednané.'; return; }
+      document.getElementById('zozDen').value = day;
+      document.getElementById('zozPolozky').innerHTML = '';
+      data.polozky.forEach((p) => pridajKalRiadok(p.product_id, p.kusy));
+      stav.textContent = `Prevzaté z ${data.pocet_objednavok} objednávok. Uprav počty a ulož.`;
+    } catch (err) { stav.textContent = err.message; }
   }
 
   async function kalkulaciaDna() {
@@ -1152,7 +1309,7 @@
     try {
       const data = await apiFetch(`/api/admin/receptar?den=${encodeURIComponent(day)}`);
       const kusy = data.polozky.reduce((s, p) => s + p.kusy, 0);
-      let hlavicka = `Termín ${day} — ${data.pocet_objednavok} objednávok, ${kusy} kusov`;
+      let hlavicka = `Objednané na ${day} — ${data.pocet_objednavok} objednávok, ${kusy} kusov`;
       if (data.bez_receptu.length) {
         hlavicka += `. Bez receptu (nerátalo sa): ${data.bez_receptu.join(', ')}`;
       }
@@ -1203,8 +1360,9 @@
     saveSettings,
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,
     renderRecepty, ulozRecept, pridajPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
-    novyReceptForm, ulozNovyRecept, doKalkulacky,
+    novyReceptForm, ulozNovyRecept, doKalkulacky, zmazRecept,
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
+    novyZoznam, vyberZoznam, ulozZoznam, zmazZoznam, objednavkyDoZoznamu,
   };
 
   if (getAccess()) showDashboard(); else showLogin();

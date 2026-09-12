@@ -95,14 +95,21 @@ V správe webu pribudli tri záložky:
   Dole *Úprava receptov*: zbalený zoznam, kde sa menia gramáže, poznámka,
   suroviny a priradenie k príchutiam; ukladá sa tlačidlom.
 
-  Výťažnosť („recept je napísaný na 20 ks") sa v správe **nedá prepísať**
-  zámerne. Je to vlastnosť receptu, nie objednávky, a keď bola editovateľná,
-  dala sa šípkou posunúť na 20,002 a ticho tým zmeniť cenu za kus. Ak sa
-  recept naozaj prerobí, mení sa cez `supabase/migracia-oprava-vytaznosti.sql`
-  alebo priamo v databáze.
-- **Kalkulačka** — dva režimy: *nákupný zoznam na deň* (počty sa vezmú
-  z prijatých objednávok, zrušené sa nerátajú) a *ručný prepočet*
-  (príchuť + počet kusov).
+  Výťažnosť („recept je napísaný na 20 ks") sa mení len tlačidlom Uložiť,
+  nikdy sama od seba. Keď sa ukladala pri každej zmene políčka, dala sa
+  šípkou posunúť na 20,002 a ticho tým zmeniť cenu za kus.
+
+  Recept priradený k príchuti sa zmazať nedá — najprv sa musí odobrať
+  z príchutí, inak by príchuť prišla o časť zloženia bez varovania.
+- **Kalkulačka** — nákupné zoznamy. Zoznam je samostatná vec: má termín,
+  názov a súpis „príchuť + počet kusov", dá sa uložiť, upraviť aj zmazať
+  a uložených môže byť viac. **Objednávkami nie je obmedzený** — suroviny
+  sa kupujú vopred, keď objednávky ešte nie sú. Čo je na termín naozaj
+  objednané, ukáže pomôcka dole a dá sa to do zoznamu prevziať.
+
+  Položky zoznamu sú v jednom `jsonb` stĺpci (`shopping_plans.items`):
+  zoznam sa vždy upravuje ako celok a nikdy sa nehľadá „vo všetkých
+  zoznamoch, kde je pistáciový choux".
 
 Výpočet je v `lib/kalkulacia.js` a je pokrytý testami (`npm test`), takže
 sa dá overiť na známych číslach bez toho, aby sa musel spúšťať web.
