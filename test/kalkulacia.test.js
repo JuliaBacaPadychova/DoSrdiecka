@@ -216,3 +216,12 @@ test("rozpis a nákupný zoznam sa nerozchádzajú", () => {
     }
   }
 });
+
+test("nákupný zoznam je zoradený podľa slovenskej abecedy", () => {
+  const z = nakupnyZoznam([{ product_id: "kavovy", kusy: 12 }], DATA);
+  const nazvy = z.riadky.map((r) => r.surovina);
+  const zoradene = [...nazvy].sort((a, b) => a.localeCompare(b, "sk"));
+  assert.deepEqual(nazvy, zoradene);
+  // Čokoláda patrí za Cukor, nie na koniec za Voda.
+  assert.ok(nazvy.indexOf("Čokoláda biela 28%") < nazvy.indexOf("Pektín NH"));
+});
