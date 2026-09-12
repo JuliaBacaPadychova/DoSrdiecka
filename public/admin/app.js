@@ -94,6 +94,9 @@
     if (name === 'days') loadDays();
     if (name === 'products') loadProducts();
     if (name === 'settings') loadSettings();
+    if (name === 'suroviny') loadSuroviny();
+    if (name === 'recepty') loadRecepty();
+    if (name === 'kalkulacka') pripravKalkulacku();
   }
 
   // ---------- orders ----------
@@ -595,11 +598,305 @@
     }
   }
 
+
+  // ---------- suroviny, recepty, kalkulácia ----------
+
+  let RECEPTAR = null;
+  let SUROVINY_CACHE = [];
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+  function cislo(v) {
+    return v === null || v === undefined || v === '' ? '' : v;
+  }
+  // Prázdna cena nie je nula — vypíše sa pomlčkou, nech je vidieť rozdiel
+  // medzi "je to zadarmo" a "nevieme".
+  function euro(v) {
+    return v === null || v === undefined ? '—' : Number(v).toFixed(2) + ' €';
+  }
+
+  async function loadSuroviny() {
+    const el = document.getElementById('surovinyList');
+    el.innerHTML = '<p class="muted">Načítavam suroviny…</p>';
+    try {
+      const data = await apiFetch('/api/admin/suroviny');
+      renderSuroviny(data.suroviny || []);
+    } catch (err) {
+      el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
+    }
+  }
+
+  function renderSuroviny(suroviny) {
+    const el = document.getElementById('surovinyList');
+    if (!suroviny.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne suroviny.</p>'; return; }
+    const chyba = suroviny.filter((s) => !s.negligible && (s.pack_size === null || s.pack_price === null));
+    el.innerHTML = `
+      ${chyba.length ? `<p class="muted" style="margin:0 0 12px">Bez vyplneného balenia alebo ceny:
+        <strong>${chyba.map((s) => esc(s.name)).join(', ')}</strong>. Kým tam nebudú,
+        je vypočítaná cena spodná hranica, nie skutočnosť.</p>` : ''}
+      <table class="admin-table"><thead><tr>
+        <th>Surovina</th><th>Balenie</th><th>Cena</th><th>Za jednotku</th><th>Platná od</th><th>Zdroj</th><th></th>
+      </tr></thead><tbody>${suroviny.map((s) => `
+        <tr>
+          <td>${esc(s.name)}${s.kind !== 'surovina' ? ` <span class="muted">(${esc(s.kind)})</span>` : ''}
+            ${s.note ? `<br><span class="muted" style="font-size:.85rem">${esc(s.note)}</span>` : ''}</td>
+          <td>${s.pack_size === null ? '<span class="err">doplniť</span>' : esc(s.pack_size) + ' ' + esc(s.unit)}</td>
+          <td>${s.pack_price === null ? (s.negligible ? '<span class="muted">neráta sa</span>' : '<span class="err">doplniť</span>') : euro(s.pack_price)}</td>
+          <td>${s.pack_size && s.pack_price !== null ? (s.pack_price / s.pack_size).toFixed(4) + ' €/' + esc(s.unit) : '—'}</td>
+          <td>${esc(s.price_date || '—')}</td>
+          <td>${esc(s.price_source || '—')}</td>
+          <td class="akcie"><button class="btn ghost sm" onclick="Admin.editSurovina('${s.id}')">Upraviť</button></td>
+        </tr>`).join('')}</tbody></table>`;
+    SUROVINY_CACHE = suroviny;
+  }
+
+  function editSurovina(id) {
+    const s = SUROVINY_CACHE.find((x) => x.id === id);
+    if (!s) return;
+    document.getElementById('surId').value = s.id;
+    document.getElementById('surName').value = s.name;
+    document.getElementById('surUnit').value = s.unit;
+    document.getElementById('surPackSize').value = cislo(s.pack_size);
+    document.getElementById('surPackPrice').value = cislo(s.pack_price);
+    document.getElementById('surPriceDate').value = s.price_date || '';
+    document.getElementById('surPriceSource').value = s.price_source || '';
+    document.getElementById('surKind').value = s.kind;
+    document.getElementById('surNegligible').value = String(!!s.negligible);
+    document.getElementById('surNote').value = s.note || '';
+    document.getElementById('surovinaFormTitle').textContent = 'Úprava: ' + s.name;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function resetSurovinaForm() {
+    ['surId', 'surName', 'surPackSize', 'surPackPrice', 'surPriceDate', 'surPriceSource', 'surNote']
+      .forEach((id) => { document.getElementById(id).value = ''; });
+    document.getElementById('surUnit').value = 'g';
+    document.getElementById('surKind').value = 'surovina';
+    document.getElementById('surNegligible').value = 'false';
+    document.getElementById('surovinaFormTitle').textContent = 'Nová surovina';
+    document.getElementById('surErr').style.display = 'none';
+  }
+
+  async function saveSurovina() {
+    const errEl = document.getElementById('surErr');
+    errEl.style.display = 'none';
+    const id = document.getElementById('surId').value;
+    const telo = {
+      name: document.getElementById('surName').value.trim(),
+      unit: document.getElementById('surUnit').value,
+      pack_size: document.getElementById('surPackSize').value,
+      pack_price: document.getElementById('surPackPrice').value,
+      price_date: document.getElementById('surPriceDate').value,
+      price_source: document.getElementById('surPriceSource').value.trim(),
+      kind: document.getElementById('surKind').value,
+      negligible: document.getElementById('surNegligible').value === 'true',
+      note: document.getElementById('surNote').value.trim(),
+    };
+    if (!telo.name) { errEl.textContent = 'Vyplň názov.'; errEl.style.display = 'block'; return; }
+    // Prázdny dátum posielame len pri novej surovine; pri úprave ho server
+    // doplní sám, keď sa mení cena.
+    if (!telo.price_date) delete telo.price_date;
+    try {
+      await apiFetch(`/api/admin/suroviny${id ? '?id=' + encodeURIComponent(id) : ''}`, {
+        method: id ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(telo),
+      });
+      resetSurovinaForm();
+      loadSuroviny();
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+    }
+  }
+
+  async function loadRecepty() {
+    const el = document.getElementById('receptyList');
+    el.innerHTML = '<p class="muted">Načítavam recepty…</p>';
+    try {
+      RECEPTAR = await apiFetch('/api/admin/recepty');
+      if (!PRODUCTS_CACHE.length) {
+        const p = await apiFetch('/api/admin/products');
+        PRODUCTS_CACHE = p.products || [];
+      }
+      renderRecepty();
+    } catch (err) {
+      el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
+    }
+  }
+
+  function nazovPrichute(productId) {
+    const p = PRODUCTS_CACHE.find((x) => x.id === productId);
+    return p ? `${p.name} — ${p.sub}` : 'neznámy výrobok';
+  }
+
+  function renderRecepty() {
+    const el = document.getElementById('receptyList');
+    const { recepty, polozky, vazby, suroviny } = RECEPTAR;
+    if (!recepty.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne recepty.</p>'; return; }
+    const surovinaPodlaId = new Map(suroviny.map((s) => [s.id, s]));
+
+    el.innerHTML = recepty.map((r) => {
+      const vlastne = polozky.filter((p) => p.recipe_id === r.id);
+      const pouzitie = vazby.filter((v) => v.recipe_id === r.id);
+      return `
+        <div style="margin-bottom:22px">
+          <h3 style="margin:0 0 4px">${esc(r.name)} <span class="muted" style="font-weight:400">(${esc(r.kind)})</span></h3>
+          <p class="muted" style="margin:0 0 8px;font-size:.88rem">
+            Recept je na
+            <input type="number" min="0" step="0.001" value="${esc(r.yield_qty)}" style="width:80px"
+              onchange="Admin.ulozRecept('${r.id}', 'yield_qty', this.value)">
+            ${esc(r.yield_unit)}.
+            ${pouzitie.length
+              ? 'Používa sa: ' + pouzitie.map((v) => esc(nazovPrichute(v.product_id)) + ` (${esc(v.qty_per_piece)} ${esc(r.yield_unit)}/ks)`).join(', ') + '.'
+              : '<strong>Zatiaľ nie je priradený k žiadnej príchuti.</strong>'}
+            ${r.note ? '<br>' + esc(r.note) : ''}
+          </p>
+          <table class="admin-table"><tbody>${vlastne.map((p) => {
+            const s = surovinaPodlaId.get(p.ingredient_id);
+            return `<tr>
+              <td>${esc(s ? s.name : 'neznáma surovina')}${p.optional ? ' <span class="muted">(voliteľná)</span>' : ''}</td>
+              <td style="width:150px">
+                <input type="number" min="0" step="0.001" value="${cislo(p.amount)}" placeholder="podľa chuti"
+                  style="width:100px" onchange="Admin.ulozPolozku('${p.id}', this.value)">
+                ${esc(s ? s.unit : '')}
+              </td>
+              <td class="muted" style="font-size:.85rem">${esc(p.note || '')}</td>
+            </tr>`;
+          }).join('')}</tbody></table>
+        </div>`;
+    }).join('');
+  }
+
+  async function ulozRecept(id, pole, hodnota) {
+    try {
+      await apiFetch(`/api/admin/recepty?id=${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [pole]: hodnota }),
+      });
+      loadRecepty();
+    } catch (err) { alert(err.message); }
+  }
+
+  async function ulozPolozku(id, hodnota) {
+    try {
+      await apiFetch(`/api/admin/recepty?polozka=${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: hodnota }),
+      });
+      loadRecepty();
+    } catch (err) { alert(err.message); }
+  }
+
+  async function pripravKalkulacku() {
+    if (!PRODUCTS_CACHE.length) {
+      try {
+        const p = await apiFetch('/api/admin/products');
+        PRODUCTS_CACHE = p.products || [];
+      } catch { /* zoznam príchutí sa doplní po načítaní ponuky */ }
+    }
+    if (!document.getElementById('kalRucne').children.length) pridajKalRiadok();
+  }
+
+  function pridajKalRiadok() {
+    const box = document.getElementById('kalRucne');
+    const riadok = document.createElement('div');
+    riadok.className = 'form';
+    riadok.style.marginBottom = '8px';
+    riadok.innerHTML = `
+      <div><label>Príchuť</label><select class="kalProdukt">
+        ${PRODUCTS_CACHE.filter((p) => p.active !== false)
+          .map((p) => `<option value="${p.id}">${esc(p.name)} — ${esc(p.sub)}</option>`).join('')}
+      </select></div>
+      <div><label>Počet kusov</label><input type="number" min="0" step="1" value="6" class="kalKusy"></div>`;
+    box.appendChild(riadok);
+  }
+
+  async function kalkulaciaRucna() {
+    const polozky = [...document.querySelectorAll('#kalRucne .form')].map((r) => ({
+      product_id: r.querySelector('.kalProdukt').value,
+      kusy: parseInt(r.querySelector('.kalKusy').value, 10) || 0,
+    })).filter((p) => p.product_id && p.kusy > 0);
+
+    const el = document.getElementById('kalVysledok');
+    el.innerHTML = '<p class="muted">Počítam…</p>';
+    try {
+      const data = await apiFetch('/api/admin/kalkulacia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ polozky }),
+      });
+      renderZoznam(data.zoznam, 'Ručný prepočet');
+    } catch (err) {
+      el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
+    }
+  }
+
+  async function kalkulaciaDna() {
+    const day = document.getElementById('kalDay').value;
+    const el = document.getElementById('kalVysledok');
+    if (!day) { el.innerHTML = '<p class="err">Vyber termín.</p>'; return; }
+    el.innerHTML = '<p class="muted">Počítam…</p>';
+    try {
+      const data = await apiFetch(`/api/admin/kalkulacia?day=${encodeURIComponent(day)}`);
+      const kusy = data.polozky.reduce((s, p) => s + p.kusy, 0);
+      let hlavicka = `Termín ${day} — ${data.pocet_objednavok} objednávok, ${kusy} kusov`;
+      if (data.bez_receptu.length) {
+        hlavicka += `. Bez receptu (nerátalo sa): ${data.bez_receptu.join(', ')}`;
+      }
+      renderZoznam(data.zoznam, hlavicka);
+    } catch (err) {
+      el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
+    }
+  }
+
+  function renderZoznam(z, hlavicka) {
+    const el = document.getElementById('kalVysledok');
+    if (!z || !z.riadky.length) {
+      el.innerHTML = `<p class="muted">${esc(hlavicka)}: niet čo počítať.</p>`;
+      return;
+    }
+    el.innerHTML = `
+      <h3 style="margin:0 0 4px">${esc(hlavicka)}</h3>
+      <p style="margin:0 0 14px">
+        Nákup (celé balenia): <strong>${euro(z.nakup)}</strong>
+        ${z.nakup_na_kus !== null ? `· ${euro(z.nakup_na_kus)} na kus` : ''}<br>
+        Spotreba (čo sa minie): <strong>${euro(z.spotreba)}</strong>
+        ${z.spotreba_na_kus !== null ? `· ${euro(z.spotreba_na_kus)} na kus` : ''}
+      </p>
+      ${z.uplna ? '' : `<p class="err" style="margin:0 0 14px">Nedopočítané:
+        ${z.nedopocitane.map(esc).join(', ')}. Skutočná cena je vyššia.</p>`}
+      <table class="admin-table"><thead><tr>
+        <th>Surovina</th><th>Potreba</th><th>Balení</th><th>Nákup</th><th>Spotreba</th><th></th>
+      </tr></thead><tbody>${z.riadky.map((r) => `
+        <tr>
+          <td>${esc(r.surovina)}<br><span class="muted" style="font-size:.82rem">${r.recepty.map(esc).join(', ')}</span></td>
+          <td>${r.mnozstvo === null ? '—' : esc(r.mnozstvo) + ' ' + esc(r.jednotka)}</td>
+          <td>${r.balenia === null ? '—' : esc(r.balenia)}</td>
+          <td>${euro(r.nakup)}</td>
+          <td>${euro(r.spotreba)}</td>
+          <td class="muted" style="font-size:.85rem">${{
+            bez_mnozstva: 'v recepte bez gramáže',
+            chyba_balenie: 'doplň balenie a cenu',
+            nerata_sa: 'neráta sa',
+            ok: '',
+          }[r.stav] || ''}</td>
+        </tr>`).join('')}</tbody></table>`;
+  }
+
   window.Admin = {
     login, logout, showTab,
     updateOrderStatus, saveOrder, resetOrderForm, editDay, saveDay, savePassword,
     deleteDay, editProduct, resetProductForm, saveProduct,
     saveSettings,
+    saveSurovina, resetSurovinaForm, editSurovina,
+    ulozRecept, ulozPolozku,
+    pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna,
   };
 
   if (getAccess()) showDashboard(); else showLogin();

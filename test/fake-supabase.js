@@ -21,6 +21,13 @@ function startFakeSupabase() {
     open_days: [],
     orders: [],
     order_items: [],
+    // Receptár. Testy si ich naplnia samy — prázdne tabuľky zodpovedajú
+    // projektu, v ktorom sa migrácia receptára už spustila, ale ešte sa
+    // nič nezadalo.
+    ingredients: [],
+    recipes: [],
+    recipe_items: [],
+    product_recipes: [],
     // Nadpis je zámerne dvojriadkový — zalomenie je súčasťou textu.
     site_settings: [{ id: true, hero_title: "Niečo sladké bez výčitky?\nJasné! Každý kúsok ide predsa do srdiečka.", hero_lead: "Testovací úvod.", about_text: "Pracujem prevažne s bezlaktózovými produktami.", lead_days: 4 }],
   };
@@ -260,7 +267,10 @@ function startFakeSupabase() {
         rows = applyOrder(rows, url.searchParams.get("order"));
         const limit = url.searchParams.get("limit");
         if (limit) rows = rows.slice(0, parseInt(limit, 10));
-        if (table === "orders" && url.searchParams.get("select") === "*,order_items(*)") {
+        // Vnorené položky objednávky. Skutočné PostgREST ich pripojí pri
+        // akomkoľvek selecte, ktorý order_items(...) spomína, nielen pri
+        // jednom konkrétnom zápise.
+        if (table === "orders" && (url.searchParams.get("select") || "").includes("order_items(")) {
           rows = rows.map((o) => ({ ...o, order_items: db.order_items.filter((oi) => oi.order_id === o.id) }));
         }
         return send(res, 200, rows);

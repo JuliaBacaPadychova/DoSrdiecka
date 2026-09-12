@@ -56,6 +56,14 @@ function wrapResponse(res) {
     res.statusCode = code;
     return res;
   };
+  // Vercel dáva odpovedi aj json(); lib/auth.js ho používa pri 401 a 403.
+  // Bez neho by sa lokálne každé odmietnuté prihlásenie tvárilo ako
+  // chyba servera (500) namiesto "neprihlásený".
+  res.json = function json(body) {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify(body));
+    return res;
+  };
   return res;
 }
 

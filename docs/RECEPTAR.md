@@ -83,6 +83,40 @@ Najdrahšie časti kávového choux: pistáciový krém 0,78 €/ks a kávová
 ganache 0,74 €/ks. Keby kávová ganache naozaj vyšla na 20 ks namiesto 12
 (poznámka v exceli), klesla by na 0,44 €/ks — preto sa to oplatí overiť.
 
+## Kde sa to ovláda
+
+V správe webu pribudli tri záložky:
+
+- **Suroviny** — kartotéka: balenie, cena, dátum ceny a odkiaľ je. Keď sa
+  zmení cena a dátum sa nevyplní, doplní sa dnešok sám.
+- **Recepty** — výťažnosť a množstvá. Zmena sa uloží hneď po prepísaní
+  políčka. Pri každom recepte je vidieť, v ktorých príchutiach sa používa.
+- **Kalkulačka** — dva režimy: *nákupný zoznam na deň* (počty sa vezmú
+  z prijatých objednávok, zrušené sa nerátajú) a *ručný prepočet*
+  (príchuť + počet kusov).
+
+Výpočet je v `lib/kalkulacia.js` a je pokrytý testami (`npm test`), takže
+sa dá overiť na známych číslach bez toho, aby sa musel spúšťať web.
+
+## Ktoré ceny sa oplatí sledovať
+
+Nie všetky. Takto sa rozdelí cena jedného choux podľa surovín — a koľko
+z nej ubudne alebo pribudne, keď cena tej suroviny stúpne o pätinu:
+
+| Surovina | € na kus | pri +20 % |
+|---|---:|---:|
+| Mascarpone | 0,90 | +0,18 |
+| Pasta pistáciová 100% | 0,66 | +0,13 |
+| Čokoláda biela 28% | 0,51 | +0,10 |
+| Smotana na šľahanie 33% | 0,33 | +0,07 |
+| Pyré malina | 0,29 | +0,06 |
+| Maslo 82% | 0,28 | +0,06 |
+| Pyré mango | 0,14 | +0,03 |
+| Čokoláda gold | 0,13 | +0,03 |
+
+Zvyšných desať surovín (múka, cukry, mlieko, želatína, vajcia) robí
+dohromady menej než 8 centov na kus — tie stačí prejsť raz za rok.
+
 ## Čo ešte treba doplniť
 
 Tieto veci sa dopĺňajú v správe webu, nie v kóde:
@@ -107,7 +141,10 @@ Tieto veci sa dopĺňajú v správe webu, nie v kóde:
   20 ks namiesto 12. Zapísaných je 12 — kým sa to neoverí, cena za kus
   by bola podhodnotená.
 - **Ceny** sú z excelu a sú približne pol roka staré. Špeciality (čokolády,
-  pyré, pasty) sa nakupujú na patisserie.sk, bežné suroviny v obchode. Každá surovina má
+  pyré, pasty) sa nakupujú na patisserie.sk, bežné suroviny v obchode.
+  Ceny zatiaľ nikto neaktualizoval: prostredie, v ktorom sa tento kód
+  písal, nemá prístup na web, takže sa nedali overiť zo zdroja. Radšej
+  stará cena s dátumom než vymyslená nová. Každá surovina má
   preto `price_date` a `price_source`, aby bolo vidieť, ktorá cena je
   zastaraná.
 
