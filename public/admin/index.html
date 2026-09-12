@@ -36,6 +36,9 @@
     <button class="on" data-tab="orders" onclick="Admin.showTab('orders')">Objednávky</button>
     <button data-tab="days" onclick="Admin.showTab('days')">Dni a limity</button>
     <button data-tab="products" onclick="Admin.showTab('products')">Ponuka</button>
+    <button data-tab="suroviny" onclick="Admin.showTab('suroviny')">Suroviny</button>
+    <button data-tab="recepty" onclick="Admin.showTab('recepty')">Recepty</button>
+    <button data-tab="kalkulacka" onclick="Admin.showTab('kalkulacka')">Kalkulačka</button>
     <button data-tab="settings" onclick="Admin.showTab('settings')">Nastavenia</button>
   </div>
 
@@ -129,6 +132,80 @@
     </div>
     <div class="admin-card">
       <div id="productsList"><p class="muted">Načítavam ponuku…</p></div>
+    </div>
+  </div>
+
+
+  <div class="admin-panel" id="tab-suroviny">
+    <div class="admin-card">
+      <h3 id="surovinaFormTitle">Nová surovina</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Gramáž balenia je to, v akom
+        sa surovina kupuje — z nej sa počíta, koľko balení treba a koľko stojí to,
+        čo sa naozaj minie. Keď ju necháš prázdnu, surovina sa v kalkulácii vypíše
+        ako nedopočítaná; do ceny sa nezaráta ako nula.</p>
+      <input type="hidden" id="surId">
+      <div class="form">
+        <div><label for="surName">Názov</label><input id="surName"></div>
+        <div><label for="surUnit">Jednotka</label>
+          <select id="surUnit"><option value="g">g</option><option value="ml">ml</option><option value="ks">ks</option></select>
+        </div>
+        <div><label for="surPackSize">Gramáž balenia</label><input id="surPackSize" type="number" min="0" step="0.001"></div>
+        <div><label for="surPackPrice">Cena balenia (€)</label><input id="surPackPrice" type="number" min="0" step="0.001"></div>
+        <div><label for="surPriceDate">Cena platná od</label><input id="surPriceDate" type="date">
+          <span class="fieldhint">Keď necháš prázdne a meníš cenu, doplní sa dnešok.</span></div>
+        <div><label for="surPriceSource">Odkiaľ je cena</label><input id="surPriceSource" placeholder="napr. patisserie.sk"></div>
+        <div><label for="surKind">Druh</label>
+          <select id="surKind"><option value="surovina">surovina</option><option value="obal">obal</option><option value="rezia">réžia</option></select>
+        </div>
+        <div><label for="surNegligible">Rátať do ceny</label>
+          <select id="surNegligible"><option value="false">Áno</option><option value="true">Nie (napr. voda)</option></select>
+        </div>
+        <div class="full"><label for="surNote">Poznámka</label><input id="surNote"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px">
+        <button class="btn" onclick="Admin.saveSurovina()">Uložiť surovinu</button>
+        <button class="btn ghost" onclick="Admin.resetSurovinaForm()">Nová / zrušiť úpravu</button>
+      </div>
+      <p class="err" id="surErr" style="display:none"></p>
+    </div>
+    <div class="admin-card">
+      <div id="surovinyList"><p class="muted">Načítavam suroviny…</p></div>
+    </div>
+  </div>
+
+  <div class="admin-panel" id="tab-recepty">
+    <div class="admin-card">
+      <p class="muted" style="margin:0;font-size:.88rem">Výťažnosť je to, na koľko kusov je
+        recept napísaný — podľa nej sa prepočítava na objednaný počet. Pri coulis je
+        výťažnosť v gramoch, lebo recept je na 150 g, nie na kusy.</p>
+    </div>
+    <div class="admin-card">
+      <div id="receptyList"><p class="muted">Načítavam recepty…</p></div>
+    </div>
+  </div>
+
+  <div class="admin-panel" id="tab-kalkulacka">
+    <div class="admin-card">
+      <h3>Nákupný zoznam na deň</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Počty sa berú z prijatých
+        objednávok na ten deň, zrušené sa nerátajú. Nič sa neprepisuje ručne.</p>
+      <div class="form">
+        <div><label for="kalDay">Termín</label><input id="kalDay" type="date"></div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn" onclick="Admin.kalkulaciaDna()">Spočítať</button>
+        </div>
+      </div>
+    </div>
+    <div class="admin-card">
+      <h3>Ručný prepočet</h3>
+      <div id="kalRucne"></div>
+      <div style="margin-top:14px;display:flex;gap:10px">
+        <button class="btn ghost sm" onclick="Admin.pridajKalRiadok()">Pridať príchuť</button>
+        <button class="btn" onclick="Admin.kalkulaciaRucna()">Spočítať</button>
+      </div>
+    </div>
+    <div class="admin-card">
+      <div id="kalVysledok"><p class="muted">Vyber termín alebo zadaj príchute a počty.</p></div>
     </div>
   </div>
 
