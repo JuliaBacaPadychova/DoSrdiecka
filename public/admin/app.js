@@ -816,11 +816,16 @@
     el.innerHTML = zoznam.length
       ? zoznam.map((p) => `<option value="${p.id}">${esc(p.name)} — ${esc(p.sub)}</option>`).join('')
       : '<option value="">— zatiaľ žiadna príchuť nemá recepty —</option>';
-    if (doteraz && zoznam.some((p) => p.id === doteraz)) el.value = doteraz;
+    if (doteraz === 'nepriradene' || (doteraz && zoznam.some((p) => p.id === doteraz))) el.value = doteraz;
   }
 
   // Poradie, v akom sa pečie: najprv cesto, potom náplne, nakoniec ozdoby.
   const PORADIE_DRUHOV = ['cesto', 'krem', 'vklad', 'poleva', 'ozdoba', 'ine'];
+  const NAZOV_DRUHU = {
+    cesto: 'cesto', krem: 'krém', vklad: 'vklad',
+    poleva: 'poleva', ozdoba: 'ozdoba', ine: 'iné',
+  };
+  const druh = (k) => NAZOV_DRUHU[k] || k;
 
   function cisloSk(v) {
     if (v === null || v === undefined) return '—';
@@ -869,7 +874,7 @@
       ${zoradene.map((r) => `
         <div style="margin-bottom:24px">
           <h3 style="margin:0 0 2px">${esc(r.recept.nazov)}
-            <span class="muted" style="font-weight:400">(${esc(r.recept.druh)})</span></h3>
+            <span class="muted" style="font-weight:400">(${esc(druh(r.recept.druh))})</span></h3>
           <p class="muted" style="margin:0 0 8px;font-size:.85rem">
             Recept je na ${cisloSk(r.recept.vytaznost)} ${esc(r.recept.jednotka_vytaznosti)}${
               r.kusov_z_davky !== null && r.kusov_z_davky !== undefined
@@ -906,15 +911,18 @@
 
     const filter = (document.getElementById('recFilter') || {}).value || '';
     const filterPrichut = (document.getElementById('recFilterPrichut') || {}).value || '';
+    naplnFilterReceptov();
     naplnFilterPrichuti();
     const pouzite = new Set(vazby.map((v) => v.recipe_id));
     // Recepty patriace k vybranej príchuti — podľa toho, čo je v jej zložení.
     const priPrichuti = new Set(vazby.filter((v) => v.product_id === filterPrichut).map((v) => v.recipe_id));
     const vybrane = recepty
-      .filter((r) => (filter === 'nepriradene' ? !pouzite.has(r.id) : (!filter || r.kind === filter)))
-      .filter((r) => (!filterPrichut || priPrichuti.has(r.id)))
-      .sort((a, b) => (PORADIE_DRUHOV.indexOf(a.kind) - PORADIE_DRUHOV.indexOf(b.kind))
-        || a.name.localeCompare(b.name, 'sk'));
+      .filter((r) => (!filter || r.id === filter))
+      .filter((r) => (!filterPrichut
+        || (filterPrichut === 'nepriradene' ? !pouzite.has(r.id) : priPrichuti.has(r.id))))
+      // Podľa abecedy, nie po skupinách: hľadá sa podľa názvu, takže
+      // recept musí byť tam, kde ho abeceda kladie — aj po premenovaní.
+      .sort((a, b) => a.name.localeCompare(b.name, 'sk'));
 
     if (!vybrane.length) { el.innerHTML = '<p class="muted">Tomuto výberu nič nezodpovedá.</p>'; return; }
 
@@ -933,7 +941,7 @@
       <details id="recept-${r.id}" style="margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:10px">
         <summary style="cursor:pointer">
           <strong>${esc(r.name)}</strong>
-          <span class="muted">· ${esc(r.kind)} · na ${cisloSk(r.yield_qty)} ${esc(r.yield_unit)}
+          <span class="muted">· ${esc(druh(r.kind))} · na ${cisloSk(r.yield_qty)} ${esc(r.yield_unit)}
           · ${vlastne.length} surovín ·
           ${pouzitie.length ? pouzitie.map((v) => esc(nazovPrichute(v.product_id))).join(', ')
                             : 'nepriradený k príchuti'}</span>
@@ -1046,6 +1054,24 @@
         </div>
       </details>`;
     }).join('');
+
+    // Keď je vybraný jeden konkrétny recept, netreba ho ešte rozbaľovať.
+    if (filter && vybrane.length === 1) {
+      const jediny = document.getElementById('recept-' + vybrane[0].id);
+      if (jediny) jediny.open = true;
+    }
+  }
+
+  // Vo výbere sú názvy receptov, nie druhy — recept sa hľadá podľa toho,
+  // ako sa volá.
+  function naplnFilterReceptov() {
+    const el = document.getElementById('recFilter');
+    if (!el || !RECEPTAR) return;
+    const zoznam = podlaAbecedy(RECEPTAR.recepty, (r) => r.name);
+    const doteraz = el.value;
+    el.innerHTML = '<option value="">všetky recepty</option>'
+      + zoznam.map((r) => `<option value="${r.id}">${esc(r.name)}</option>`).join('');
+    if (doteraz && zoznam.some((r) => r.id === doteraz)) el.value = doteraz;
   }
 
   // Uloží naraz všetko, čo sa v rozbalenom recepte zmenilo: gramáže aj
@@ -1061,8 +1087,9 @@
       PRODUCTS_CACHE.filter((p) => maRecepty.has(p.id)), (p) => `${p.name} — ${p.sub}`);
     const doteraz = el.value;
     el.innerHTML = '<option value="">všetky príchute</option>'
+      + '<option value="nepriradene">— nepriradené k žiadnej —</option>'
       + zoznam.map((p) => `<option value="${p.id}">${esc(p.name)} — ${esc(p.sub)}</option>`).join('');
-    if (doteraz && zoznam.some((p) => p.id === doteraz)) el.value = doteraz;
+    if (doteraz === 'nepriradene' || (doteraz && zoznam.some((p) => p.id === doteraz))) el.value = doteraz;
   }
 
   async function ulozRecept(receptId) {
