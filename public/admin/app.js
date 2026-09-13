@@ -941,6 +941,10 @@
 
         <div style="padding:12px 0 0 4px">
           <div class="form" style="margin:0 0 12px">
+            <div><label for="nazov-${r.id}">Názov receptu</label>
+              <input id="nazov-${r.id}" data-nazov="${r.id}" data-povodne="${esc(r.name)}"
+                value="${esc(r.name)}">
+            </div>
             <div><label for="vytaznost-${r.id}">Recept je napísaný na</label>
               <input type="number" min="0" step="1" id="vytaznost-${r.id}"
                 data-vytaznost="${r.id}" data-povodne="${esc(r.yield_qty)}"
@@ -980,6 +984,12 @@
             <div class="full"><label for="poznamka-${r.id}">Poznámka k receptu</label>
               <textarea id="poznamka-${r.id}" rows="2" data-poznamka="${r.id}"
                 data-povodne="${esc(r.note || '')}">${esc(r.note || '')}</textarea>
+            </div>
+            <div class="full"><label for="postup-${r.id}">Postup</label>
+              <textarea id="postup-${r.id}" rows="10" data-postup="${r.id}"
+                data-povodne="${esc(r.steps || '')}">${esc(r.steps || '')}</textarea>
+              <span class="fieldhint">Každý krok na samostatný riadok. Toto sa ukazuje aj
+                v rozpise hore pod „Postup".</span>
             </div>
           </div>
 
@@ -1081,6 +1091,28 @@
       }));
     });
 
+    const nazov = box.querySelector('[data-nazov]');
+    if (nazov && nazov.value.trim() !== nazov.dataset.povodne) {
+      if (!nazov.value.trim()) {
+        stav.textContent = 'Názov receptu nemôže byť prázdny.';
+        return;
+      }
+      ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nazov.value.trim() }),
+      }));
+    }
+
+    const postup = box.querySelector('[data-postup]');
+    if (postup && postup.value !== postup.dataset.povodne) {
+      ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ steps: postup.value }),
+      }));
+    }
+
     const vyt = box.querySelector('[data-vytaznost]');
     if (vyt && vyt.value !== vyt.dataset.povodne) {
       ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
@@ -1106,7 +1138,11 @@
       const novyStav = document.getElementById('stav-' + receptId);
       if (novyStav) novyStav.textContent = 'Uložené.';
     } catch (err) {
-      stav.textContent = err.message;
+      // Dva recepty s rovnakým názvom by sa v zoznamoch nedali rozoznať,
+      // preto to databáza nepustí. Jej hláška ale nikomu nič nehovorí.
+      stav.textContent = /duplicate|unique|23505/i.test(err.message)
+        ? 'Recept s takým názvom už existuje. Zvoľ iný.'
+        : err.message;
     }
   }
 
