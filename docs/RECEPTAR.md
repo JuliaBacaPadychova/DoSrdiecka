@@ -51,12 +51,33 @@ Každá surovina má vlastnú jednotku (`g` / `ml` / `ks`). V exceli mal
 stĺpec názov „v gramoch", ale pri želatíne v ňom boli plátky — preto
 `Želatína plátková` je v kusoch (1 plátok Silver 180 bloom = 5 g).
 
+## Z jednej dávky vyjde pri každej príchuti iný počet
+
+Z dávky odpalovaného cesta vyjde 20 choux, ale len 12 veterníkov — sú
+väčšie. Preto má väzba receptu na príchuť stĺpec `pieces_per_batch`:
+koľko kusov *tejto* príchute vyjde z jednej dávky. Prázdny = platí
+výťažnosť receptu, čo je bežný prípad (krémy sú písané priamo na
+10 veterníkov).
+
+Bez toho by sa na veterníky napočítalo cesta o 40 % menej, než treba.
+
 ## Zloženie príchutí
 
 | Príchuť | Navrch | Dovnútra | Základ |
 |---|---|---|---|
 | Choux / Pistáciovo mangový | mangová šľahaná ganache | pistáciový krém + jablkové confit | cesto + craquelin svetlý |
 | Choux / Pistáciovo kávový | kávová ganache | pistáciový krém + malinové coulis | cesto + craquelin svetlý |
+| Veterník / Karamelový | karamelová poleva | vanilkový krém Suzys + karamelová šľahačka | cesto (z dávky 12 ks) + slaný a sladký karamel |
+| Veterník / Pistáciovo-malinový | pistáciová poleva | pistáciový krém — veterník + malinová šľahačka | cesto (z dávky 12 ks) |
+
+Karamel je **samostatný recept**, nie kúpená surovina: z jednej dávky
+vyjde slaný karamel na polevu (240 g) aj sladký na šľahačku (250 g).
+V exceli sa počítal dvakrát — raz ako suroviny na jeho uvarenie, druhý
+raz ako kúpený karamel — čo dávku predražilo asi o 3,60 €.
+
+Čokoládový veterník má recepty zapísané (čokoládová poleva, čokoládový
+krém, vanilková šľahačka), ale nie je v ponuke na webe, takže nie je
+priradený k žiadnej príchuti.
 
 Navrch ide **ganache, nie varený mangový krém**: má 27 % tuku proti 18 %,
 o 12 bodov menej vody a 5 % kakaového masla, ktoré drží tvar do ~30 °C.

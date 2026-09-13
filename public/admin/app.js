@@ -842,7 +842,10 @@
           <h3 style="margin:0 0 2px">${esc(r.recept.nazov)}
             <span class="muted" style="font-weight:400">(${esc(r.recept.druh)})</span></h3>
           <p class="muted" style="margin:0 0 8px;font-size:.85rem">
-            Recept je na ${cisloSk(r.recept.vytaznost)} ${esc(r.recept.jednotka_vytaznosti)} —
+            Recept je na ${cisloSk(r.recept.vytaznost)} ${esc(r.recept.jednotka_vytaznosti)}${
+              r.kusov_z_davky !== null && r.kusov_z_davky !== undefined
+                && Number(r.kusov_z_davky) !== Number(r.recept.vytaznost)
+              ? ` (pri tejto príchuti z dávky vyjde ${cisloSk(r.kusov_z_davky)} kusov)` : ''} —
             teraz z neho potrebuješ <strong>${cisloSk(r.davky)}×</strong> dávku,
             čiže ${cisloSk(r.vytazok)} ${esc(r.recept.jednotka_vytaznosti)}.
             ${r.recept.poznamka ? '<br>' + esc(r.recept.poznamka) : ''}
@@ -950,7 +953,10 @@
               <td>${esc(nazovPrichute(v.product_id))}</td>
               <td class="muted">${r.yield_unit === 'g'
                 ? cisloSk(v.qty_per_piece) + ' g do jedného zákusku'
-                : ''}</td>
+                : (v.pieces_per_batch !== null && v.pieces_per_batch !== undefined
+                    && Number(v.pieces_per_batch) !== Number(r.yield_qty)
+                  ? 'z dávky vyjde ' + cisloSk(v.pieces_per_batch) + ' kusov'
+                  : '')}</td>
               <td class="akcie" style="width:90px">
                 <button class="btn ghost sm zmazat" onclick="Admin.zrusPriradenie('${v.id}')">Odobrať</button>
               </td>
@@ -966,8 +972,10 @@
               <span class="fieldhint">Recept je na ${cisloSk(r.yield_qty)} g — napíš,
                 koľko z toho ide do jedného zákusku.</span>
             </div>` : `
-            <div class="full"><span class="fieldhint">Recept je na ${cisloSk(r.yield_qty)} kusov,
-              takže jeden zákusok dostane jednu porciu z dávky. Nič ďalšie sa nezadáva.</span>
+            <div><label for="nove-zdavky-${r.id}">Koľko kusov vyjde z jednej dávky</label>
+              <input type="number" min="0" step="1" id="nove-zdavky-${r.id}" value="${esc(r.yield_qty)}">
+              <span class="fieldhint">Predvyplnené podľa receptu. Zmeň, keď pri tejto príchuti
+                vyjde iný počet — napríklad z dávky cesta je 20 choux, ale len 12 veterníkov.</span>
             </div>`}
             <div style="display:flex;align-items:flex-end">
               <button class="btn ghost sm" onclick="Admin.priradPrichut('${r.id}')">Priradiť</button>
@@ -1078,17 +1086,21 @@
     // len pri recepte na gramy (coulis na 150 g).
     const recept = RECEPTAR.recepty.find((r) => r.id === receptId);
     const naGramy = recept && recept.yield_unit === 'g';
-    const pole = document.getElementById('nove-nakus-' + receptId);
-    const qty = naGramy ? (pole ? pole.value : '') : 1;
-    if (naGramy && !(Number(qty) > 0)) {
-      alert('Napíš, koľko gramov z tohto receptu ide do jedného zákusku.');
+    const pole = document.getElementById((naGramy ? 'nove-nakus-' : 'nove-zdavky-') + receptId);
+    const hodnota = pole ? pole.value : '';
+    if (!(Number(hodnota) > 0)) {
+      alert(naGramy
+        ? 'Napíš, koľko gramov z tohto receptu ide do jedného zákusku.'
+        : 'Napíš, koľko kusov vyjde z jednej dávky.');
       return;
     }
     try {
       await apiFetch('/api/admin/receptar?co=vazba', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product_id, recipe_id: receptId, qty_per_piece: qty }),
+        body: JSON.stringify(naGramy
+          ? { product_id, recipe_id: receptId, qty_per_piece: hodnota }
+          : { product_id, recipe_id: receptId, qty_per_piece: 1, pieces_per_batch: hodnota }),
       });
       await loadRecepty(receptId);
     } catch (err) { alert(err.message); }
