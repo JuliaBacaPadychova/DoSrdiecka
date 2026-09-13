@@ -143,6 +143,7 @@
       </details>
     </div>
     <div class="admin-card">
+      <div id="productsHladanie"></div>
       <div id="productsList"><p class="muted">Načítavam ponuku…</p></div>
     </div>
   </div>
@@ -256,6 +257,9 @@
             <option value="poleva">len polevy</option>
             <option value="nepriradene">nepriradené k príchuti</option>
           </select>
+        </div>
+        <div><label for="recFilterPrichut">Priradené k príchuti</label>
+          <select id="recFilterPrichut" onchange="Admin.renderRecepty()"></select>
         </div>
       </div>
       <div id="receptyList"><p class="muted">Načítavam recepty…</p></div>

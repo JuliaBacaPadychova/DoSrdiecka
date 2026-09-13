@@ -377,8 +377,37 @@
     }
   }
 
+  // Rovnaké hľadanie ako pri surovinách: vybraný výrobok sa otvorí
+  // na úpravu hore. Pri troch desiatkach príchutí je to rýchlejšie
+  // než rolovať tabuľkou.
+  function naplnVyberVyrobkov(products) {
+    const el = document.getElementById('productsHladanie');
+    if (!el) return;
+    if (!products.length) { el.innerHTML = ''; return; }
+    const zoradene = podlaAbecedy(products, (p) => `${p.name} — ${p.sub || ''}`);
+    el.innerHTML = `
+      <div class="form" style="margin:0 0 16px">
+        <div class="full">
+          <label for="prodHladat">Nájsť výrobok</label>
+          <select id="prodHladat" onchange="Admin.vyberVyrobok(this.value)">
+            <option value="">— vyber výrobok —</option>
+            ${zoradene.map((p) => `<option value="${p.id}">${esc(p.name)}${
+              p.sub ? ' — ' + esc(p.sub) : ''}</option>`).join('')}
+          </select>
+          <span class="fieldhint">Vybraný výrobok sa otvorí na úpravu hore.</span>
+        </div>
+      </div>`;
+  }
+
+  function vyberVyrobok(id) {
+    if (!id) return;
+    const p = PRODUCTS_CACHE.find((x) => x.id === id);
+    if (p) editProduct(p);
+  }
+
   function renderProducts(products) {
     const el = document.getElementById('productsList');
+    naplnVyberVyrobkov(products);
     if (!products.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne výrobky.</p>'; return; }
 
     // Web spája výrobky s rovnakým názvom v tej istej kategórii do jednej
@@ -876,9 +905,14 @@
     if (!recepty.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne recepty.</p>'; return; }
 
     const filter = (document.getElementById('recFilter') || {}).value || '';
+    const filterPrichut = (document.getElementById('recFilterPrichut') || {}).value || '';
+    naplnFilterPrichuti();
     const pouzite = new Set(vazby.map((v) => v.recipe_id));
+    // Recepty patriace k vybranej príchuti — podľa toho, čo je v jej zložení.
+    const priPrichuti = new Set(vazby.filter((v) => v.product_id === filterPrichut).map((v) => v.recipe_id));
     const vybrane = recepty
       .filter((r) => (filter === 'nepriradene' ? !pouzite.has(r.id) : (!filter || r.kind === filter)))
+      .filter((r) => (!filterPrichut || priPrichuti.has(r.id)))
       .sort((a, b) => (PORADIE_DRUHOV.indexOf(a.kind) - PORADIE_DRUHOV.indexOf(b.kind))
         || a.name.localeCompare(b.name, 'sk'));
 
@@ -995,6 +1029,20 @@
   // Uloží naraz všetko, čo sa v rozbalenom recepte zmenilo: gramáže aj
   // poznámku. Ukladá sa až na tlačidlo, nie pri každom kliknutí do
   // políčka — inak sa dá recept prepísať šípkou a ani si to nevšimneš.
+  // Vo filtri sú len príchute, ktoré nejaké recepty naozaj majú — inak
+  // by ponuka sľubovala výber, po ktorom ostane prázdno.
+  function naplnFilterPrichuti() {
+    const el = document.getElementById('recFilterPrichut');
+    if (!el || !RECEPTAR) return;
+    const maRecepty = new Set(RECEPTAR.vazby.map((v) => v.product_id));
+    const zoznam = podlaAbecedy(
+      PRODUCTS_CACHE.filter((p) => maRecepty.has(p.id)), (p) => `${p.name} — ${p.sub}`);
+    const doteraz = el.value;
+    el.innerHTML = '<option value="">všetky príchute</option>'
+      + zoznam.map((p) => `<option value="${p.id}">${esc(p.name)} — ${esc(p.sub)}</option>`).join('');
+    if (doteraz && zoznam.some((p) => p.id === doteraz)) el.value = doteraz;
+  }
+
   async function ulozRecept(receptId) {
     const box = document.getElementById('recept-' + receptId);
     const stav = document.getElementById('stav-' + receptId);
@@ -1420,7 +1468,7 @@
   window.Admin = {
     login, logout, showTab,
     updateOrderStatus, saveOrder, resetOrderForm, editDay, saveDay, savePassword,
-    deleteDay, editProduct, resetProductForm, saveProduct,
+    deleteDay, editProduct, vyberVyrobok, resetProductForm, saveProduct,
     saveSettings,
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,
     renderRecepty, ulozRecept, pridajPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
