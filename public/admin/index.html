@@ -248,15 +248,8 @@
       </div>
 
       <div class="form" style="margin:0 0 14px">
-        <div><label for="recFilter">Ukázať</label>
-          <select id="recFilter" onchange="Admin.renderRecepty()">
-            <option value="">všetky recepty</option>
-            <option value="cesto">len cestá</option>
-            <option value="krem">len krémy</option>
-            <option value="vklad">len vklady</option>
-            <option value="poleva">len polevy</option>
-            <option value="nepriradene">nepriradené k príchuti</option>
-          </select>
+        <div><label for="recFilter">Ukázať recept</label>
+          <select id="recFilter" onchange="Admin.renderRecepty()"></select>
         </div>
         <div><label for="recFilterPrichut">Priradené k príchuti</label>
           <select id="recFilterPrichut" onchange="Admin.renderRecepty()"></select>
