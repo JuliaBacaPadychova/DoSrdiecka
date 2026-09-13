@@ -225,3 +225,64 @@ test("nákupný zoznam je zoradený podľa slovenskej abecedy", () => {
   // Čokoláda patrí za Cukor, nie na koniec za Voda.
   assert.ok(nazvy.indexOf("Čokoláda biela 28%") < nazvy.indexOf("Pektín NH"));
 });
+
+// --- z jednej dávky vyjde pri každej príchuti iný počet kusov ---
+//
+// Z dávky odpalovaného cesta vyjde 20 choux, ale len 12 veterníkov —
+// sú väčšie. Bez toho by sa na veterníky napočítalo cesta priveľa.
+
+const DATA_VETERNIK = {
+  ingredients: [{ id: "i-muka", name: "Múka hladká", unit: "g", pack_size: 1000, pack_price: 0.88 }],
+  recipes: [{ id: "r-cesto", name: "Odpalované cesto", kind: "cesto", yield_qty: 20, yield_unit: "ks" }],
+  recipe_items: [{ id: "ri", recipe_id: "r-cesto", ingredient_id: "i-muka", amount: 115 }],
+  product_recipes: [
+    { id: "v1", product_id: "choux", recipe_id: "r-cesto", qty_per_piece: 1 },
+    { id: "v2", product_id: "veternik", recipe_id: "r-cesto", qty_per_piece: 1, pieces_per_batch: 12 },
+  ],
+};
+
+test("dávka cesta vydá 20 choux, ale len 12 veterníkov", () => {
+  const choux = rozpisReceptov([{ product_id: "choux", kusy: 20 }], DATA_VETERNIK)[0];
+  assert.equal(choux.davky, 1, "20 choux = jedna dávka");
+  assert.equal(choux.polozky[0].mnozstvo, 115);
+
+  const veternik = rozpisReceptov([{ product_id: "veternik", kusy: 12 }], DATA_VETERNIK)[0];
+  assert.equal(veternik.davky, 1, "12 veterníkov = tiež jedna dávka");
+  assert.equal(veternik.polozky[0].mnozstvo, 115);
+
+  // Na rovnaký počet kusov treba na veterníky viac cesta.
+  const rovnako = rozpisReceptov([{ product_id: "veternik", kusy: 20 }], DATA_VETERNIK)[0];
+  assert.ok(rovnako.davky > 1.66 && rovnako.davky < 1.67, "20 veterníkov je 1,667 dávky");
+});
+
+test("nákupný zoznam ráta s tým istým prepočtom ako rozpis", () => {
+  const z = nakupnyZoznam([{ product_id: "veternik", kusy: 12 }], DATA_VETERNIK);
+  assert.equal(z.riadky[0].mnozstvo, 115);
+  const dvojnasobok = nakupnyZoznam([{ product_id: "veternik", kusy: 24 }], DATA_VETERNIK);
+  assert.equal(dvojnasobok.riadky[0].mnozstvo, 230);
+});
+
+test("prázdne pieces_per_batch znamená výťažnosť receptu", () => {
+  const bezUdaja = rozpisReceptov([{ product_id: "choux", kusy: 10 }], DATA_VETERNIK)[0];
+  assert.equal(bezUdaja.davky, 0.5);
+});
+
+test("nula kusov z dávky nespôsobí delenie nulou", () => {
+  const data = {
+    ...DATA_VETERNIK,
+    product_recipes: [{ id: "v3", product_id: "x", recipe_id: "r-cesto", qty_per_piece: 1, pieces_per_batch: 0 }],
+  };
+  assert.deepEqual(rozpisReceptov([{ product_id: "x", kusy: 10 }], data), []);
+  assert.deepEqual(nakupnyZoznam([{ product_id: "x", kusy: 10 }], data).riadky, []);
+});
+
+test("výťažok sa počíta v kusoch tej príchute, nie receptu", () => {
+  const veternik = rozpisReceptov([{ product_id: "veternik", kusy: 24 }], DATA_VETERNIK)[0];
+  assert.equal(veternik.davky, 2, "24 veterníkov = dve dávky");
+  assert.equal(veternik.vytazok, 24, "pokryje 24 veterníkov, nie 40 choux");
+  assert.equal(veternik.kusov_z_davky, 12);
+
+  const choux = rozpisReceptov([{ product_id: "choux", kusy: 20 }], DATA_VETERNIK)[0];
+  assert.equal(choux.vytazok, 20);
+  assert.equal(choux.kusov_z_davky, 20);
+});

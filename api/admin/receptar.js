@@ -38,7 +38,7 @@ const TYPY = {
   },
   vazba: {
     tabulka: "product_recipes",
-    polia: ["product_id", "recipe_id", "qty_per_piece", "note"],
+    polia: ["product_id", "recipe_id", "qty_per_piece", "pieces_per_batch", "note"],
     texty: ["note"],
   },
   zoznam: {
