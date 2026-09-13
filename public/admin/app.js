@@ -926,7 +926,9 @@
 
     el.innerHTML = vybrane.map((r) => {
       const vlastne = polozky.filter((p) => p.recipe_id === r.id);
-      const pouzitie = vazby.filter((v) => v.recipe_id === r.id);
+      // Podľa abecedy, nie podľa toho, v akom poradí sa priradili.
+      const pouzitie = podlaAbecedy(
+        vazby.filter((v) => v.recipe_id === r.id), (v) => nazovPrichute(v.product_id));
       return `
       <details id="recept-${r.id}" style="margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:10px">
         <summary style="cursor:pointer">
@@ -939,6 +941,10 @@
 
         <div style="padding:12px 0 0 4px">
           <div class="form" style="margin:0 0 12px">
+            <div><label for="nazov-${r.id}">Názov receptu</label>
+              <input id="nazov-${r.id}" data-nazov="${r.id}" data-povodne="${esc(r.name)}"
+                value="${esc(r.name)}">
+            </div>
             <div><label for="vytaznost-${r.id}">Recept je napísaný na</label>
               <input type="number" min="0" step="1" id="vytaznost-${r.id}"
                 data-vytaznost="${r.id}" data-povodne="${esc(r.yield_qty)}"
@@ -979,18 +985,34 @@
               <textarea id="poznamka-${r.id}" rows="2" data-poznamka="${r.id}"
                 data-povodne="${esc(r.note || '')}">${esc(r.note || '')}</textarea>
             </div>
+            <div class="full"><label for="postup-${r.id}">Postup</label>
+              <textarea id="postup-${r.id}" rows="10" data-postup="${r.id}"
+                data-povodne="${esc(r.steps || '')}">${esc(r.steps || '')}</textarea>
+              <span class="fieldhint">Každý krok na samostatný riadok. Toto sa ukazuje aj
+                v rozpise hore pod „Postup".</span>
+            </div>
           </div>
 
           <p class="muted" style="margin:14px 0 6px;font-size:.88rem">Patrí k príchutiam:</p>
-          ${pouzitie.length ? `<table class="admin-table"><tbody>${pouzitie.map((v) => `
+          ${pouzitie.length ? `<table class="admin-table"><thead><tr>
+            <th>Príchuť</th><th>${r.yield_unit === 'g' ? 'Gramov do kusu' : 'Kusov z dávky'}</th><th></th>
+          </tr></thead><tbody>${pouzitie.map((v) => `
             <tr>
               <td>${esc(nazovPrichute(v.product_id))}</td>
-              <td class="muted">${r.yield_unit === 'g'
-                ? cisloSk(v.qty_per_piece) + ' g do jedného zákusku'
-                : (v.pieces_per_batch !== null && v.pieces_per_batch !== undefined
-                    && Number(v.pieces_per_batch) !== Number(r.yield_qty)
-                  ? 'z dávky vyjde ' + cisloSk(v.pieces_per_batch) + ' kusov'
-                  : '')}</td>
+              <td style="width:230px">
+                <input type="number" min="0" step="${r.yield_unit === 'g' ? '0.1' : '1'}" style="width:90px"
+                  data-vazba="${v.id}"
+                  data-pole="${r.yield_unit === 'g' ? 'qty_per_piece' : 'pieces_per_batch'}"
+                  data-povodne="${r.yield_unit === 'g'
+                    ? cislo(v.qty_per_piece)
+                    : cislo(v.pieces_per_batch === null || v.pieces_per_batch === undefined
+                        ? r.yield_qty : v.pieces_per_batch)}"
+                  value="${r.yield_unit === 'g'
+                    ? cislo(v.qty_per_piece)
+                    : cislo(v.pieces_per_batch === null || v.pieces_per_batch === undefined
+                        ? r.yield_qty : v.pieces_per_batch)}">
+                <span class="muted">${r.yield_unit === 'g' ? 'g do kusu' : 'kusov z dávky'}</span>
+              </td>
               <td class="akcie" style="width:90px">
                 <button class="btn ghost sm zmazat" onclick="Admin.zrusPriradenie('${v.id}')">Odobrať</button>
               </td>
@@ -1057,6 +1079,40 @@
         body: JSON.stringify({ amount: inp.value }),
       }));
     });
+    // Koľko kusov z dávky (alebo gramov do kusu) pri jednotlivých
+    // príchutiach. Uloží sa tým istým tlačidlom ako gramáže — nie je to
+    // dôvod recept odobrať a priradiť znovu.
+    box.querySelectorAll('[data-vazba]').forEach((inp) => {
+      if (inp.value === inp.dataset.povodne) return;
+      ulohy.push(apiFetch(`/api/admin/receptar?co=vazba&id=${encodeURIComponent(inp.dataset.vazba)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [inp.dataset.pole]: inp.value }),
+      }));
+    });
+
+    const nazov = box.querySelector('[data-nazov]');
+    if (nazov && nazov.value.trim() !== nazov.dataset.povodne) {
+      if (!nazov.value.trim()) {
+        stav.textContent = 'Názov receptu nemôže byť prázdny.';
+        return;
+      }
+      ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nazov.value.trim() }),
+      }));
+    }
+
+    const postup = box.querySelector('[data-postup]');
+    if (postup && postup.value !== postup.dataset.povodne) {
+      ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ steps: postup.value }),
+      }));
+    }
+
     const vyt = box.querySelector('[data-vytaznost]');
     if (vyt && vyt.value !== vyt.dataset.povodne) {
       ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
@@ -1082,7 +1138,11 @@
       const novyStav = document.getElementById('stav-' + receptId);
       if (novyStav) novyStav.textContent = 'Uložené.';
     } catch (err) {
-      stav.textContent = err.message;
+      // Dva recepty s rovnakým názvom by sa v zoznamoch nedali rozoznať,
+      // preto to databáza nepustí. Jej hláška ale nikomu nič nehovorí.
+      stav.textContent = /duplicate|unique|23505/i.test(err.message)
+        ? 'Recept s takým názvom už existuje. Zvoľ iný.'
+        : err.message;
     }
   }
 
