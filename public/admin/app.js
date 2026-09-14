@@ -969,7 +969,9 @@
             const su = surovinaPodlaId.get(p.ingredient_id);
             return `<tr>
               <td>${esc(su ? su.name : 'neznáma surovina')}${p.optional ? ' <span class="muted">(voliteľná)</span>' : ''}
-                ${p.note ? `<br><span class="muted" style="font-size:.85rem">${esc(p.note)}</span>` : ''}</td>
+                <br><input data-polozka-pozn="${p.id}" data-povodne="${esc(p.note || '')}"
+                  value="${esc(p.note || '')}" placeholder="poznámka k surovine"
+                  style="margin-top:4px;font-size:.85rem;max-width:420px"></td>
               <td style="width:170px">
                 <input type="number" min="0" step="0.1" style="width:110px"
                   data-polozka="${p.id}" data-povodne="${cislo(p.amount)}"
@@ -1101,12 +1103,25 @@
     if (!box) return;
 
     const ulohy = [];
+
+    // Gramáž aj poznámka patria k tomu istému riadku receptu, preto sa
+    // zbierajú dokopy a odošlú jednou úpravou.
+    const zmeneneRiadky = new Map();
+    const zmena = (id, pole, hodnota) => {
+      if (!zmeneneRiadky.has(id)) zmeneneRiadky.set(id, {});
+      zmeneneRiadky.get(id)[pole] = hodnota;
+    };
     box.querySelectorAll('[data-polozka]').forEach((inp) => {
-      if (inp.value === inp.dataset.povodne) return;
-      ulohy.push(apiFetch(`/api/admin/receptar?co=polozka&id=${encodeURIComponent(inp.dataset.polozka)}`, {
+      if (inp.value !== inp.dataset.povodne) zmena(inp.dataset.polozka, 'amount', inp.value);
+    });
+    box.querySelectorAll('[data-polozka-pozn]').forEach((inp) => {
+      if (inp.value !== inp.dataset.povodne) zmena(inp.dataset.polozkaPozn, 'note', inp.value.trim());
+    });
+    zmeneneRiadky.forEach((polia, id) => {
+      ulohy.push(apiFetch(`/api/admin/receptar?co=polozka&id=${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: inp.value }),
+        body: JSON.stringify(polia),
       }));
     });
     // Koľko kusov z dávky (alebo gramov do kusu) pri jednotlivých
