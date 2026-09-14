@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------
--- MIGRÁCIA: uložené miešania v záložke Recepty
+-- MIGRÁCIA: uložené recepty v záložke Recepty
 -- ---------------------------------------------------------------------
 -- Spusti raz v Supabase -> SQL Editor -> New query.
 --
@@ -7,9 +7,9 @@
 -- príchutiach, ktoré sa robia stále dokola, je to zbytočné vyklikávanie.
 -- Táto tabuľka si ten výber pamätá pod menom, takže sa dá rovno otvoriť.
 --
--- Ukladá sa VÝBER, nie gramáže. Keď sa recept zmení, uložené miešanie
--- sa prepočíta z nového receptu — inak by v ňom po čase ostali staré
--- čísla a piekla by sa podľa nich.
+-- Ukladá sa VÝBER, nie gramáže. Keď sa recept zmení, uložený sa
+-- prepočíta z novej verzie — inak by v ňom po čase ostali staré čísla
+-- a piekla by sa podľa nich.
 --
 -- Je to niečo iné než nákupný zoznam v Kalkulačke: ten má termín, cenu
 -- a môže spájať viac príchutí. Toto je skratka k jednému rozpisu.
@@ -33,4 +33,4 @@ create index if not exists recipe_presets_product_idx on recipe_presets(product_
 -- cez naše /api funkcie so service-role kľúčom, nikdy z prehliadača.
 alter table recipe_presets enable row level security;
 
-select 'Uložené miešania sú pripravené.' as stav;
+select 'Uložené recepty sú pripravené.' as stav;

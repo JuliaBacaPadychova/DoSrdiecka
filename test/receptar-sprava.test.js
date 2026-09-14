@@ -50,7 +50,7 @@ test("čítanie vráti suroviny aj recepty naraz", async (t) => {
   await sReceptarom(t, async ({ zavolaj }) => {
     const o = await zavolaj("GET", "/api/admin/receptar");
     assert.equal(o.code, 200);
-    assert.deepEqual(Object.keys(o.body).sort(), ["miesania", "polozky", "recepty", "suroviny", "vazby", "zoznamy"]);
+    assert.deepEqual(Object.keys(o.body).sort(), ["polozky", "recepty", "suroviny", "ulozene", "vazby", "zoznamy"]);
     assert.equal(o.body.suroviny[0].name, "Mascarpone");
   });
 });
@@ -186,35 +186,35 @@ test("vymazaný obchod ostane prázdny, nie null", async (t) => {
   });
 });
 
-// --- uložené miešania ---
+// --- uložené recepty ---
 //
 // Skratka k rozpisu: príchuť a počet kusov pod menom. Ukladá sa výber,
 // nie vypočítané gramáže — po úprave receptu musí vyjsť nové číslo.
 
-test("uložené miešanie sa dá založiť, premenovať aj zmazať", async (t) => {
+test("uložený recept sa dá založiť, premenovať aj zmazať", async (t) => {
   await sReceptarom(t, async ({ db, zavolaj }) => {
-    const vytvorenie = await zavolaj("POST", "/api/admin/receptar?co=miesanie", {
+    const vytvorenie = await zavolaj("POST", "/api/admin/receptar?co=ulozene", {
       name: "Sobotné choux", product_id: "p-choux", pieces: 20,
     });
     assert.equal(vytvorenie.code, 200);
     const id = vytvorenie.body.zaznam.id;
     assert.equal(db.recipe_presets[0].pieces, 20);
 
-    const uprava = await zavolaj("PATCH", `/api/admin/receptar?co=miesanie&id=${id}`,
+    const uprava = await zavolaj("PATCH", `/api/admin/receptar?co=ulozene&id=${id}`,
       { name: "Choux na sobotu" });
     assert.equal(uprava.code, 200);
     assert.equal(db.recipe_presets[0].name, "Choux na sobotu");
     assert.equal(db.recipe_presets[0].product_id, "p-choux", "premenovanie nemení výber");
 
-    const zmazanie = await zavolaj("DELETE", `/api/admin/receptar?co=miesanie&id=${id}`);
+    const zmazanie = await zavolaj("DELETE", `/api/admin/receptar?co=ulozene&id=${id}`);
     assert.equal(zmazanie.code, 200);
     assert.equal(db.recipe_presets.length, 0);
   });
 });
 
-test("miešanie bez príchuti sa neuloží", async (t) => {
+test("uložený recept bez príchuti sa neuloží", async (t) => {
   await sReceptarom(t, async ({ db, zavolaj }) => {
-    const o = await zavolaj("POST", "/api/admin/receptar?co=miesanie", { name: "x", pieces: 6 });
+    const o = await zavolaj("POST", "/api/admin/receptar?co=ulozene", { name: "x", pieces: 6 });
     assert.equal(o.code, 400);
     assert.equal(db.recipe_presets.length, 0);
   });
@@ -223,7 +223,7 @@ test("miešanie bez príchuti sa neuloží", async (t) => {
 test("nula ani text ako počet kusov neprejde", async (t) => {
   await sReceptarom(t, async ({ db, zavolaj }) => {
     for (const pieces of [0, -3, "dvanásť", 2.5]) {
-      const o = await zavolaj("POST", "/api/admin/receptar?co=miesanie",
+      const o = await zavolaj("POST", "/api/admin/receptar?co=ulozene",
         { name: "x", product_id: "p-choux", pieces });
       assert.equal(o.code, 400, `${pieces} sa nesmie uložiť`);
     }
@@ -231,25 +231,40 @@ test("nula ani text ako počet kusov neprejde", async (t) => {
   });
 });
 
-test("uložené miešania chodia spolu s receptárom", async (t) => {
+test("uložené recepty chodia spolu s receptárom", async (t) => {
   await sReceptarom(t, async ({ zavolaj }) => {
-    await zavolaj("POST", "/api/admin/receptar?co=miesanie", {
+    await zavolaj("POST", "/api/admin/receptar?co=ulozene", {
       name: "Veterníky", product_id: "p-choux", pieces: 12,
     });
     const o = await zavolaj("GET", "/api/admin/receptar");
-    assert.equal(o.body.miesania.length, 1);
-    assert.equal(o.body.miesania[0].pieces, 12);
+    assert.equal(o.body.ulozene.length, 1);
+    assert.equal(o.body.ulozene[0].pieces, 12);
   });
 });
 
 // Migrácia sa spúšťa ručne v Supabase. Kým nebehala, tabuľka neexistuje
 // — a recepty ani ceny na nej nestoja, takže záložka musí fungovať ďalej.
-test("chýbajúca tabuľka miešaní nezhodí celý receptár", async (t) => {
+test("chýbajúca tabuľka uložených nezhodí celý receptár", async (t) => {
   await sReceptarom(t, async ({ db, zavolaj }) => {
     delete db.recipe_presets;
     const o = await zavolaj("GET", "/api/admin/receptar");
     assert.equal(o.code, 200);
-    assert.equal(o.body.miesania, null, "null znamená 'tabuľka tu ešte nie je'");
+    assert.equal(o.body.ulozene, null, "null znamená 'tabuľka tu ešte nie je'");
     assert.equal(o.body.suroviny[0].name, "Mascarpone");
+  });
+});
+
+test("popis výťažnosti sa dá uložiť aj vymazať", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    db.recipes.push({ id: "r-krem", name: "Vanilkový krém", kind: "krem",
+      yield_qty: 10, yield_unit: "ks", yield_label: "", steps: "", note: "", active: true });
+
+    const o = await zavolaj("PATCH", "/api/admin/receptar?co=recept&id=r-krem",
+      { yield_label: "veterníkov" });
+    assert.equal(o.code, 200);
+    assert.equal(db.recipes[0].yield_label, "veterníkov");
+
+    await zavolaj("PATCH", "/api/admin/receptar?co=recept&id=r-krem", { yield_label: "" });
+    assert.equal(db.recipes[0].yield_label, "", "prázdny popis je prázdny text, nie prázdna hodnota");
   });
 });

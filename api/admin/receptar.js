@@ -8,7 +8,7 @@
 //   GET    /api/admin/receptar              — suroviny, recepty, položky, väzby
 //   GET    /api/admin/receptar?den=2026-10-18 — nákupný zoznam z objednávok dňa
 //   POST   /api/admin/receptar?co=kalkulacia  — ručný prepočet
-//   POST   /api/admin/receptar?co=surovina|recept|polozka|vazba|zoznam|miesanie
+//   POST   /api/admin/receptar?co=surovina|recept|polozka|vazba|zoznam|ulozene
 //   PATCH  /api/admin/receptar?co=...&id=...
 //   DELETE /api/admin/receptar?co=...&id=...
 
@@ -28,8 +28,9 @@ const TYPY = {
   },
   recept: {
     tabulka: "recipes",
-    polia: ["name", "kind", "yield_qty", "yield_unit", "steps", "source_url", "note", "active"],
-    texty: ["steps", "source_url", "note"],
+    polia: ["name", "kind", "yield_qty", "yield_unit", "yield_label", "steps",
+            "source_url", "note", "active"],
+    texty: ["steps", "source_url", "note", "yield_label"],
   },
   polozka: {
     tabulka: "recipe_items",
@@ -46,7 +47,7 @@ const TYPY = {
     polia: ["day", "name", "note", "items"],
     texty: ["name", "note"],
   },
-  miesanie: {
+  ulozene: {
     tabulka: "recipe_presets",
     polia: ["name", "product_id", "pieces"],
     texty: ["name"],
@@ -64,12 +65,12 @@ function pick(body, typ) {
   return out;
 }
 
-// Uložené miešania pribudli neskôr než zvyšok receptára. Kým sa nespustí
-// supabase/migracia-ulozene-miesania.sql, tabuľka ešte neexistuje — a
+// Uložené recepty pribudli neskôr než zvyšok receptára. Kým sa nespustí
+// supabase/migracia-ulozene-recepty.sql, tabuľka ešte neexistuje — a
 // recepty, ceny ani kalkulácia od nej nezávisia, takže kvôli chýbajúcej
 // skratke sa nesmie rozsypať celá záložka. `null` znamená "tabuľka tu
 // ešte nie je", prázdne pole "zatiaľ nič uložené"; správa to rozlíši.
-async function miesaniaBezpecne() {
+async function ulozeneBezpecne() {
   try {
     return await rest("recipe_presets?select=*&order=name.asc");
   } catch (err) {
@@ -90,15 +91,15 @@ function skontrolujPocet(fields) {
 }
 
 async function nacitatReceptar() {
-  const [suroviny, recepty, polozky, vazby, zoznamy, miesania] = await Promise.all([
+  const [suroviny, recepty, polozky, vazby, zoznamy, ulozene] = await Promise.all([
     rest("ingredients?select=*&order=name.asc"),
     rest("recipes?select=*&order=kind.asc,name.asc"),
     rest("recipe_items?select=*&order=sort_order.asc"),
     rest("product_recipes?select=*"),
     rest("shopping_plans?select=*&order=day.desc.nullslast,created_at.desc"),
-    miesaniaBezpecne(),
+    ulozeneBezpecne(),
   ]);
-  return { suroviny, recepty, polozky, vazby, zoznamy, miesania };
+  return { suroviny, recepty, polozky, vazby, zoznamy, ulozene };
 }
 
 // Tvar, v akom počíta lib/kalkulacia.js.
@@ -184,7 +185,7 @@ module.exports = withErrors(
       if (co === "zoznam" && fields.items !== undefined && !Array.isArray(fields.items)) {
         return sendJson(res, 400, { error: "items_must_be_array" });
       }
-      if (co === "miesanie") {
+      if (co === "ulozene") {
         if (!fields.product_id) return sendJson(res, 400, { error: "missing_product" });
         const chyba = skontrolujPocet(fields);
         if (chyba) return sendJson(res, 400, { error: chyba });
@@ -214,7 +215,7 @@ module.exports = withErrors(
       if (co === "zoznam" && fields.items !== undefined && !Array.isArray(fields.items)) {
         return sendJson(res, 400, { error: "items_must_be_array" });
       }
-      if (co === "miesanie") {
+      if (co === "ulozene") {
         const chyba = skontrolujPocet(fields);
         if (chyba) return sendJson(res, 400, { error: chyba });
       }

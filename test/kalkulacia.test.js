@@ -306,3 +306,23 @@ test("suroviny v rozpise idú v poradí, v akom prídu z databázy", () => {
   const r = rozpisReceptov([{ product_id: "p", kusy: 10 }], data)[0];
   assert.deepEqual(r.polozky.map((x) => x.surovina), ["Voda", "Maslo 82%", "Múka hladká"]);
 });
+
+// „Recept je na 10 ks" nepovie, na 10 kusov čoho. Pri kréme písanom na
+// 10 veterníkov je to podstatný rozdiel — z tej istej dávky vyjde iný
+// počet choux než veterníkov.
+test("popis výťažnosti prejde do rozpisu, prázdny ostane prázdny", () => {
+  const data = {
+    ...DATA,
+    recipes: [
+      { id: "krem", name: "Pistáciový krém", yield_qty: 10, yield_unit: "ks", yield_label: "veterníkov" },
+      { id: "coulis", name: "Malinové coulis", yield_qty: 150, yield_unit: "g" },
+    ],
+  };
+  const rozpis = rozpisReceptov([{ product_id: "kavovy", kusy: 20 }], data);
+  const krem = rozpis.find((r) => r.recept.id === "krem");
+  const coulis = rozpis.find((r) => r.recept.id === "coulis");
+
+  assert.equal(krem.recept.popis_vytaznosti, "veterníkov");
+  assert.equal(coulis.recept.popis_vytaznosti, "", "chýbajúci popis je prázdny text, nie undefined");
+  assert.equal(krem.davky, 2, "popis nesmie zasiahnuť do prepočtu");
+});
