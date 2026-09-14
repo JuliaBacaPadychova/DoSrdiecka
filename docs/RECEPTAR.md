@@ -112,7 +112,19 @@ V správe webu pribudli tri záložky:
   obchod. Keď sa zmení cena a dátum sa nevyplní, doplní sa dnešok sám.
   Obchod je v stĺpci `price_source` — je to tá istá vec ako „odkiaľ je
   cena", len povedaná tak, ako sa o nej rozpráva.
-- **Recepty** — dve časti. Hore *Čo mám miešať*: vyberie sa príchuť a
+- **Recepty** — tri časti. Celkom hore *Uložené miešania*: príchuť a
+  počet kusov uložené pod menom, aby sa nemuseli vyberať zakaždým znova.
+  Ukladá sa **výber, nie vypočítané gramáže** (`recipe_presets`:
+  `product_id` + `pieces`) — po úprave receptu musí z uloženého miešania
+  vyjsť nové číslo, inak by sa po čase piekla podľa zamrznutých hodnôt.
+  Je to niečo iné než nákupný zoznam v Kalkulačke: ten má termín, cenu
+  a môže spájať viac príchutí, toto je skratka k jednému rozpisu.
+
+  Tabuľka pribudla neskôr než zvyšok receptára, takže kým sa nespustí
+  `supabase/migracia-ulozene-miesania.sql`, API vráti `miesania: null`
+  a záložka funguje ďalej bez nej — recepty ani ceny na nej nestoja.
+
+  Potom *Čo mám miešať*: vyberie sa príchuť a
   počet kusov a vypíšu sa všetky recepty tej príchute s gramážou
   prepočítanou na ten počet (tlačidlo pošle ten istý počet do Kalkulačky).
   Dole *Úprava receptov*: zbalený zoznam, kde sa mení názov, výťažnosť,
