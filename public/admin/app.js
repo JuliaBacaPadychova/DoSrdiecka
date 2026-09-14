@@ -1097,7 +1097,7 @@
             <div><label for="popis-${r.id}">${r.yield_unit === 'g' ? 'Čoho' : 'Kusov čoho'}</label>
               <input id="popis-${r.id}" data-vytaznost-popis="${r.id}"
                 data-povodne="${esc(r.yield_label || '')}" value="${esc(r.yield_label || '')}"
-                placeholder="${r.yield_unit === 'g' ? 'napr. karamelu' : 'napr. veterníkov'}">
+                placeholder="${r.yield_unit === 'g' ? 'napr. karamelu' : 'napr. veterník'}">
             </div>
           </div>
           <table class="admin-table"><tbody>${vlastne.map((p, poradie) => {
