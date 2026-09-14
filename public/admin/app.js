@@ -796,6 +796,7 @@
         PRODUCTS_CACHE = p.products || [];
       }
       naplnPrichute();
+      renderMiesania();
       renderRecepty();
       if (rozbalit) {
         const box = document.getElementById('recept-' + rozbalit);
@@ -823,6 +824,134 @@
       ? zoznam.map((p) => `<option value="${p.id}">${esc(p.name)} — ${esc(p.sub)}</option>`).join('')
       : '<option value="">— zatiaľ žiadna príchuť nemá recepty —</option>';
     if (doteraz === 'nepriradene' || (doteraz && zoznam.some((p) => p.id === doteraz))) el.value = doteraz;
+  }
+
+  // ---------- uložené miešania ----------
+  // Skratka k rozpisu: príchuť + počet kusov pod menom. Ukladá sa VÝBER,
+  // nie vypočítané gramáže — po úprave receptu musí z uloženého miešania
+  // vyjsť nové číslo, nie to, čo platilo v deň ukladania.
+
+  function miesanieStav(text, chyba) {
+    const el = document.getElementById('miesStav');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = chyba ? 'err' : 'muted';
+    el.style.display = text ? 'block' : 'none';
+  }
+
+  const CHYBA_MIGRACIE = 'Ukladanie ešte nie je zapnuté — v Supabase treba raz spustiť '
+    + 'supabase/migracia-ulozene-miesania.sql.';
+
+  // Kým migrácia nebehala, tabuľka neexistuje a Supabase vráti 404.
+  // Hláška „server_error" by nepovedala nič použiteľné.
+  function chybaMiesania(err) {
+    return err.status === 404 ? CHYBA_MIGRACIE : err.message;
+  }
+
+  function renderMiesania() {
+    const el = document.getElementById('miesaniaList');
+    if (!el || !RECEPTAR) return;
+    // null znamená chýbajúcu tabuľku, prázdne pole „zatiaľ nič uložené".
+    if (!RECEPTAR.miesania) {
+      el.innerHTML = `<p class="muted">${esc(CHYBA_MIGRACIE)}</p>`;
+      return;
+    }
+    const zoznam = podlaAbecedy(RECEPTAR.miesania, (m) => m.name);
+    if (!zoznam.length) {
+      el.innerHTML = '<p class="muted">Zatiaľ nič uložené. Vyber dole príchuť a počet kusov '
+        + 'a daj <strong>Uložiť toto miešanie</strong>.</p>';
+      return;
+    }
+    el.innerHTML = `<table class="admin-table"><tbody>${zoznam.map((m) => {
+      // Príchuť sa dá z ponuky odstrániť — skratka na ňu potom nemá kam
+      // viesť, ale nemá ani ticho zmiznúť.
+      const znamy = PRODUCTS_CACHE.some((p) => p.id === m.product_id);
+      return `<tr>
+        <td>${znamy
+          ? `<button class="btn sm" onclick="Admin.otvorMiesanie('${m.id}')">${esc(m.name)}</button>`
+          : `<strong>${esc(m.name)}</strong>`}</td>
+        <td class="muted">${znamy
+          ? esc(nazovPrichute(m.product_id)) + ' · ' + m.pieces + ' ks'
+          : 'príchuť už nie je v ponuke'}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn ghost sm" onclick="Admin.premenujMiesanie('${m.id}')">Premenovať</button>
+          <button class="btn ghost sm" onclick="Admin.zmazMiesanie('${m.id}')">Zmazať</button>
+        </td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  }
+
+  async function otvorMiesanie(id) {
+    const m = (RECEPTAR.miesania || []).find((x) => x.id === id);
+    if (!m) return;
+    const prichut = document.getElementById('recPrichut');
+    prichut.value = m.product_id;
+    // Vo výbere sú len príchute, ktoré majú priradené recepty. Keď sa
+    // väzby medzitým zrušili, prehliadač hodnotu ticho zahodí.
+    if (prichut.value !== m.product_id) {
+      miesanieStav(`Príchuť „${nazovPrichute(m.product_id)}" už nemá priradené žiadne recepty.`, true);
+      return;
+    }
+    document.getElementById('recKusy').value = m.pieces;
+    miesanieStav('');
+    await zobrazRozpis();
+    document.getElementById('receptyRozpis').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function ulozMiesanie() {
+    const product_id = document.getElementById('recPrichut').value;
+    const pieces = parseInt(document.getElementById('recKusy').value, 10) || 0;
+    if (!product_id || pieces <= 0) {
+      miesanieStav('Najprv vyber príchuť a počet kusov.', true);
+      return;
+    }
+    const name = (prompt('Pod akým menom to uložiť?', `${nazovPrichute(product_id)} — ${pieces} ks`) || '').trim();
+    if (!name) return;
+    try {
+      const data = await apiFetch('/api/admin/receptar?co=miesanie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, product_id, pieces }),
+      });
+      if (!Array.isArray(RECEPTAR.miesania)) RECEPTAR.miesania = [];
+      RECEPTAR.miesania.push(data.zaznam);
+      renderMiesania();
+      miesanieStav(`Uložené ako „${name}".`);
+    } catch (err) {
+      miesanieStav(chybaMiesania(err), true);
+    }
+  }
+
+  async function premenujMiesanie(id) {
+    const m = (RECEPTAR.miesania || []).find((x) => x.id === id);
+    if (!m) return;
+    const name = (prompt('Nový názov:', m.name) || '').trim();
+    if (!name || name === m.name) return;
+    try {
+      await apiFetch(`/api/admin/receptar?co=miesanie&id=${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      m.name = name;
+      renderMiesania();
+      miesanieStav('Premenované.');
+    } catch (err) {
+      miesanieStav(chybaMiesania(err), true);
+    }
+  }
+
+  async function zmazMiesanie(id) {
+    const m = (RECEPTAR.miesania || []).find((x) => x.id === id);
+    if (!m || !confirm(`Naozaj zmazať uložené miešanie „${m.name}"?`)) return;
+    try {
+      await apiFetch(`/api/admin/receptar?co=miesanie&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      RECEPTAR.miesania = RECEPTAR.miesania.filter((x) => x.id !== id);
+      renderMiesania();
+      miesanieStav('Zmazané. Recepty sa tým nemenia.');
+    } catch (err) {
+      miesanieStav(chybaMiesania(err), true);
+    }
   }
 
   // Poradie, v akom sa pečie: najprv cesto, potom náplne, nakoniec ozdoby.
@@ -1615,6 +1744,7 @@
     renderRecepty, ulozRecept, pridajPolozku, posunPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
     novyReceptForm, ulozNovyRecept, doKalkulacky, zmazRecept,
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
+    ulozMiesanie, otvorMiesanie, premenujMiesanie, zmazMiesanie,
     novyZoznam, vyberZoznam, ulozZoznam, zmazZoznam, objednavkyDoZoznamu,
   };
 

@@ -8,7 +8,7 @@
 //   GET    /api/admin/receptar              — suroviny, recepty, položky, väzby
 //   GET    /api/admin/receptar?den=2026-10-18 — nákupný zoznam z objednávok dňa
 //   POST   /api/admin/receptar?co=kalkulacia  — ručný prepočet
-//   POST   /api/admin/receptar?co=surovina|recept|polozka|vazba
+//   POST   /api/admin/receptar?co=surovina|recept|polozka|vazba|zoznam|miesanie
 //   PATCH  /api/admin/receptar?co=...&id=...
 //   DELETE /api/admin/receptar?co=...&id=...
 
@@ -46,6 +46,11 @@ const TYPY = {
     polia: ["day", "name", "note", "items"],
     texty: ["name", "note"],
   },
+  miesanie: {
+    tabulka: "recipe_presets",
+    polia: ["name", "product_id", "pieces"],
+    texty: ["name"],
+  },
 };
 
 // Prázdne políčko z formulára znamená "nevyplnené", nie nulu. Pri
@@ -59,15 +64,41 @@ function pick(body, typ) {
   return out;
 }
 
+// Uložené miešania pribudli neskôr než zvyšok receptára. Kým sa nespustí
+// supabase/migracia-ulozene-miesania.sql, tabuľka ešte neexistuje — a
+// recepty, ceny ani kalkulácia od nej nezávisia, takže kvôli chýbajúcej
+// skratke sa nesmie rozsypať celá záložka. `null` znamená "tabuľka tu
+// ešte nie je", prázdne pole "zatiaľ nič uložené"; správa to rozlíši.
+async function miesaniaBezpecne() {
+  try {
+    return await rest("recipe_presets?select=*&order=name.asc");
+  } catch (err) {
+    const kod = err.body && err.body.code ? String(err.body.code) : "";
+    if (err.status === 404 || /^PGRST2/.test(kod) || kod === "42P01") return null;
+    throw err;
+  }
+}
+
+// Počet kusov sa prepisuje do gramáží — nula ani text by z receptu
+// spravili prázdny rozpis, tak sa radšej neuloží vôbec.
+function skontrolujPocet(fields) {
+  if (fields.pieces === undefined) return null;
+  const n = Number(fields.pieces);
+  if (!Number.isInteger(n) || n <= 0) return "invalid_pieces";
+  fields.pieces = n;
+  return null;
+}
+
 async function nacitatReceptar() {
-  const [suroviny, recepty, polozky, vazby, zoznamy] = await Promise.all([
+  const [suroviny, recepty, polozky, vazby, zoznamy, miesania] = await Promise.all([
     rest("ingredients?select=*&order=name.asc"),
     rest("recipes?select=*&order=kind.asc,name.asc"),
     rest("recipe_items?select=*&order=sort_order.asc"),
     rest("product_recipes?select=*"),
     rest("shopping_plans?select=*&order=day.desc.nullslast,created_at.desc"),
+    miesaniaBezpecne(),
   ]);
-  return { suroviny, recepty, polozky, vazby, zoznamy };
+  return { suroviny, recepty, polozky, vazby, zoznamy, miesania };
 }
 
 // Tvar, v akom počíta lib/kalkulacia.js.
@@ -153,6 +184,11 @@ module.exports = withErrors(
       if (co === "zoznam" && fields.items !== undefined && !Array.isArray(fields.items)) {
         return sendJson(res, 400, { error: "items_must_be_array" });
       }
+      if (co === "miesanie") {
+        if (!fields.product_id) return sendJson(res, 400, { error: "missing_product" });
+        const chyba = skontrolujPocet(fields);
+        if (chyba) return sendJson(res, 400, { error: chyba });
+      }
       const created = await rest(typ.tabulka, {
         method: "POST",
         body: fields,
@@ -177,6 +213,10 @@ module.exports = withErrors(
       }
       if (co === "zoznam" && fields.items !== undefined && !Array.isArray(fields.items)) {
         return sendJson(res, 400, { error: "items_must_be_array" });
+      }
+      if (co === "miesanie") {
+        const chyba = skontrolujPocet(fields);
+        if (chyba) return sendJson(res, 400, { error: chyba });
       }
       // Zmena ceny bez dátumu je cena bez platnosti — doplní sa dnešok.
       if (co === "surovina" && fields.pack_price !== undefined && body.price_date === undefined) {

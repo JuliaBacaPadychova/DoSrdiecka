@@ -29,6 +29,7 @@ function startFakeSupabase() {
     recipe_items: [],
     product_recipes: [],
     shopping_plans: [],
+    recipe_presets: [],
     // Nadpis je zámerne dvojriadkový — zalomenie je súčasťou textu.
     site_settings: [{ id: true, hero_title: "Niečo sladké bez výčitky?\nJasné! Každý kúsok ide predsa do srdiečka.", hero_lead: "Testovací úvod.", about_text: "Pracujem prevažne s bezlaktózovými produktami.", lead_days: 4 }],
   };
@@ -262,6 +263,16 @@ function startFakeSupabase() {
     if (restMatch) {
       const table = restMatch[1];
       const filters = parseFilters(url.searchParams);
+
+      // Tabuľku, ktorá v schéme nie je, PostgREST odmietne so 404 —
+      // presne to sa deje, kým sa ručná migrácia nespustí. Bez tejto
+      // vetvy by sa požiadavka zasekla a test by len tichol.
+      if (!tableFor(table)) {
+        return send(res, 404, {
+          code: "PGRST205",
+          message: `Could not find the table 'public.${table}' in the schema cache`,
+        });
+      }
 
       if (req.method === "GET") {
         let rows = applyFilters(tableFor(table), filters);
