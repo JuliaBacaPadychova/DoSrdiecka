@@ -108,8 +108,10 @@ ganache 0,74 €/ks. Keby kávová ganache naozaj vyšla na 20 ks namiesto 12
 
 V správe webu pribudli tri záložky:
 
-- **Suroviny** — kartotéka: balenie, cena, dátum ceny a odkiaľ je. Keď sa
-  zmení cena a dátum sa nevyplní, doplní sa dnešok sám.
+- **Suroviny** — kartotéka: balenie, cena, dátum posledného nákupu a
+  obchod. Keď sa zmení cena a dátum sa nevyplní, doplní sa dnešok sám.
+  Obchod je v stĺpci `price_source` — je to tá istá vec ako „odkiaľ je
+  cena", len povedaná tak, ako sa o nej rozpráva.
 - **Recepty** — dve časti. Hore *Čo mám miešať*: vyberie sa príchuť a
   počet kusov a vypíšu sa všetky recepty tej príchute s gramážou
   prepočítanou na ten počet (tlačidlo pošle ten istý počet do Kalkulačky).

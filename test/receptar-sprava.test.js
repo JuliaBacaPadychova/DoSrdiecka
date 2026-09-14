@@ -165,3 +165,23 @@ test("uložené zoznamy chodia spolu s receptárom", async (t) => {
     assert.equal(o.body.zoznamy[0].day, "2026-10-18");
   });
 });
+
+test("obchod sa uloží spolu s cenou a dátumom nákupu", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    const o = await zavolaj("PATCH", "/api/admin/receptar?co=surovina&id=i-mas", {
+      pack_price: 3.19,
+      price_source: "Kaufland",
+    });
+    assert.equal(o.code, 200);
+    assert.equal(db.ingredients[0].price_source, "Kaufland");
+    assert.equal(db.ingredients[0].pack_price, 3.19);
+    assert.equal(db.ingredients[0].price_date, new Date().toISOString().slice(0, 10));
+  });
+});
+
+test("vymazaný obchod ostane prázdny, nie null", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    await zavolaj("PATCH", "/api/admin/receptar?co=surovina&id=i-mas", { price_source: "" });
+    assert.equal(db.ingredients[0].price_source, "", "prázdny text, nie prázdna hodnota");
+  });
+});
