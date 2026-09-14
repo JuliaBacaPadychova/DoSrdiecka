@@ -33,7 +33,7 @@ const TYPY = {
   },
   polozka: {
     tabulka: "recipe_items",
-    polia: ["recipe_id", "ingredient_id", "amount", "optional", "note"],
+    polia: ["recipe_id", "ingredient_id", "amount", "optional", "note", "sort_order"],
     texty: ["note"],
   },
   vazba: {
@@ -63,7 +63,7 @@ async function nacitatReceptar() {
   const [suroviny, recepty, polozky, vazby, zoznamy] = await Promise.all([
     rest("ingredients?select=*&order=name.asc"),
     rest("recipes?select=*&order=kind.asc,name.asc"),
-    rest("recipe_items?select=*"),
+    rest("recipe_items?select=*&order=sort_order.asc"),
     rest("product_recipes?select=*"),
     rest("shopping_plans?select=*&order=day.desc.nullslast,created_at.desc"),
   ]);
