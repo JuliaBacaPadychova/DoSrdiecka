@@ -26,6 +26,9 @@
     let data = null;
     try { data = await res.json(); } catch { /* no body */ }
     if (!res.ok) {
+      // Len 401 znamená "nie si prihlásená". Pri 503 sa neozýva databáza
+      // a vyhodiť ťa z rozrobenej práce by bolo to najhoršie, čo môžeme
+      // spraviť.
       if (res.status === 401) showLogin();
       const err = new Error((data && (data.message || data.error)) || 'Nastala chyba.');
       err.status = res.status;
