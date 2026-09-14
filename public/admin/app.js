@@ -956,11 +956,6 @@
 
   // Poradie, v akom sa pečie: najprv cesto, potom náplne, nakoniec ozdoby.
   const PORADIE_DRUHOV = ['cesto', 'krem', 'vklad', 'poleva', 'ozdoba', 'ine'];
-  const NAZOV_DRUHU = {
-    cesto: 'cesto', krem: 'krém', vklad: 'vklad',
-    poleva: 'poleva', ozdoba: 'ozdoba', ine: 'iné',
-  };
-  const druh = (k) => NAZOV_DRUHU[k] || k;
 
   function cisloSk(v) {
     if (v === null || v === undefined) return '—';
@@ -1008,8 +1003,7 @@
         Tlačidlo hore z toho istého počtu spraví nákupný zoznam s cenou.</p>
       ${zoradene.map((r) => `
         <div style="margin-bottom:24px">
-          <h3 style="margin:0 0 2px">${esc(r.recept.nazov)}
-            <span class="muted" style="font-weight:400">(${esc(druh(r.recept.druh))})</span></h3>
+          <h3 style="margin:0 0 2px">${esc(r.recept.nazov)}</h3>
           <p class="muted" style="margin:0 0 8px;font-size:.85rem">
             Recept je na ${cisloSk(r.recept.vytaznost)} ${esc(r.recept.jednotka_vytaznosti)}${
               r.recept.popis_vytaznosti ? ' ' + esc(r.recept.popis_vytaznosti) : ''}${
@@ -1073,39 +1067,47 @@
       // Podľa abecedy, nie podľa toho, v akom poradí sa priradili.
       const pouzitie = podlaAbecedy(
         vazby.filter((v) => v.recipe_id === r.id), (v) => nazovPrichute(v.product_id));
+
+      // Hlavička: že je to krém, vidno z názvu receptu. Namiesto druhu
+      // stojí vpredu to, čoho je tých 10 kusov — výrobok, ku ktorému je
+      // recept priradený. Vzadu ostanú samotné príchute, aby sa „Veterník"
+      // neopakoval pri každej.
+      const vyrobok = (v) => PRODUCTS_CACHE.find((x) => x.id === v.product_id);
+      const jedinecne = (vyber) => [...new Set(pouzitie.map(vyber).filter(Boolean))];
+      const vyrobky = jedinecne((v) => (vyrobok(v) || {}).name);
+      const prichute = jedinecne((v) => (vyrobok(v) || {}).sub);
+      // Recept bez príchuti nemá odkiaľ výrobok vziať — vtedy poslúži
+      // ručne dopísané „kusov čoho".
+      const zCoho = vyrobky.length ? vyrobky.join(', ') : (r.yield_label || '');
+
       return `
       <details id="recept-${r.id}" style="margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:10px">
         <summary style="cursor:pointer">
           <strong>${esc(r.name)}</strong>
-          <span class="muted">· ${esc(druh(r.kind))} · na ${cisloSk(r.yield_qty)} ${esc(r.yield_unit)}${
-            r.yield_label ? ' ' + esc(r.yield_label) : ''}
-          · ${vlastne.length} surovín ·
-          ${pouzitie.length ? pouzitie.map((v) => esc(nazovPrichute(v.product_id))).join(', ')
-                            : 'nepriradený k príchuti'}</span>
+          <span class="muted">${zCoho ? ' · ' + esc(zCoho) : ''}
+          · na ${cisloSk(r.yield_qty)} ${esc(r.yield_unit)}
+          · ${vlastne.length} surovín${
+            pouzitie.length
+              ? (prichute.length ? ' · ' + prichute.map(esc).join(', ') : '')
+              : ' · nepriradený k príchuti'}</span>
         </summary>
 
         <div style="padding:12px 0 0 4px">
-          <div class="form" style="margin:0 0 12px">
+          <div class="form tri" style="margin:0 0 12px">
             <div><label for="nazov-${r.id}">Názov receptu</label>
               <input id="nazov-${r.id}" data-nazov="${r.id}" data-povodne="${esc(r.name)}"
                 value="${esc(r.name)}">
             </div>
-            <div><label for="vytaznost-${r.id}">Recept je napísaný na</label>
+            <div><label for="vytaznost-${r.id}">Recept je napísaný na
+              <span class="muted">(${r.yield_unit === 'g' ? 'gramov' : 'kusov'})</span></label>
               <input type="number" min="0" step="1" id="vytaznost-${r.id}"
                 data-vytaznost="${r.id}" data-povodne="${esc(r.yield_qty)}"
                 value="${esc(r.yield_qty)}">
-              <span class="fieldhint">${r.yield_unit === 'g' ? 'gramov' : 'kusov'} —
-                mení sa len vtedy, keď si recept naozaj prerobila alebo po pečení zistila,
-                že vydá iný počet. Prepočet na inú objednávku robí výber hore.</span>
             </div>
             <div><label for="popis-${r.id}">${r.yield_unit === 'g' ? 'Čoho' : 'Kusov čoho'}</label>
               <input id="popis-${r.id}" data-vytaznost-popis="${r.id}"
                 data-povodne="${esc(r.yield_label || '')}" value="${esc(r.yield_label || '')}"
                 placeholder="${r.yield_unit === 'g' ? 'napr. karamelu' : 'napr. veterníkov'}">
-              <span class="fieldhint">Vypíše sa v rozpise hore: „Recept je na
-                ${cisloSk(r.yield_qty)} ${esc(r.yield_unit)}
-                ${esc(r.yield_label || (r.yield_unit === 'g' ? 'karamelu' : 'veterníkov'))}".
-                Nič sa podľa toho nepočíta, je to len popis.</span>
             </div>
           </div>
           <table class="admin-table"><tbody>${vlastne.map((p, poradie) => {
