@@ -291,6 +291,7 @@ children.push(table(
     [["Zmeniť si heslo do správy"], [["Správa → Nastavenia → Zmena hesla", true], ["Prihlásená pritom zostaneš, novým sa hlásiš až nabudúce.", false, true]]],
     [["Obnoviť si ZABUDNUTÉ heslo (nevieš sa prihlásiť)"], [["Supabase → Authentication → Users", true], ["Len na tento prípad — keď sa do správy dostaneš, meň si ho radšej tam.", false, true]]],
     [["Zistiť, prečo niečo nefunguje"], [["Vercel → do-srdiecka → Logs", true], ["Len hodinu dozadu — choď tam hneď, ako problém nastane", false, true]]],
+    [["Web sa dlho načítava alebo ma nepustí do správy"], [["Počkaj pár minút a skús znova", true], ["Väčšinou je to krátky výpadok databázy, nie tvoje heslo — správa ti to aj napíše. Ak to trvá dlhšie ako pol hodiny, napíš mi.", false, true]]],
     [["Zmeniť heslo k e-mailovej schránke"], [["Websupport, a hneď potom Vercel → Environment Variables", true], ["Inak prestanú chodiť notifikácie o objednávkach", false, true]]],
     [["Zmeniť e-mail, ktorým sa hlásim do správy"], [["Supabase → Authentication → Users, a hneď potom ADMIN_EMAILS vo Verceli", true], ["Keď sa tie dve adresy rozídu, správa nepustí dnu ani teba", false, true]]],
     [["Zmeniť titulok alebo popis vo výsledkoch Google"], [["Napíš mi — je to v kóde, nie v Nastaveniach", true], ["Pozor: sú to iné texty než nadpis na stránke. Nadpis si meníš v Nastaveniach.", false, true]]],

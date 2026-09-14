@@ -21,7 +21,18 @@ module.exports = withErrors(async function handler(req, res) {
       refresh_token: session.refresh_token,
       email: session.user && session.user.email,
     });
-  } catch {
+  } catch (err) {
+    // Výpadok Supabase nie je zlé heslo. Kedysi sa tu zachytilo všetko
+    // a majiteľke sa ukázalo "Nesprávny e-mail alebo heslo" aj vtedy,
+    // keď mala heslo správne a len sa neozývala databáza.
+    if (err && err.docasna) {
+      // eslint-disable-next-line no-console
+      console.error("Prihlásenie zlyhalo pre nedostupný Supabase:", err.message);
+      return sendJson(res, 503, {
+        error: "auth_unavailable",
+        message: "Prihlasovanie sa teraz neozýva. Skús to prosím o chvíľu znova — heslo máš zrejme v poriadku.",
+      });
+    }
     sendJson(res, 401, { error: "invalid_credentials", message: "Nesprávny e-mail alebo heslo." });
   }
 });
