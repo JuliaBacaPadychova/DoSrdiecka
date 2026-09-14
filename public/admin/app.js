@@ -1068,28 +1068,18 @@
       const pouzitie = podlaAbecedy(
         vazby.filter((v) => v.recipe_id === r.id), (v) => nazovPrichute(v.product_id));
 
-      // Hlavička: že je to krém, vidno z názvu receptu. Namiesto druhu
-      // stojí vpredu to, čoho je tých 10 kusov — výrobok, ku ktorému je
-      // recept priradený. Vzadu ostanú samotné príchute, aby sa „Veterník"
-      // neopakoval pri každej.
-      const vyrobok = (v) => PRODUCTS_CACHE.find((x) => x.id === v.product_id);
-      const jedinecne = (vyber) => [...new Set(pouzitie.map(vyber).filter(Boolean))];
-      const vyrobky = jedinecne((v) => (vyrobok(v) || {}).name);
-      const prichute = jedinecne((v) => (vyrobok(v) || {}).sub);
-      // Recept bez príchuti nemá odkiaľ výrobok vziať — vtedy poslúži
-      // ručne dopísané „kusov čoho".
-      const zCoho = vyrobky.length ? vyrobky.join(', ') : (r.yield_label || '');
-
+      // Hlavička: že je to krém, vidno z názvu receptu — druh tam bol
+      // navyše. Na jeho mieste stojí „kusov čoho" z úpravy receptu, teda
+      // čoho je tých 10 kusov. Vzadu ostávajú celé názvy príchutí.
       return `
       <details id="recept-${r.id}" style="margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:10px">
         <summary style="cursor:pointer">
           <strong>${esc(r.name)}</strong>
-          <span class="muted">${zCoho ? ' · ' + esc(zCoho) : ''}
+          <span class="muted">${r.yield_label ? ' · ' + esc(r.yield_label) : ''}
           · na ${cisloSk(r.yield_qty)} ${esc(r.yield_unit)}
-          · ${vlastne.length} surovín${
-            pouzitie.length
-              ? (prichute.length ? ' · ' + prichute.map(esc).join(', ') : '')
-              : ' · nepriradený k príchuti'}</span>
+          · ${vlastne.length} surovín ·
+          ${pouzitie.length ? pouzitie.map((v) => esc(nazovPrichute(v.product_id))).join(', ')
+                            : 'nepriradený k príchuti'}</span>
         </summary>
 
         <div style="padding:12px 0 0 4px">
