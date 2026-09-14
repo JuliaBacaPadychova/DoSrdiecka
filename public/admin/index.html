@@ -197,12 +197,12 @@
 
   <div class="admin-panel" id="tab-recepty">
     <div class="admin-card">
-      <h3>Uložené miešania</h3>
+      <h3>Uložené recepty</h3>
       <p class="muted" style="margin:0 0 12px;font-size:.88rem">Príchute a počty, ktoré robíš stále
-        dokola. Klikni na uložené a rozpis sa vypíše dole — nemusíš nič vyberať. Ukladá sa výber,
-        nie gramáže: keď recept upravíš, uložené miešanie sa prepočíta z nového receptu.</p>
-      <div id="miesaniaList"><p class="muted">Načítavam…</p></div>
-      <p id="miesStav" class="muted" style="display:none;margin:10px 0 0"></p>
+        dokola. Klikni na uložený a rozpis sa vypíše dole — nemusíš nič vyberať. Ukladá sa výber,
+        nie gramáže: keď recept neskôr upravíš, uložený sa prepočíta z novej verzie.</p>
+      <div id="ulozeneList"><p class="muted">Načítavam…</p></div>
+      <p id="ulozeneStav" class="muted" style="display:none;margin:10px 0 0"></p>
     </div>
     <div class="admin-card">
       <h3>Čo mám miešať</h3>
@@ -214,7 +214,7 @@
         <div><label for="recKusy">Koľko kusov robím</label><input id="recKusy" type="number" min="1" step="1" value="6"></div>
         <div style="display:flex;align-items:flex-end;gap:10px">
           <button class="btn" onclick="Admin.zobrazRozpis()">Zobraziť recepty</button>
-          <button class="btn ghost" onclick="Admin.ulozMiesanie()">Uložiť toto miešanie</button>
+          <button class="btn ghost" onclick="Admin.ulozVyber()">Uložiť tento recept</button>
         </div>
       </div>
     </div>
@@ -248,6 +248,7 @@
           <div><label for="nrJednotka">Čoho</label>
             <select id="nrJednotka"><option value="ks">kusov</option><option value="g">gramov</option></select>
           </div>
+          <div><label for="nrPopis">Kusov čoho</label><input id="nrPopis" placeholder="napr. veterníkov"></div>
           <div class="full"><label for="nrPoznamka">Poznámka</label><input id="nrPoznamka"></div>
           <div class="full"><label for="nrPostup">Postup</label><textarea id="nrPostup" rows="3"></textarea></div>
         </div>

@@ -112,16 +112,16 @@ V správe webu pribudli tri záložky:
   obchod. Keď sa zmení cena a dátum sa nevyplní, doplní sa dnešok sám.
   Obchod je v stĺpci `price_source` — je to tá istá vec ako „odkiaľ je
   cena", len povedaná tak, ako sa o nej rozpráva.
-- **Recepty** — tri časti. Celkom hore *Uložené miešania*: príchuť a
+- **Recepty** — tri časti. Celkom hore *Uložené recepty*: príchuť a
   počet kusov uložené pod menom, aby sa nemuseli vyberať zakaždým znova.
   Ukladá sa **výber, nie vypočítané gramáže** (`recipe_presets`:
-  `product_id` + `pieces`) — po úprave receptu musí z uloženého miešania
-  vyjsť nové číslo, inak by sa po čase piekla podľa zamrznutých hodnôt.
+  `product_id` + `pieces`) — po úprave receptu musí z uloženého vyjsť
+  nové číslo, inak by sa po čase piekla podľa zamrznutých hodnôt.
   Je to niečo iné než nákupný zoznam v Kalkulačke: ten má termín, cenu
   a môže spájať viac príchutí, toto je skratka k jednému rozpisu.
 
   Tabuľka pribudla neskôr než zvyšok receptára, takže kým sa nespustí
-  `supabase/migracia-ulozene-miesania.sql`, API vráti `miesania: null`
+  `supabase/migracia-ulozene-recepty.sql`, API vráti `ulozene: null`
   a záložka funguje ďalej bez nej — recepty ani ceny na nej nestoja.
 
   Potom *Čo mám miešať*: vyberie sa príchuť a
@@ -130,6 +130,12 @@ V správe webu pribudli tri záložky:
   Dole *Úprava receptov*: zbalený zoznam, kde sa mení názov, výťažnosť,
   gramáže, poznámky pri surovinách, poznámka k receptu, postup, poradie
   surovín a priradenie k príchutiam; ukladá sa jedným tlačidlom.
+
+  K výťažnosti patrí aj `recipes.yield_label` — čoho je tých 10 kusov
+  („veterníkov", „choux"). Samotné „recept je na 10 ks" sa nedá prečítať,
+  keď tá istá dávka vydá iný počet inej príchute. Je to voľný text a
+  nič sa podľa neho nepočíta; prepočet drží `yield_qty` s
+  `pieces_per_batch`.
 
   Poradie surovín drží stĺpec `recipe_items.sort_order` — v recepte na
   poradí záleží a databáza bez neho vracia riadky, ako sa jej zachce.

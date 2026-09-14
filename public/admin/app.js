@@ -796,7 +796,7 @@
         PRODUCTS_CACHE = p.products || [];
       }
       naplnPrichute();
-      renderMiesania();
+      renderUlozene();
       renderRecepty();
       if (rozbalit) {
         const box = document.getElementById('recept-' + rozbalit);
@@ -826,13 +826,13 @@
     if (doteraz === 'nepriradene' || (doteraz && zoznam.some((p) => p.id === doteraz))) el.value = doteraz;
   }
 
-  // ---------- uložené miešania ----------
+  // ---------- uložené recepty ----------
   // Skratka k rozpisu: príchuť + počet kusov pod menom. Ukladá sa VÝBER,
-  // nie vypočítané gramáže — po úprave receptu musí z uloženého miešania
-  // vyjsť nové číslo, nie to, čo platilo v deň ukladania.
+  // nie vypočítané gramáže — po úprave receptu musí z uloženého vyjsť
+  // nové číslo, nie to, čo platilo v deň ukladania.
 
-  function miesanieStav(text, chyba) {
-    const el = document.getElementById('miesStav');
+  function ulozeneStav(text, chyba) {
+    const el = document.getElementById('ulozeneStav');
     if (!el) return;
     el.textContent = text || '';
     el.className = chyba ? 'err' : 'muted';
@@ -840,26 +840,26 @@
   }
 
   const CHYBA_MIGRACIE = 'Ukladanie ešte nie je zapnuté — v Supabase treba raz spustiť '
-    + 'supabase/migracia-ulozene-miesania.sql.';
+    + 'supabase/migracia-ulozene-recepty.sql.';
 
   // Kým migrácia nebehala, tabuľka neexistuje a Supabase vráti 404.
   // Hláška „server_error" by nepovedala nič použiteľné.
-  function chybaMiesania(err) {
+  function chybaUlozenych(err) {
     return err.status === 404 ? CHYBA_MIGRACIE : err.message;
   }
 
-  function renderMiesania() {
-    const el = document.getElementById('miesaniaList');
+  function renderUlozene() {
+    const el = document.getElementById('ulozeneList');
     if (!el || !RECEPTAR) return;
     // null znamená chýbajúcu tabuľku, prázdne pole „zatiaľ nič uložené".
-    if (!RECEPTAR.miesania) {
+    if (!RECEPTAR.ulozene) {
       el.innerHTML = `<p class="muted">${esc(CHYBA_MIGRACIE)}</p>`;
       return;
     }
-    const zoznam = podlaAbecedy(RECEPTAR.miesania, (m) => m.name);
+    const zoznam = podlaAbecedy(RECEPTAR.ulozene, (m) => m.name);
     if (!zoznam.length) {
       el.innerHTML = '<p class="muted">Zatiaľ nič uložené. Vyber dole príchuť a počet kusov '
-        + 'a daj <strong>Uložiť toto miešanie</strong>.</p>';
+        + 'a daj <strong>Uložiť tento recept</strong>.</p>';
       return;
     }
     el.innerHTML = `<table class="admin-table"><tbody>${zoznam.map((m) => {
@@ -868,89 +868,89 @@
       const znamy = PRODUCTS_CACHE.some((p) => p.id === m.product_id);
       return `<tr>
         <td>${znamy
-          ? `<button class="btn sm" onclick="Admin.otvorMiesanie('${m.id}')">${esc(m.name)}</button>`
+          ? `<button class="btn sm" onclick="Admin.otvorUlozeny('${m.id}')">${esc(m.name)}</button>`
           : `<strong>${esc(m.name)}</strong>`}</td>
         <td class="muted">${znamy
           ? esc(nazovPrichute(m.product_id)) + ' · ' + m.pieces + ' ks'
           : 'príchuť už nie je v ponuke'}</td>
         <td style="text-align:right;white-space:nowrap">
-          <button class="btn ghost sm" onclick="Admin.premenujMiesanie('${m.id}')">Premenovať</button>
-          <button class="btn ghost sm" onclick="Admin.zmazMiesanie('${m.id}')">Zmazať</button>
+          <button class="btn ghost sm" onclick="Admin.premenujUlozeny('${m.id}')">Premenovať</button>
+          <button class="btn ghost sm" onclick="Admin.zmazUlozeny('${m.id}')">Zmazať</button>
         </td>
       </tr>`;
     }).join('')}</tbody></table>`;
   }
 
-  async function otvorMiesanie(id) {
-    const m = (RECEPTAR.miesania || []).find((x) => x.id === id);
+  async function otvorUlozeny(id) {
+    const m = (RECEPTAR.ulozene || []).find((x) => x.id === id);
     if (!m) return;
     const prichut = document.getElementById('recPrichut');
     prichut.value = m.product_id;
     // Vo výbere sú len príchute, ktoré majú priradené recepty. Keď sa
     // väzby medzitým zrušili, prehliadač hodnotu ticho zahodí.
     if (prichut.value !== m.product_id) {
-      miesanieStav(`Príchuť „${nazovPrichute(m.product_id)}" už nemá priradené žiadne recepty.`, true);
+      ulozeneStav(`Príchuť „${nazovPrichute(m.product_id)}" už nemá priradené žiadne recepty.`, true);
       return;
     }
     document.getElementById('recKusy').value = m.pieces;
-    miesanieStav('');
+    ulozeneStav('');
     await zobrazRozpis();
     document.getElementById('receptyRozpis').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  async function ulozMiesanie() {
+  async function ulozVyber() {
     const product_id = document.getElementById('recPrichut').value;
     const pieces = parseInt(document.getElementById('recKusy').value, 10) || 0;
     if (!product_id || pieces <= 0) {
-      miesanieStav('Najprv vyber príchuť a počet kusov.', true);
+      ulozeneStav('Najprv vyber príchuť a počet kusov.', true);
       return;
     }
     const name = (prompt('Pod akým menom to uložiť?', `${nazovPrichute(product_id)} — ${pieces} ks`) || '').trim();
     if (!name) return;
     try {
-      const data = await apiFetch('/api/admin/receptar?co=miesanie', {
+      const data = await apiFetch('/api/admin/receptar?co=ulozene', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, product_id, pieces }),
       });
-      if (!Array.isArray(RECEPTAR.miesania)) RECEPTAR.miesania = [];
-      RECEPTAR.miesania.push(data.zaznam);
-      renderMiesania();
-      miesanieStav(`Uložené ako „${name}".`);
+      if (!Array.isArray(RECEPTAR.ulozene)) RECEPTAR.ulozene = [];
+      RECEPTAR.ulozene.push(data.zaznam);
+      renderUlozene();
+      ulozeneStav(`Uložené ako „${name}".`);
     } catch (err) {
-      miesanieStav(chybaMiesania(err), true);
+      ulozeneStav(chybaUlozenych(err), true);
     }
   }
 
-  async function premenujMiesanie(id) {
-    const m = (RECEPTAR.miesania || []).find((x) => x.id === id);
+  async function premenujUlozeny(id) {
+    const m = (RECEPTAR.ulozene || []).find((x) => x.id === id);
     if (!m) return;
     const name = (prompt('Nový názov:', m.name) || '').trim();
     if (!name || name === m.name) return;
     try {
-      await apiFetch(`/api/admin/receptar?co=miesanie&id=${encodeURIComponent(id)}`, {
+      await apiFetch(`/api/admin/receptar?co=ulozene&id=${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
       m.name = name;
-      renderMiesania();
-      miesanieStav('Premenované.');
+      renderUlozene();
+      ulozeneStav('Premenované.');
     } catch (err) {
-      miesanieStav(chybaMiesania(err), true);
+      ulozeneStav(chybaUlozenych(err), true);
     }
   }
 
-  async function zmazMiesanie(id) {
-    const m = (RECEPTAR.miesania || []).find((x) => x.id === id);
-    if (!m || !confirm(`Naozaj zmazať uložené miešanie „${m.name}"?`)) return;
+  async function zmazUlozeny(id) {
+    const m = (RECEPTAR.ulozene || []).find((x) => x.id === id);
+    if (!m || !confirm(`Naozaj zmazať uložený recept „${m.name}"?`)) return;
     try {
-      await apiFetch(`/api/admin/receptar?co=miesanie&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      RECEPTAR.miesania = RECEPTAR.miesania.filter((x) => x.id !== id);
-      renderMiesania();
-      miesanieStav('Zmazané. Recepty sa tým nemenia.');
+      await apiFetch(`/api/admin/receptar?co=ulozene&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      RECEPTAR.ulozene = RECEPTAR.ulozene.filter((x) => x.id !== id);
+      renderUlozene();
+      ulozeneStav('Zmazané. Samotné recepty sa tým nemenia.');
     } catch (err) {
-      miesanieStav(chybaMiesania(err), true);
+      ulozeneStav(chybaUlozenych(err), true);
     }
   }
 
@@ -1012,6 +1012,7 @@
             <span class="muted" style="font-weight:400">(${esc(druh(r.recept.druh))})</span></h3>
           <p class="muted" style="margin:0 0 8px;font-size:.85rem">
             Recept je na ${cisloSk(r.recept.vytaznost)} ${esc(r.recept.jednotka_vytaznosti)}${
+              r.recept.popis_vytaznosti ? ' ' + esc(r.recept.popis_vytaznosti) : ''}${
               r.kusov_z_davky !== null && r.kusov_z_davky !== undefined
                 && Number(r.kusov_z_davky) !== Number(r.recept.vytaznost)
               ? ` (pri tejto príchuti z dávky vyjde ${cisloSk(r.kusov_z_davky)} kusov)` : ''} —
@@ -1076,7 +1077,8 @@
       <details id="recept-${r.id}" style="margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:10px">
         <summary style="cursor:pointer">
           <strong>${esc(r.name)}</strong>
-          <span class="muted">· ${esc(druh(r.kind))} · na ${cisloSk(r.yield_qty)} ${esc(r.yield_unit)}
+          <span class="muted">· ${esc(druh(r.kind))} · na ${cisloSk(r.yield_qty)} ${esc(r.yield_unit)}${
+            r.yield_label ? ' ' + esc(r.yield_label) : ''}
           · ${vlastne.length} surovín ·
           ${pouzitie.length ? pouzitie.map((v) => esc(nazovPrichute(v.product_id))).join(', ')
                             : 'nepriradený k príchuti'}</span>
@@ -1095,6 +1097,15 @@
               <span class="fieldhint">${r.yield_unit === 'g' ? 'gramov' : 'kusov'} —
                 mení sa len vtedy, keď si recept naozaj prerobila alebo po pečení zistila,
                 že vydá iný počet. Prepočet na inú objednávku robí výber hore.</span>
+            </div>
+            <div><label for="popis-${r.id}">${r.yield_unit === 'g' ? 'Čoho' : 'Kusov čoho'}</label>
+              <input id="popis-${r.id}" data-vytaznost-popis="${r.id}"
+                data-povodne="${esc(r.yield_label || '')}" value="${esc(r.yield_label || '')}"
+                placeholder="${r.yield_unit === 'g' ? 'napr. karamelu' : 'napr. veterníkov'}">
+              <span class="fieldhint">Vypíše sa v rozpise hore: „Recept je na
+                ${cisloSk(r.yield_qty)} ${esc(r.yield_unit)}
+                ${esc(r.yield_label || (r.yield_unit === 'g' ? 'karamelu' : 'veterníkov'))}".
+                Nič sa podľa toho nepočíta, je to len popis.</span>
             </div>
           </div>
           <table class="admin-table"><tbody>${vlastne.map((p, poradie) => {
@@ -1305,6 +1316,15 @@
         body: JSON.stringify({ yield_qty: vyt.value }),
       }));
     }
+    const popis = box.querySelector('[data-vytaznost-popis]');
+    if (popis && popis.value.trim() !== popis.dataset.povodne) {
+      ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ yield_label: popis.value.trim() }),
+      }));
+    }
+
     const pozn = box.querySelector('[data-poznamka]');
     if (pozn && pozn.value !== pozn.dataset.povodne) {
       ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
@@ -1445,6 +1465,7 @@
       kind: document.getElementById('nrDruh').value,
       yield_qty: document.getElementById('nrVytaznost').value,
       yield_unit: document.getElementById('nrJednotka').value,
+      yield_label: document.getElementById('nrPopis').value.trim(),
       note: document.getElementById('nrPoznamka').value.trim(),
       steps: document.getElementById('nrPostup').value.trim(),
     };
@@ -1744,7 +1765,7 @@
     renderRecepty, ulozRecept, pridajPolozku, posunPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
     novyReceptForm, ulozNovyRecept, doKalkulacky, zmazRecept,
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
-    ulozMiesanie, otvorMiesanie, premenujMiesanie, zmazMiesanie,
+    ulozVyber, otvorUlozeny, premenujUlozeny, zmazUlozeny,
     novyZoznam, vyberZoznam, ulozZoznam, zmazZoznam, objednavkyDoZoznamu,
   };
 
