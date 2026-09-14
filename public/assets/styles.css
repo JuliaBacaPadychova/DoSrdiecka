@@ -209,6 +209,11 @@ footer a.mail:hover{color:var(--terra);border-bottom-color:var(--terra)}
 .disc{font-size:.8rem;color:var(--ink-soft);margin-top:6px}
 .form{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
 .form .full{grid-column:1/-1}
+/* Tri políčka vedľa seba (názov receptu, na koľko je napísaný, čoho).
+   Názov je širší, lebo doň ide veta, nie číslo. */
+.form.tri{grid-template-columns:2fr 1fr 1fr;align-items:end}
+@media(max-width:860px){.form.tri{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.form.tri{grid-template-columns:1fr}}
 /* Popisky polí boli v tlmenej farbe a strácali sa pri pohľade po formulári. Tmavšia farba a o kúsok väčšie písmo ich vrátia do zorného poľa, bez toho, aby prekričali samotné hodnoty. */
 label{display:block;font-size:.86rem;font-weight:700;color:var(--ink);letter-spacing:.01em;margin-bottom:6px}
 input,textarea,select{width:100%;font-family:var(--sans);font-size:.95rem;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 13px}
