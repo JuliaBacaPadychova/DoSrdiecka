@@ -693,7 +693,7 @@
         </div>
       </div>
       <table class="admin-table"><thead><tr>
-        <th>Surovina</th><th>Balenie</th><th>Cena</th><th>Za jednotku</th><th>Platná od</th><th></th>
+        <th>Surovina</th><th>Balenie</th><th>Cena</th><th>Za jednotku</th><th>Nakúpené</th><th>Obchod</th><th></th>
       </tr></thead><tbody>${suroviny.map((s) => `
         <tr id="sur-${s.id}">
           <td>${esc(s.name)}${s.kind !== 'surovina' ? ` <span class="muted">(${esc(s.kind)})</span>` : ''}
@@ -702,6 +702,7 @@
           <td>${s.pack_price === null ? (s.negligible ? '<span class="muted">neráta sa</span>' : '<span class="err">doplniť</span>') : euro(s.pack_price)}</td>
           <td>${s.pack_size && s.pack_price !== null ? (s.pack_price / s.pack_size).toFixed(4) + ' €/' + esc(s.unit) : '—'}</td>
           <td>${esc(s.price_date || '—')}</td>
+          <td>${esc(s.price_source || '—')}</td>
           <td class="akcie"><button class="btn ghost sm" onclick="Admin.editSurovina('${s.id}')">Upraviť</button></td>
         </tr>`).join('')}</tbody></table>`;
   }
@@ -727,6 +728,7 @@
     document.getElementById('surPackSize').value = cislo(s.pack_size);
     document.getElementById('surPackPrice').value = cislo(s.pack_price);
     document.getElementById('surPriceDate').value = s.price_date || '';
+    document.getElementById('surObchod').value = s.price_source || '';
     document.getElementById('surKind').value = s.kind;
     document.getElementById('surNegligible').value = String(!!s.negligible);
     document.getElementById('surNote').value = s.note || '';
@@ -737,7 +739,7 @@
   }
 
   function resetSurovinaForm(rozbalit) {
-    ['surId', 'surName', 'surPackSize', 'surPackPrice', 'surPriceDate', 'surNote']
+    ['surId', 'surName', 'surPackSize', 'surPackPrice', 'surPriceDate', 'surObchod', 'surNote']
       .forEach((id) => { document.getElementById(id).value = ''; });
     document.getElementById('surUnit').value = 'g';
     document.getElementById('surKind').value = 'surovina';
@@ -758,6 +760,7 @@
       pack_size: document.getElementById('surPackSize').value,
       pack_price: document.getElementById('surPackPrice').value,
       price_date: document.getElementById('surPriceDate').value,
+      price_source: document.getElementById('surObchod').value.trim(),
       kind: document.getElementById('surKind').value,
       negligible: document.getElementById('surNegligible').value === 'true',
       note: document.getElementById('surNote').value.trim(),
