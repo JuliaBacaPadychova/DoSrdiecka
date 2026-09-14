@@ -965,9 +965,9 @@
                 že vydá iný počet. Prepočet na inú objednávku robí výber hore.</span>
             </div>
           </div>
-          <table class="admin-table"><tbody>${vlastne.map((p) => {
+          <table class="admin-table"><tbody>${vlastne.map((p, poradie) => {
             const su = surovinaPodlaId.get(p.ingredient_id);
-            return `<tr>
+            return `<tr data-riadok="${p.id}" data-poradie="${poradie}">
               <td>${esc(su ? su.name : 'neznáma surovina')}${p.optional ? ' <span class="muted">(voliteľná)</span>' : ''}
                 <br><input data-polozka-pozn="${p.id}" data-povodne="${esc(p.note || '')}"
                   value="${esc(p.note || '')}" placeholder="poznámka k surovine"
@@ -978,7 +978,11 @@
                   value="${cislo(p.amount)}" placeholder="podľa chuti">
                 ${esc(su ? su.unit : '')}
               </td>
-              <td class="akcie" style="width:90px">
+              <td class="akcie" style="width:150px">
+                <button class="btn ghost sm" title="posunúť vyššie"
+                  onclick="Admin.posunPolozku('${r.id}', '${p.id}', -1)"${poradie === 0 ? ' disabled' : ''}>↑</button>
+                <button class="btn ghost sm" title="posunúť nižšie"
+                  onclick="Admin.posunPolozku('${r.id}', '${p.id}', 1)"${poradie === vlastne.length - 1 ? ' disabled' : ''}>↓</button>
                 <button class="btn ghost sm zmazat" onclick="Admin.zmazPolozku('${p.id}', '${esc(su ? su.name : '')}')">Odobrať</button>
               </td>
             </tr>`;
@@ -1117,6 +1121,9 @@
     box.querySelectorAll('[data-polozka-pozn]').forEach((inp) => {
       if (inp.value !== inp.dataset.povodne) zmena(inp.dataset.polozkaPozn, 'note', inp.value.trim());
     });
+    box.querySelectorAll('tr[data-riadok]').forEach((tr, i) => {
+      if (String(i) !== tr.dataset.poradie) zmena(tr.dataset.riadok, 'sort_order', i + 1);
+    });
     zmeneneRiadky.forEach((polia, id) => {
       ulohy.push(apiFetch(`/api/admin/receptar?co=polozka&id=${encodeURIComponent(id)}`, {
         method: 'PATCH',
@@ -1208,6 +1215,25 @@
     } catch (err) { alert(err.message); }
   }
 
+  // Posun prehodí riadok so susedom rovno na stránke. Do databázy sa to
+  // zapíše až tlačidlom Uložiť zmeny, rovnako ako gramáže — aby sa dalo
+  // preskladať celý recept a uložiť to naraz.
+  function posunPolozku(receptId, polozkaId, smer) {
+    const riadok = document.querySelector(`#recept-${receptId} tr[data-riadok="${polozkaId}"]`);
+    if (!riadok) return;
+    const sused = smer < 0 ? riadok.previousElementSibling : riadok.nextElementSibling;
+    if (!sused || !sused.dataset.riadok) return;
+    if (smer < 0) sused.before(riadok); else sused.after(riadok);
+
+    // Šípky na krajoch zoznamu nemajú kam posúvať.
+    const riadky = [...riadok.parentElement.querySelectorAll('tr[data-riadok]')];
+    riadky.forEach((tr, i) => {
+      const [hore, dole] = tr.querySelectorAll('.akcie button');
+      hore.disabled = i === 0;
+      dole.disabled = i === riadky.length - 1;
+    });
+  }
+
   async function pridajPolozku(receptId) {
     const surovina = document.getElementById('nova-surovina-' + receptId).value;
     const mnozstvo = document.getElementById('nove-mnozstvo-' + receptId).value;
@@ -1216,7 +1242,14 @@
       await apiFetch('/api/admin/receptar?co=polozka', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipe_id: receptId, ingredient_id: surovina, amount: mnozstvo }),
+        body: JSON.stringify({
+          recipe_id: receptId,
+          ingredient_id: surovina,
+          amount: mnozstvo,
+          // Nová surovina ide na koniec receptu, nie doprostred.
+          sort_order: (RECEPTAR.polozky.filter((x) => x.recipe_id === receptId)
+            .reduce((max, x) => Math.max(max, Number(x.sort_order) || 0), 0)) + 1,
+        }),
       });
       await loadRecepty(receptId);
     } catch (err) { alert(err.message); }
@@ -1576,7 +1609,7 @@
     deleteDay, editProduct, vyberVyrobok, resetProductForm, saveProduct,
     saveSettings,
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,
-    renderRecepty, ulozRecept, pridajPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
+    renderRecepty, ulozRecept, pridajPolozku, posunPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
     novyReceptForm, ulozNovyRecept, doKalkulacky, zmazRecept,
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
     novyZoznam, vyberZoznam, ulozZoznam, zmazZoznam, objednavkyDoZoznamu,

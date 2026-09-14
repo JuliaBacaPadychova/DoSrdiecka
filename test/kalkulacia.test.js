@@ -286,3 +286,23 @@ test("výťažok sa počíta v kusoch tej príchute, nie receptu", () => {
   assert.equal(choux.vytazok, 20);
   assert.equal(choux.kusov_z_davky, 20);
 });
+
+test("suroviny v rozpise idú v poradí, v akom prídu z databázy", () => {
+  const data = {
+    ingredients: [
+      { id: "a", name: "Voda", unit: "ml", pack_size: null, pack_price: null, negligible: true },
+      { id: "b", name: "Múka hladká", unit: "g", pack_size: 1000, pack_price: 0.88 },
+      { id: "c", name: "Maslo 82%", unit: "g", pack_size: 250, pack_price: 3.08 },
+    ],
+    recipes: [{ id: "r", name: "Cesto", kind: "cesto", yield_qty: 10, yield_unit: "ks" }],
+    // Tak, ako ich vráti databáza zoradené podľa sort_order.
+    recipe_items: [
+      { id: "1", recipe_id: "r", ingredient_id: "a", amount: 95, sort_order: 1 },
+      { id: "2", recipe_id: "r", ingredient_id: "c", amount: 85, sort_order: 2 },
+      { id: "3", recipe_id: "r", ingredient_id: "b", amount: 115, sort_order: 3 },
+    ],
+    product_recipes: [{ id: "v", product_id: "p", recipe_id: "r", qty_per_piece: 1 }],
+  };
+  const r = rozpisReceptov([{ product_id: "p", kusy: 10 }], data)[0];
+  assert.deepEqual(r.polozky.map((x) => x.surovina), ["Voda", "Maslo 82%", "Múka hladká"]);
+});

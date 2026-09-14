@@ -115,8 +115,12 @@ V správe webu pribudli tri záložky:
 - **Recepty** — dve časti. Hore *Čo mám miešať*: vyberie sa príchuť a
   počet kusov a vypíšu sa všetky recepty tej príchute s gramážou
   prepočítanou na ten počet (tlačidlo pošle ten istý počet do Kalkulačky).
-  Dole *Úprava receptov*: zbalený zoznam, kde sa menia gramáže, poznámka,
-  suroviny a priradenie k príchutiam; ukladá sa tlačidlom.
+  Dole *Úprava receptov*: zbalený zoznam, kde sa mení názov, výťažnosť,
+  gramáže, poznámky pri surovinách, poznámka k receptu, postup, poradie
+  surovín a priradenie k príchutiam; ukladá sa jedným tlačidlom.
+
+  Poradie surovín drží stĺpec `recipe_items.sort_order` — v recepte na
+  poradí záleží a databáza bez neho vracia riadky, ako sa jej zachce.
 
   Výťažnosť („recept je napísaný na 20 ks") sa mení len tlačidlom Uložiť,
   nikdy sama od seba. Keď sa ukladala pri každej zmene políčka, dala sa
