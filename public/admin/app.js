@@ -292,6 +292,20 @@
     return `${n} objednávok`;
   }
 
+  // Objednávky dohodnuté mimo web z limitu neuberajú — web bude ponúkať
+  // plný počet, aj keď je polovica dňa sľúbená osobne. Preto musia byť
+  // pri dni vidieť, inak sa deň prebookuje bez varovania.
+  function mimoWebu(d) {
+    const kusy = [
+      [d.mimo_webu_zakusky, 'ks'],
+      [d.mimo_webu_torty, 'torta'],
+      [d.mimo_webu_chlebik, 'chlebík'],
+    ].filter(([n]) => Number(n) > 0).map(([n, jednotka]) => `${n} ${jednotka}`);
+    return kusy.length
+      ? `<br><span class="muted">mimo web: ${kusy.join(' · ')}</span>`
+      : '';
+  }
+
   function renderDays(days) {
     const el = document.getElementById('daysList');
     if (!days.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne otvorené dni. Pridaj prvý deň vyššie.</p>'; return; }
@@ -304,7 +318,8 @@
           <td>${d.cap_zakusky}</td>
           <td>${d.cap_torty}</td>
           <td>${d.cap_chlebik}</td>
-          <td>${d.remaining_zakusky} ks · ${d.remaining_torty} torta · ${d.remaining_chlebik} chlebík</td>
+          <td>${d.remaining_zakusky} ks · ${d.remaining_torty} torta · ${d.remaining_chlebik} chlebík${
+            mimoWebu(d)}</td>
           <td class="akcie">
             <button class="btn ghost sm" onclick="Admin.editDay('${d.day}', ${d.is_open}, ${d.cap_zakusky}, ${d.cap_torty}, ${d.cap_chlebik})">Upraviť</button>
             ${d.pocet_objednavok

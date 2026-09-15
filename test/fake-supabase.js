@@ -44,23 +44,31 @@ function startFakeSupabase() {
 
   function dayCapacityRows() {
     return db.open_days.map((d) => {
-      const used = (cat) =>
+      // Zvyšná kapacita počíta len webové objednávky — ručne dohodnuté
+      // z nej neuberajú, ale vypisujú sa zvlášť. Musí sedieť s pohľadom
+      // day_capacity v supabase/schema.sql.
+      const used = (cat, rucne) =>
         db.order_items
           .filter((oi) => oi.category_id === cat)
           .filter((oi) => {
             const order = db.orders.find((o) => o.id === oi.order_id);
-            return order && order.day === d.day && order.status !== "zrusena";
+            return order && order.day === d.day && order.status !== "zrusena"
+              && Boolean(order.manual) === rucne;
           })
           .reduce((s, oi) => s + oi.qty, 0);
+      const cap = d.cap_chlebik === undefined ? 1 : d.cap_chlebik;
       return {
         day: d.day,
         is_open: d.is_open,
         cap_zakusky: d.cap_zakusky,
         cap_torty: d.cap_torty,
-        cap_chlebik: d.cap_chlebik === undefined ? 1 : d.cap_chlebik,
-        remaining_zakusky: d.cap_zakusky - used("zakusky"),
-        remaining_torty: d.cap_torty - used("torty"),
-        remaining_chlebik: (d.cap_chlebik === undefined ? 1 : d.cap_chlebik) - used("chlebik"),
+        cap_chlebik: cap,
+        remaining_zakusky: d.cap_zakusky - used("zakusky", false),
+        remaining_torty: d.cap_torty - used("torty", false),
+        remaining_chlebik: cap - used("chlebik", false),
+        mimo_webu_zakusky: used("zakusky", true),
+        mimo_webu_torty: used("torty", true),
+        mimo_webu_chlebik: used("chlebik", true),
       };
     });
   }
@@ -172,15 +180,20 @@ function startFakeSupabase() {
       total += product.price * qty;
       resolvedItems.push({ product, qty });
     }
-    if (addZ > cap.remaining_zakusky) throw { message: "capacity_zakusky" };
-    if (addT > cap.remaining_torty) throw { message: "capacity_torty" };
-    if (addCh > cap.remaining_chlebik) throw { message: "capacity_chlebik" };
+    // Limit stráži web. Ručná objednávka ho obchádza aj nezaberá —
+    // musí sedieť s funkciou create_order v supabase/schema.sql.
+    if (!rucne) {
+      if (addZ > cap.remaining_zakusky) throw { message: "capacity_zakusky" };
+      if (addT > cap.remaining_torty) throw { message: "capacity_torty" };
+      if (addCh > cap.remaining_chlebik) throw { message: "capacity_chlebik" };
+    }
 
     const orderId = "order-" + (db.orders.length + 1);
     const orderNo = db.orders.length + 1;
     db.orders.push({ order_no: orderNo,
       id: orderId, day: args.p_day, customer_name: args.p_name, phone: args.p_phone,
       email: args.p_email, note: args.p_note, status: "nova", total_estimate: total,
+      manual: rucne, paid_amount: null, paid_on: null, paid_note: "",
       created_at: new Date().toISOString(),
     });
     for (const { product, qty } of resolvedItems) {

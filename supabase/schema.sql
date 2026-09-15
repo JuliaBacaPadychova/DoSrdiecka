@@ -60,6 +60,9 @@ create table if not exists orders (
   note text not null default '',
   status text not null default 'nova' check (status in ('nova','vybavena','zrusena')),
   total_estimate numeric(10,2) not null default 0,
+  -- Objednávka dohodnutá mimo web. Do limitu na webe sa neráta: majiteľka
+  -- si ju dohodla osobne a sama vie, koľko toho v ten deň zvládne.
+  manual boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -123,29 +126,56 @@ select
   -- Nové stĺpce musia byť na konci: "create or replace view" v Postgrese
   -- vie stĺpce iba pridať, nie vložiť doprostred ani premenovať.
   d.cap_chlebik,
-  d.cap_chlebik - coalesce(ch.used, 0) as remaining_chlebik
+  d.cap_chlebik - coalesce(ch.used, 0) as remaining_chlebik,
+  -- Objednávky dohodnuté mimo web. Do zvyšnej kapacity nevstupujú, ale
+  -- majiteľka ich musí vidieť — inak jej web ponúka 18 zákuskov, hoci
+  -- desať už má sľúbených osobne.
+  coalesce(mz.used, 0) as mimo_webu_zakusky,
+  coalesce(mt.used, 0) as mimo_webu_torty,
+  coalesce(mch.used, 0) as mimo_webu_chlebik
 from open_days d
 left join (
   select o.day, sum(oi.qty) as used
   from order_items oi
   join orders o on o.id = oi.order_id
-  where o.status <> 'zrusena' and oi.category_id = 'zakusky'
+  where o.status <> 'zrusena' and not o.manual and oi.category_id = 'zakusky'
   group by o.day
 ) z on z.day = d.day
 left join (
   select o.day, sum(oi.qty) as used
   from order_items oi
   join orders o on o.id = oi.order_id
-  where o.status <> 'zrusena' and oi.category_id = 'torty'
+  where o.status <> 'zrusena' and not o.manual and oi.category_id = 'torty'
   group by o.day
 ) t on t.day = d.day
 left join (
   select o.day, sum(oi.qty) as used
   from order_items oi
   join orders o on o.id = oi.order_id
-  where o.status <> 'zrusena' and oi.category_id = 'chlebik'
+  where o.status <> 'zrusena' and not o.manual and oi.category_id = 'chlebik'
   group by o.day
-) ch on ch.day = d.day;
+) ch on ch.day = d.day
+left join (
+  select o.day, sum(oi.qty) as used
+  from order_items oi
+  join orders o on o.id = oi.order_id
+  where o.status <> 'zrusena' and o.manual and oi.category_id = 'zakusky'
+  group by o.day
+) mz on mz.day = d.day
+left join (
+  select o.day, sum(oi.qty) as used
+  from order_items oi
+  join orders o on o.id = oi.order_id
+  where o.status <> 'zrusena' and o.manual and oi.category_id = 'torty'
+  group by o.day
+) mt on mt.day = d.day
+left join (
+  select o.day, sum(oi.qty) as used
+  from order_items oi
+  join orders o on o.id = oi.order_id
+  where o.status <> 'zrusena' and o.manual and oi.category_id = 'chlebik'
+  group by o.day
+) mch on mch.day = d.day;
 
 alter view day_capacity set (security_invoker = on);
 
@@ -162,9 +192,10 @@ create or replace function create_order(
   p_note text,
   p_items jsonb,
   -- Objednávka zapísaná ručne v správe webu (dohodnutá mimo web).
-  -- Obchádza lehotu na objednanie, minimálny odber aj to, či je deň
-  -- otvorený — majiteľka si ju dohodla osobne a sama rozhodla, čo upečie.
-  -- Kapacitu dňa obchádzať NESMIE, inak by si deň prebookovala.
+  -- Obchádza lehotu na objednanie, minimálny odber, to, či je deň
+  -- otvorený, aj limit dňa — majiteľka si ju dohodla osobne a sama
+  -- vie, koľko toho v ten deň zvládne. Zapíše sa s manual = true, takže
+  -- z limitu na webe ani neuberá; v správe sa vypisuje zvlášť.
   p_rucne boolean default false
 ) returns jsonb
 language plpgsql
@@ -225,15 +256,17 @@ begin
     raise exception 'no_items';
   end if;
 
+  -- Zabraté je len to, čo prišlo cez web. Ručne dohodnuté objednávky
+  -- limit nezmenšujú.
   select coalesce(sum(oi.qty), 0) into v_zak_used
     from order_items oi join orders o on o.id = oi.order_id
-    where o.day = p_day and o.status <> 'zrusena' and oi.category_id = 'zakusky';
+    where o.day = p_day and o.status <> 'zrusena' and not o.manual and oi.category_id = 'zakusky';
   select coalesce(sum(oi.qty), 0) into v_tor_used
     from order_items oi join orders o on o.id = oi.order_id
-    where o.day = p_day and o.status <> 'zrusena' and oi.category_id = 'torty';
+    where o.day = p_day and o.status <> 'zrusena' and not o.manual and oi.category_id = 'torty';
   select coalesce(sum(oi.qty), 0) into v_chl_used
     from order_items oi join orders o on o.id = oi.order_id
-    where o.day = p_day and o.status <> 'zrusena' and oi.category_id = 'chlebik';
+    where o.day = p_day and o.status <> 'zrusena' and not o.manual and oi.category_id = 'chlebik';
 
   for v_item in select * from jsonb_array_elements(p_items) loop
     select * into v_product from products
@@ -261,18 +294,22 @@ begin
     v_total := v_total + v_product.price * v_qty;
   end loop;
 
-  if v_zak_used + v_zak_add > v_day.cap_zakusky then
-    raise exception 'capacity_zakusky';
-  end if;
-  if v_tor_used + v_tor_add > v_day.cap_torty then
-    raise exception 'capacity_torty';
-  end if;
-  if v_chl_used + v_chl_add > v_day.cap_chlebik then
-    raise exception 'capacity_chlebik';
+  -- Limit stráži web. Ručnú objednávku majiteľka zapisuje s vedomím,
+  -- čo v ten deň stíha, takže sa jej do cesty nestavia.
+  if not p_rucne then
+    if v_zak_used + v_zak_add > v_day.cap_zakusky then
+      raise exception 'capacity_zakusky';
+    end if;
+    if v_tor_used + v_tor_add > v_day.cap_torty then
+      raise exception 'capacity_torty';
+    end if;
+    if v_chl_used + v_chl_add > v_day.cap_chlebik then
+      raise exception 'capacity_chlebik';
+    end if;
   end if;
 
-  insert into orders (day, customer_name, phone, email, note, total_estimate)
-    values (p_day, p_name, p_phone, p_email, p_note, v_total)
+  insert into orders (day, customer_name, phone, email, note, total_estimate, manual)
+    values (p_day, p_name, p_phone, p_email, p_note, v_total, p_rucne)
     returning id, order_no into v_order_id, v_order_no;
 
   for v_item in select * from jsonb_array_elements(p_items) loop
