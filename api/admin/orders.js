@@ -13,6 +13,8 @@ const CHYBY = {
   no_items: "Vyber aspoň jeden výrobok.",
   product_not_found: "Niektorý výrobok už v ponuke nie je. Obnov stránku a skús znova.",
   invalid_qty: "Neplatný počet kusov.",
+  // Ručný zápis limit dňa nekontroluje, takže sem by sa už dostať nemalo.
+  // Hlášky ostávajú pre prípad, že by sa pravidlo raz vrátilo.
   capacity_zakusky: "Na tento deň sa toľko zákuskov už nezmestí. Zvýš limit v Dni a limity, alebo uber kusy.",
   capacity_torty: "Na tento deň je torta už obsadená. Zvýš limit v Dni a limity, alebo zvoľ iný deň.",
   capacity_chlebik: "Na tento deň je chlebík už obsadený. Zvýš limit v Dni a limity, alebo zvoľ iný deň.",
@@ -33,8 +35,10 @@ module.exports = withErrors(
     }
 
     // Objednávka dohodnutá mimo web. Zapisuje sa tou istou funkciou ako
-    // objednávky z webu, takže rovnako zamkne deň a zaberie kapacitu —
-    // len obíde lehotu na objednanie a minimálny odber.
+    // objednávky z webu, ale uloží sa s manual = true: obchádza lehotu
+    // na objednanie, minimálny odber aj limit dňa a z limitu na webe
+    // neuberá. Limit hovorí, koľko si majiteľka necháva na verejné
+    // objednávanie, nie koľko celkovo upečie.
     //
     // E-mail sa neposiela: majiteľka je so zákazníčkou v kontakte,
     // objednávku si práve s ňou dohodla.
