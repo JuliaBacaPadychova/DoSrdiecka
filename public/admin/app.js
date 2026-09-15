@@ -100,6 +100,7 @@
     if (name === 'suroviny') loadSuroviny();
     if (name === 'recepty') loadRecepty();
     if (name === 'kalkulacka') pripravKalkulacku();
+    if (name === 'peniaze') pripravPeniaze();
   }
 
   // ---------- orders ----------
@@ -1748,6 +1749,154 @@
         </tr>`).join('')}</tbody></table>`;
   }
 
+  // ---------- peniaze ----------
+  // Tri čísla, ktoré sa navzájom nenahrádzajú: za koľko boli objednávky,
+  // koľko naozaj prišlo a čo stojí nákup. Prvé dve sa líšia zámerne —
+  // pri torte je cena „od 40 €" a občas pribudne euro navyše.
+
+  function penazeStav(text, chyba) {
+    const el = document.getElementById('penStav');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = chyba ? 'err' : 'muted';
+    el.style.display = text ? 'block' : 'none';
+  }
+
+  // Prvý a posledný deň mesiaca, do ktorého spadá dnešok (posun -1 = minulý).
+  function mesiac(posun) {
+    const d = new Date();
+    const od = new Date(d.getFullYear(), d.getMonth() + posun, 1);
+    const doDna = new Date(d.getFullYear(), d.getMonth() + posun + 1, 0);
+    const text = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+    return { od: text(od), do: text(doDna) };
+  }
+
+  function pripravPeniaze() {
+    const od = document.getElementById('penOd');
+    if (od.value) return;               // obdobie si už vybrala sama
+    const m = mesiac(0);
+    od.value = m.od;
+    document.getElementById('penDo').value = m.do;
+    zobrazPeniaze();
+  }
+
+  function penazeMesiac(posun) {
+    const m = mesiac(posun);
+    document.getElementById('penOd').value = m.od;
+    document.getElementById('penDo').value = m.do;
+    zobrazPeniaze();
+  }
+
+  async function zobrazPeniaze() {
+    const od = document.getElementById('penOd').value;
+    const doDna = document.getElementById('penDo').value;
+    const suhrn = document.getElementById('penSuhrn');
+    if (!od || !doDna) { suhrn.innerHTML = '<p class="err">Vyber obdobie.</p>'; return; }
+    if (od > doDna) { suhrn.innerHTML = '<p class="err">„Od" je neskôr než „Do".</p>'; return; }
+    suhrn.innerHTML = '<p class="muted">Počítam…</p>';
+    penazeStav('');
+    try {
+      const data = await apiFetch(
+        `/api/admin/receptar?od=${encodeURIComponent(od)}&do=${encodeURIComponent(doDna)}`);
+      renderSuhrn(data);
+      renderPlatby(data.objednavky || []);
+    } catch (err) {
+      suhrn.innerHTML = `<p class="err">${esc(err.message)}</p>`;
+    }
+  }
+
+  const ciastka = (v) => (v === null || v === undefined ? '—' : cisloSk(v) + ' €');
+
+  function renderSuhrn(d) {
+    const rozdiel = d.rozdiel > 0 ? `+${cisloSk(d.rozdiel)} €` : `${cisloSk(d.rozdiel)} €`;
+    document.getElementById('penSuhrn').innerHTML = `
+      <table class="admin-table"><tbody>
+        <tr><td>Objednávky <span class="muted">(${d.objednavok})</span></td>
+            <td style="text-align:right"><strong>${ciastka(d.objednane)}</strong></td><td></td></tr>
+        <tr><td>Prijaté</td>
+            <td style="text-align:right"><strong>${ciastka(d.prijate)}</strong></td>
+            <td class="muted">${d.objednane ? rozdiel + ' oproti objednávkam' : ''}</td></tr>
+        <tr><td>Nezaplatené <span class="muted">(${d.nezaplatene.length})</span></td>
+            <td style="text-align:right">${ciastka(d.nezaplatene_suma)}</td>
+            <td class="muted">${d.nezaplatene.map((o) =>
+              esc(o.zakaznik) + (o.cislo ? ' #' + o.cislo : '')).join(', ')}</td></tr>
+        <tr><td>Nákup <span class="muted">(${d.zoznamy.length} ${
+              d.zoznamy.length === 1 ? 'zoznam' : 'zoznamov'})</span></td>
+            <td style="text-align:right">${ciastka(d.nakup)}</td>
+            <td class="muted">celé balenia, čo zaplatíš v obchode</td></tr>
+        <tr><td>Z toho sa naozaj minie</td>
+            <td style="text-align:right">${ciastka(d.spotreba)}</td>
+            <td class="muted">zvyšok balenia ostáva ako zásoba</td></tr>
+        <tr><td><strong>Prijaté mínus spotreba</strong></td>
+            <td style="text-align:right"><strong>${ciastka(eurZaokruhli(d.prijate - d.spotreba))}</strong></td>
+            <td class="muted">bez réžie a bez práce</td></tr>
+      </tbody></table>
+      ${d.nedopocitane.length ? `<p class="muted" style="margin:10px 0 0;font-size:.85rem">
+        Nákup je spodná hranica — bez balenia alebo ceny sú:
+        ${d.nedopocitane.map(esc).join(', ')}.</p>` : ''}
+      ${d.bez_terminu ? `<p class="muted" style="margin:6px 0 0;font-size:.85rem">
+        ${d.bez_terminu} nákupný zoznam bez termínu sa do žiadneho obdobia neráta.</p>` : ''}`;
+  }
+
+  const eurZaokruhli = (x) => Math.round(x * 100) / 100;
+
+  function renderPlatby(objednavky) {
+    const el = document.getElementById('penObjednavky');
+    const zive = objednavky.filter((o) => o.status !== 'zrusena');
+    if (!zive.length) { el.innerHTML = '<p class="muted">V tomto období žiadne objednávky.</p>'; return; }
+
+    el.innerHTML = `<table class="admin-table"><thead><tr>
+        <th>Číslo</th><th>Termín</th><th>Zákazník</th><th>Objednávka</th>
+        <th>Prijaté</th><th>Rozdiel</th><th>Poznámka</th>
+      </tr></thead><tbody>${zive.map((o) => {
+        const objednane = Number(o.total_estimate) || 0;
+        const prijate = o.paid_amount === null || o.paid_amount === undefined ? null : Number(o.paid_amount);
+        const rozdiel = prijate === null ? null : eurZaokruhli(prijate - objednane);
+        return `<tr>
+          <td class="ordno">${o.order_no ? '#' + o.order_no : '—'}</td>
+          <td>${esc(o.day)}</td>
+          <td>${esc(o.customer_name)}</td>
+          <td>${ciastka(objednane)}</td>
+          <td><input type="number" min="0" step="0.01" style="width:100px"
+              data-platba="${o.id}" data-povodne="${prijate === null ? '' : prijate}"
+              value="${prijate === null ? '' : prijate}" placeholder="${objednane}"></td>
+          <td class="${rozdiel ? '' : 'muted'}">${
+            rozdiel === null ? '—' : (rozdiel > 0 ? '+' : '') + cisloSk(rozdiel) + ' €'}</td>
+          <td><input data-platba-pozn="${o.id}" data-povodne="${esc(o.paid_note || '')}"
+              value="${esc(o.paid_note || '')}" placeholder="poznámka"></td>
+        </tr>`;
+      }).join('')}</tbody></table>`;
+  }
+
+  async function ulozPlatby() {
+    const zmeny = new Map();
+    const zmena = (id, pole, hodnota) => {
+      if (!zmeny.has(id)) zmeny.set(id, {});
+      zmeny.get(id)[pole] = hodnota;
+    };
+    document.querySelectorAll('[data-platba]').forEach((inp) => {
+      if (inp.value !== inp.dataset.povodne) zmena(inp.dataset.platba, 'paid_amount', inp.value);
+    });
+    document.querySelectorAll('[data-platba-pozn]').forEach((inp) => {
+      if (inp.value !== inp.dataset.povodne) zmena(inp.dataset.platbaPozn, 'paid_note', inp.value.trim());
+    });
+    if (!zmeny.size) { penazeStav('Nič sa nezmenilo.'); return; }
+
+    penazeStav('Ukladám…');
+    try {
+      await Promise.all([...zmeny].map(([id, polia]) =>
+        apiFetch(`/api/admin/orders?id=${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(polia),
+        })));
+      await zobrazPeniaze();
+      penazeStav(`Uložené (${zmeny.size}).`);
+    } catch (err) {
+      penazeStav(err.message, true);
+    }
+  }
+
   window.Admin = {
     login, logout, showTab,
     updateOrderStatus, saveOrder, resetOrderForm, editDay, saveDay, savePassword,
@@ -1759,6 +1908,7 @@
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
     ulozVyber, otvorUlozeny, premenujUlozeny, zmazUlozeny,
     novyZoznam, vyberZoznam, ulozZoznam, zmazZoznam, objednavkyDoZoznamu,
+    zobrazPeniaze, penazeMesiac, ulozPlatby,
   };
 
   if (getAccess()) showDashboard(); else showLogin();

@@ -191,3 +191,85 @@ test("bez prihlásenia sa objednávka zapísať nedá", async (t) => {
     assert.equal(fake.db.orders.length, 0);
   });
 });
+
+// --- zápis prijatých peňazí ---
+//
+// Prijatá suma je samostatný údaj, nie oprava ceny objednávky. Rozdiel
+// medzi nimi je informácia (pri torte dohodnutá cena, inokedy euro navyše),
+// takže sa obe musia dať prečítať naraz.
+
+async function sPlatbou(t, fn) {
+  const fake = await startFakeSupabase();
+  fake.db.orders.push({
+    id: "o1", order_no: 7, day: "2026-09-10", customer_name: "Zuzka", phone: "", email: "",
+    note: "", status: "nova", total_estimate: 18, paid_amount: null, paid_on: null, paid_note: "",
+  });
+  process.env.SUPABASE_URL = fake.url;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "fake";
+  process.env.ADMIN_EMAILS = fake.adminCredentials.email;
+  t.after(async () => { await fake.close(); });
+
+  const handler = require("../api/admin/orders");
+  const relacia = await authLogin(fake.adminCredentials.email, fake.adminCredentials.password);
+  const uprav = async (body) => {
+    const res = fakeRes();
+    await handler({
+      method: "PATCH", url: "/api/admin/orders?id=o1",
+      headers: { authorization: `Bearer ${relacia.access_token}` },
+      body,
+    }, res);
+    return res.out;
+  };
+  await fn({ db: fake.db, uprav });
+}
+
+test("prijatá suma sa uloží aj s dátumom a cena objednávky ostane", async (t) => {
+  await sPlatbou(t, async ({ db, uprav }) => {
+    const out = await uprav({ paid_amount: 19, paid_note: "nechala navyše" });
+    assert.equal(out.code, 200);
+    assert.equal(db.orders[0].paid_amount, 19);
+    assert.equal(db.orders[0].paid_on, new Date().toISOString().slice(0, 10));
+    assert.equal(db.orders[0].paid_note, "nechala navyše");
+    assert.equal(db.orders[0].total_estimate, 18, "cena objednávky sa platbou neprepisuje");
+  });
+});
+
+test("vymazaná suma znamená nezaplatené, nie nulu", async (t) => {
+  await sPlatbou(t, async ({ db, uprav }) => {
+    await uprav({ paid_amount: 19 });
+    await uprav({ paid_amount: "" });
+    assert.equal(db.orders[0].paid_amount, null);
+    assert.equal(db.orders[0].paid_on, null, "dátum platby odíde spolu so sumou");
+  });
+});
+
+test("zapísaná nula je platný zápis", async (t) => {
+  await sPlatbou(t, async ({ db, uprav }) => {
+    assert.equal((await uprav({ paid_amount: 0 })).code, 200);
+    assert.equal(db.orders[0].paid_amount, 0);
+  });
+});
+
+test("záporná suma ani text neprejdú", async (t) => {
+  await sPlatbou(t, async ({ db, uprav }) => {
+    assert.equal((await uprav({ paid_amount: -5 })).code, 400);
+    assert.equal((await uprav({ paid_amount: "dvadsať" })).code, 400);
+    assert.equal((await uprav({ paid_on: "vlani" })).code, 400);
+    assert.equal(db.orders[0].paid_amount, null, "nič sa neuložilo");
+  });
+});
+
+test("stav objednávky sa dá meniť aj naďalej, aj spolu s platbou", async (t) => {
+  await sPlatbou(t, async ({ db, uprav }) => {
+    assert.equal((await uprav({ status: "vybavena", paid_amount: 18 })).code, 200);
+    assert.equal(db.orders[0].status, "vybavena");
+    assert.equal(db.orders[0].paid_amount, 18);
+    assert.equal((await uprav({ status: "hotovo" })).code, 400, "neznámy stav neprejde");
+  });
+});
+
+test("prázdna úprava sa odmietne, nech sa nezapisuje naprázdno", async (t) => {
+  await sPlatbou(t, async ({ uprav }) => {
+    assert.equal((await uprav({})).code, 400);
+  });
+});

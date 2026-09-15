@@ -39,6 +39,7 @@
     <button data-tab="suroviny" onclick="Admin.showTab('suroviny')">Suroviny</button>
     <button data-tab="recepty" onclick="Admin.showTab('recepty')">Recepty</button>
     <button data-tab="kalkulacka" onclick="Admin.showTab('kalkulacka')">Kalkulačka</button>
+    <button data-tab="peniaze" onclick="Admin.showTab('peniaze')">Peniaze</button>
     <button data-tab="settings" onclick="Admin.showTab('settings')">Nastavenia</button>
   </div>
 
@@ -319,7 +320,36 @@
     <div class="admin-card">
       <div id="kalVysledok"><p class="muted">Zostav zoznam a daj Spočítať.</p></div>
     </div>
+  </div>
+
+  <div class="admin-panel" id="tab-peniaze">
+    <div class="admin-card">
+      <h3>Peniaze</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Za koľko boli objednávky,
+        koľko za ne naozaj prišlo a čo stojí nákup. Obdobie sa berie podľa termínu
+        objednávky a podľa termínu nákupného zoznamu.</p>
+      <div class="form tri" style="margin:0">
+        <div><label for="penOd">Od</label><input id="penOd" type="date"></div>
+        <div><label for="penDo">Do</label><input id="penDo" type="date"></div>
+        <div style="display:flex;align-items:flex-end;gap:10px">
+          <button class="btn" onclick="Admin.zobrazPeniaze()">Zobraziť</button>
+          <button class="btn ghost" style="white-space:nowrap" onclick="Admin.penazeMesiac(-1)">Predošlý mesiac</button>
+        </div>
       </div>
+    </div>
+    <div class="admin-card">
+      <div id="penSuhrn"><p class="muted">Vyber obdobie a daj Zobraziť.</p></div>
+    </div>
+    <div class="admin-card">
+      <div class="admin-row" style="margin-bottom:10px">
+        <h3 style="margin:0">Prijaté za objednávky</h3>
+        <button class="btn sm" onclick="Admin.ulozPlatby()">Uložiť zmeny</button>
+      </div>
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Zapíš, koľko naozaj prišlo.
+        Prázdne políčko znamená, že objednávka ešte nie je zaplatená — nie že si zaň nedostala nič.
+        Zmeny v celej tabuľke uloží jedno tlačidlo.</p>
+      <div id="penObjednavky"><p class="muted">—</p></div>
+      <p id="penStav" class="muted" style="display:none;margin:10px 0 0"></p>
     </div>
   </div>
 

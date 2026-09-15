@@ -326,3 +326,68 @@ test("popis výťažnosti prejde do rozpisu, prázdny ostane prázdny", () => {
   assert.equal(coulis.recept.popis_vytaznosti, "", "chýbajúci popis je prázdny text, nie undefined");
   assert.equal(krem.davky, 2, "popis nesmie zasiahnuť do prepočtu");
 });
+
+// --- peniaze ---
+//
+// Tri čísla, ktoré sa nesmú zliať do jedného: za koľko boli objednávky,
+// koľko naozaj prišlo a čo stojí nákup.
+
+const { prehladPenazi } = require("../lib/kalkulacia");
+
+const OBJEDNAVKY = [
+  { id: "o1", order_no: 1, day: "2026-09-10", customer_name: "Zuzka",
+    status: "vybavena", total_estimate: 18, paid_amount: 19 },
+  { id: "o2", order_no: 2, day: "2026-09-11", customer_name: "Eva",
+    status: "nova", total_estimate: 12, paid_amount: null },
+  { id: "o3", order_no: 3, day: "2026-09-12", customer_name: "Iva",
+    status: "zrusena", total_estimate: 30, paid_amount: null },
+  { id: "o4", order_no: 4, day: "2026-09-13", customer_name: "Mia",
+    status: "vybavena", total_estimate: 40, paid_amount: 0 },
+];
+
+test("prijaté a objednané sú dve rôzne čísla, rozdiel ostáva vidieť", () => {
+  const p = prehladPenazi(OBJEDNAVKY, [], DATA);
+  assert.equal(p.objednavok, 3, "zrušená sa neráta");
+  assert.equal(p.objednane, 70, "18 + 12 + 40, bez zrušenej");
+  assert.equal(p.prijate, 19, "19 + 0");
+  assert.equal(p.rozdiel, -51);
+});
+
+test("prázdna suma je nezaplatené, zapísaná nula nie", () => {
+  const p = prehladPenazi(OBJEDNAVKY, [], DATA);
+  assert.deepEqual(p.nezaplatene.map((o) => o.zakaznik), ["Eva"]);
+  assert.equal(p.nezaplatene_suma, 12);
+});
+
+test("zrušená objednávka nie je dlh", () => {
+  const p = prehladPenazi(OBJEDNAVKY, [], DATA);
+  assert.ok(!p.nezaplatene.some((o) => o.zakaznik === "Iva"));
+});
+
+// Dva nákupy v dvoch týždňoch sú dve balenia masla, nie jedno
+// zaokrúhlené nahor. Preto sa zoznamy oceňujú samostatne.
+test("nákup sa počíta po zoznamoch, nie zlúčene", () => {
+  const dva = [
+    { id: "z1", name: "prvý", day: "2026-09-05", items: [{ product_id: "pistaciovy", kusy: 1 }] },
+    { id: "z2", name: "druhý", day: "2026-09-19", items: [{ product_id: "pistaciovy", kusy: 1 }] },
+  ];
+  const zvlast = prehladPenazi([], dva, DATA);
+  const spolu = prehladPenazi([], [
+    { id: "z", name: "spolu", day: "2026-09-05", items: [{ product_id: "pistaciovy", kusy: 2 }] },
+  ], DATA);
+
+  assert.equal(zvlast.zoznamy.length, 2);
+  assert.ok(zvlast.nakup > spolu.nakup,
+    `dva samostatné nákupy (${zvlast.nakup}) musia stáť viac než jeden spoločný (${spolu.nakup})`);
+  // Spotreba je naopak tá istá — minie sa rovnako veľa surovín.
+  assert.equal(zvlast.spotreba, spolu.spotreba);
+});
+
+test("nedopočítané suroviny sa vypíšu raz, zoradené", () => {
+  const p = prehladPenazi([], [
+    { id: "z1", day: "2026-09-05", items: [{ product_id: "kavovy", kusy: 2 }] },
+    { id: "z2", day: "2026-09-06", items: [{ product_id: "kavovy", kusy: 2 }] },
+  ], DATA);
+  assert.deepEqual(p.nedopocitane, ["Pektín NH", "Soľ", "Vanilka"],
+    "každá raz, aj keď chýba v oboch zoznamoch, a po slovensky zoradené");
+});

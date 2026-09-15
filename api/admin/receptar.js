@@ -7,6 +7,7 @@
 //
 //   GET    /api/admin/receptar              — suroviny, recepty, položky, väzby
 //   GET    /api/admin/receptar?den=2026-10-18 — nákupný zoznam z objednávok dňa
+//   GET    /api/admin/receptar?od=…&do=…       — peniaze za obdobie
 //   POST   /api/admin/receptar?co=kalkulacia  — ručný prepočet
 //   POST   /api/admin/receptar?co=surovina|recept|polozka|vazba|zoznam|ulozene
 //   PATCH  /api/admin/receptar?co=...&id=...
@@ -15,7 +16,9 @@
 const { rest } = require("../../lib/supabase");
 const { sendJson, readJson, withErrors } = require("../../lib/http");
 const { requireAdmin } = require("../../lib/auth");
-const { nakupnyZoznam, rozpisReceptov } = require("../../lib/kalkulacia");
+const { nakupnyZoznam, rozpisReceptov, prehladPenazi } = require("../../lib/kalkulacia");
+
+const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 
 // Čo sa dá meniť. Čokoľvek mimo týchto zoznamov sa z tela požiadavky
 // zahodí — aby sa cez formulár nedalo prepísať id ani cudzí stĺpec.
@@ -148,6 +151,33 @@ module.exports = withErrors(
     const typ = co && TYPY[co] ? TYPY[co] : null;
 
     if (req.method === "GET") {
+      const od = url.searchParams.get("od");
+      const doDna = url.searchParams.get("do");
+      if (od || doDna) {
+        if (!DATUM.test(od || "") || !DATUM.test(doDna || "")) {
+          return sendJson(res, 400, { error: "invalid_range" });
+        }
+        if (od > doDna) return sendJson(res, 400, { error: "range_backwards" });
+
+        const [receptar, objednavky] = await Promise.all([
+          nacitatReceptar(),
+          rest(`orders?day=gte.${od}&day=lte.${doDna}` +
+               "&select=id,order_no,day,customer_name,status,total_estimate," +
+               "paid_amount,paid_on,paid_note&order=day.asc"),
+        ]);
+        // Zoznam patrí do obdobia podľa termínu, na ktorý sa nakupuje.
+        // Zoznam bez termínu nemá kam spadnúť — do súčtu sa nedostane a
+        // nižšie sa to aj vypíše, aby to nebolo tiché.
+        const zoznamy = (receptar.zoznamy || []).filter(
+          (z) => z.day && z.day >= od && z.day <= doDna);
+        return sendJson(res, 200, {
+          od, do: doDna,
+          objednavky,
+          bez_terminu: (receptar.zoznamy || []).filter((z) => !z.day).length,
+          ...prehladPenazi(objednavky, zoznamy, preVypocet(receptar)),
+        });
+      }
+
       const den = url.searchParams.get("den");
       if (!den) return sendJson(res, 200, await nacitatReceptar());
 

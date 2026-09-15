@@ -268,3 +268,47 @@ test("popis výťažnosti sa dá uložiť aj vymazať", async (t) => {
     assert.equal(db.recipes[0].yield_label, "", "prázdny popis je prázdny text, nie prázdna hodnota");
   });
 });
+
+// --- peniaze za obdobie ---
+
+test("prehľad peňazí zoberie objednávky aj zoznamy z obdobia", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    db.orders.push(
+      { id: "o1", order_no: 1, day: "2026-09-10", customer_name: "Zuzka", phone: "", email: "",
+        note: "", status: "vybavena", total_estimate: 18, paid_amount: 19, paid_on: "2026-09-10", paid_note: "" },
+      { id: "o2", order_no: 2, day: "2026-09-11", customer_name: "Eva", phone: "", email: "",
+        note: "", status: "nova", total_estimate: 12, paid_amount: null, paid_on: null, paid_note: "" },
+      // Mimo obdobia — do súčtu nesmie.
+      { id: "o3", order_no: 3, day: "2026-10-02", customer_name: "Iva", phone: "", email: "",
+        note: "", status: "nova", total_estimate: 99, paid_amount: 99, paid_on: null, paid_note: "" },
+    );
+
+    const o = await zavolaj("GET", "/api/admin/receptar?od=2026-09-01&do=2026-09-30");
+    assert.equal(o.code, 200);
+    assert.equal(o.body.objednavok, 2, "októbrová objednávka sa neráta");
+    assert.equal(o.body.objednane, 30);
+    assert.equal(o.body.prijate, 19);
+    assert.equal(o.body.nezaplatene.length, 1);
+    assert.equal(o.body.nezaplatene[0].zakaznik, "Eva");
+  });
+});
+
+test("obdobie musí byť dátum a nesmie ísť pozadu", async (t) => {
+  await sReceptarom(t, async ({ zavolaj }) => {
+    assert.equal((await zavolaj("GET", "/api/admin/receptar?od=vlani&do=2026-09-30")).code, 400);
+    assert.equal((await zavolaj("GET", "/api/admin/receptar?od=2026-09-01")).code, 400);
+    assert.equal((await zavolaj("GET", "/api/admin/receptar?od=2026-09-30&do=2026-09-01")).code, 400);
+  });
+});
+
+test("nákupný zoznam bez termínu sa do obdobia neráta, ale je o ňom vidieť", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    db.shopping_plans.push(
+      { id: "z1", day: "2026-09-12", name: "sobota", note: "", items: [], created_at: "" },
+      { id: "z2", day: null, name: "bez termínu", note: "", items: [], created_at: "" },
+    );
+    const o = await zavolaj("GET", "/api/admin/receptar?od=2026-09-01&do=2026-09-30");
+    assert.equal(o.body.zoznamy.length, 1);
+    assert.equal(o.body.bez_terminu, 1);
+  });
+});
