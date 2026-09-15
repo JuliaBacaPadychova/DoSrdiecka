@@ -120,6 +120,13 @@ V správe webu pribudli tri záložky:
   Je to niečo iné než nákupný zoznam v Kalkulačke: ten má termín, cenu
   a môže spájať viac príchutí, toto je skratka k jednému rozpisu.
 
+  K uloženému receptu patrí aj vlastná **poznámka** (`recipe_presets.note`),
+  ktorá sa vypisuje hneď nad rozpisom. Je to iná vec než `recipes.note`:
+  tá platí vždy („variť vo väčšom hrnci"), táto platí pre konkrétne
+  miešanie („na 20 ks robím dvojitú dávku craquelinu"). Keď rozpis vznikol
+  len výberom hore, poznámka ešte nemá kam — uloží sa spolu s novým
+  uloženým receptom, nech sa text nestratí.
+
   Tabuľka pribudla neskôr než zvyšok receptára, takže kým sa nespustí
   `supabase/migracia-ulozene-recepty.sql`, API vráti `ulozene: null`
   a záložka funguje ďalej bez nej — recepty ani ceny na nej nestoja.

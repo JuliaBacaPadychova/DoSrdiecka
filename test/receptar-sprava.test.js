@@ -312,3 +312,24 @@ test("nákupný zoznam bez termínu sa do obdobia neráta, ale je o ňom vidieť
     assert.equal(o.body.bez_terminu, 1);
   });
 });
+
+test("poznámka k uloženému receptu sa uloží a chodí s ním", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    const vytvorenie = await zavolaj("POST", "/api/admin/receptar?co=ulozene", {
+      name: "Sobota choux", product_id: "p-choux", pieces: 20,
+      note: "na 20 ks robím dvojitú dávku craquelinu",
+    });
+    assert.equal(vytvorenie.code, 200);
+    assert.equal(db.recipe_presets[0].note, "na 20 ks robím dvojitú dávku craquelinu");
+
+    const o = await zavolaj("GET", "/api/admin/receptar");
+    assert.equal(o.body.ulozene[0].note, "na 20 ks robím dvojitú dávku craquelinu");
+
+    const uprava = await zavolaj(
+      "PATCH", `/api/admin/receptar?co=ulozene&id=${vytvorenie.body.zaznam.id}`,
+      { note: "" });
+    assert.equal(uprava.code, 200);
+    assert.equal(db.recipe_presets[0].note, "", "vymazaná poznámka je prázdny text");
+    assert.equal(db.recipe_presets[0].pieces, 20, "poznámka nemení výber");
+  });
+});
