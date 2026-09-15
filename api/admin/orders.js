@@ -98,14 +98,49 @@ module.exports = withErrors(
       if (!id) return sendJson(res, 400, { error: "missing_id" });
 
       const body = await readJson(req);
-      const status = body.status;
-      if (!["nova", "vybavena", "zrusena"].includes(status)) {
-        return sendJson(res, 400, { error: "invalid_status" });
+      const fields = {};
+
+      if (body.status !== undefined) {
+        if (!["nova", "vybavena", "zrusena"].includes(body.status)) {
+          return sendJson(res, 400, { error: "invalid_status" });
+        }
+        fields.status = body.status;
+      }
+
+      // Prijatá suma. Prázdne políčko znamená „ešte nezaplatené", nie
+      // nulu — inak by sa vymazaním sumy objednávka zmenila na zadarmo
+      // rozdanú a z nezaplatených by ticho zmizla.
+      if (body.paid_amount !== undefined) {
+        if (body.paid_amount === "" || body.paid_amount === null) {
+          fields.paid_amount = null;
+          fields.paid_on = null;
+        } else {
+          const suma = Number(body.paid_amount);
+          if (!Number.isFinite(suma) || suma < 0) {
+            return sendJson(res, 400, { error: "invalid_paid_amount" });
+          }
+          fields.paid_amount = Math.round(suma * 100) / 100;
+          // Dátum platby sa dopĺňa sám, rovnako ako pri cene suroviny.
+          // Suma bez dátumu nepovie, do ktorého obdobia patrí.
+          if (body.paid_on === undefined) fields.paid_on = new Date().toISOString().slice(0, 10);
+        }
+      }
+      if (body.paid_on !== undefined) {
+        const den = String(body.paid_on || "");
+        if (den && !DAY_RE.test(den)) return sendJson(res, 400, { error: "invalid_paid_on" });
+        fields.paid_on = den || null;
+      }
+      if (body.paid_note !== undefined) {
+        fields.paid_note = String(body.paid_note || "").trim().slice(0, 500);
+      }
+
+      if (Object.keys(fields).length === 0) {
+        return sendJson(res, 400, { error: "no_fields" });
       }
 
       const updated = await rest(`orders?id=eq.${encodeURIComponent(id)}`, {
         method: "PATCH",
-        body: { status },
+        body: fields,
         prefer: "return=representation",
       });
       return sendJson(res, 200, { order: updated[0] || null });

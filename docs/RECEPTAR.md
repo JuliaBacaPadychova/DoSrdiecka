@@ -156,6 +156,27 @@ V správe webu pribudli tri záložky:
   zoznam sa vždy upravuje ako celok a nikdy sa nehľadá „vo všetkých
   zoznamoch, kde je pistáciový choux".
 
+- **Peniaze** — čo prišlo a čo odišlo, za zvolené obdobie. Objednávka má
+  `total_estimate` (za koľko je) a `paid_amount` (koľko za ňu naozaj
+  prišlo) ako **dva samostatné údaje**. Nie je to duplicita: pri torte je
+  cena „od 40 €" a dohaduje sa, inokedy zákazníčka nechá euro navyše.
+  Rozdiel medzi nimi je informácia, nie chyba, a nikde sa nevolá
+  „prepitné" — pri torte to prepitné nie je.
+
+  `paid_amount` je zámerne bez `default 0`: prázdne znamená *ešte
+  nezaplatené*, nula znamená *nedostala som nič*. Keby bola nula
+  predvolená, každá nová objednávka by vyzerala ako zadarmo rozdaná a zo
+  zoznamu nezaplatených by ticho vypadla.
+
+  Nákup za obdobie sa berie z uložených nákupných zoznamov s termínom
+  v rozsahu a **oceňuje sa po zoznamoch, nie zlúčene**: dva nákupy v dvoch
+  týždňoch sú dve balenia masla, nie jedno zaokrúhlené nahor. Zoznam bez
+  termínu nemá kam spadnúť — do súčtu nevstúpi a vypíše sa to.
+
+  Dve obmedzenia, o ktorých majiteľka vie: nákup je odhad dnešnými cenami
+  (zoznam si pamätá príchute a počty, nie ceny), a započíta sa len to, na
+  čo existuje uložený zoznam.
+
 Výpočet je v `lib/kalkulacia.js` a je pokrytý testami (`npm test`), takže
 sa dá overiť na známych číslach bez toho, aby sa musel spúšťať web.
 
