@@ -52,8 +52,8 @@ const TYPY = {
   },
   ulozene: {
     tabulka: "recipe_presets",
-    polia: ["name", "product_id", "pieces"],
-    texty: ["name"],
+    polia: ["name", "product_id", "pieces", "note"],
+    texty: ["name", "note"],
   },
 };
 

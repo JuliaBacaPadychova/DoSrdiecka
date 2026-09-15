@@ -910,31 +910,44 @@
     }
     document.getElementById('recKusy').value = m.pieces;
     ulozeneStav('');
-    await zobrazRozpis();
+    await zobrazRozpis(id);
     document.getElementById('receptyRozpis').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  async function ulozVyber() {
+  // Vracia uložený záznam, aby ho poznámka pod rozpisom vedela prevziať
+  // za svoj — inak by sa hneď po uložení nemala kam zapísať.
+  async function ulozVyber(note) {
     const product_id = document.getElementById('recPrichut').value;
     const pieces = parseInt(document.getElementById('recKusy').value, 10) || 0;
     if (!product_id || pieces <= 0) {
       ulozeneStav('Najprv vyber príchuť a počet kusov.', true);
-      return;
+      return null;
     }
     const name = (prompt('Pod akým menom to uložiť?', `${nazovPrichute(product_id)} — ${pieces} ks`) || '').trim();
-    if (!name) return;
+    if (!name) return null;
+
+    // Keď je pod rozpisom rozpísaná poznámka, uloží sa s ním — nech sa
+    // nestratí len preto, že sa stlačilo tlačidlo hore a nie to pri nej.
+    const pole = document.getElementById('rozpisPoznamka');
+    const poznamka = note !== undefined ? note : (pole ? pole.value.trim() : '');
+
     try {
       const data = await apiFetch('/api/admin/receptar?co=ulozene', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, product_id, pieces }),
+        body: JSON.stringify({ name, product_id, pieces, note: poznamka }),
       });
       if (!Array.isArray(RECEPTAR.ulozene)) RECEPTAR.ulozene = [];
       RECEPTAR.ulozene.push(data.zaznam);
       renderUlozene();
+      // Rozpis odteraz patrí tomuto uloženému receptu, takže poznámka
+      // pod ním má kam ísť.
+      OTVORENY_ULOZENY = data.zaznam.id;
       ulozeneStav(`Uložené ako „${name}".`);
+      return data.zaznam;
     } catch (err) {
       ulozeneStav(chybaUlozenych(err), true);
+      return null;
     }
   }
 
@@ -979,7 +992,12 @@
     return String(Math.round(v * 1000) / 1000).replace('.', ',');
   }
 
-  async function zobrazRozpis() {
+  // Ktorý uložený recept je práve rozpísaný. Podľa toho vie poznámka pod
+  // nadpisom, kam sa má uložiť; pri výbere hore ešte nemá kam.
+  let OTVORENY_ULOZENY = null;
+
+  async function zobrazRozpis(ulozenyId) {
+    OTVORENY_ULOZENY = ulozenyId || null;
     const el = document.getElementById('receptyRozpis');
     const product_id = document.getElementById('recPrichut').value;
     const kusy = parseInt(document.getElementById('recKusy').value, 10) || 0;
@@ -1014,9 +1032,18 @@
         <h3 style="margin:0">${esc(prichut)} — ${kusy} ks</h3>
         <button class="btn ghost sm" onclick="Admin.doKalkulacky('${product_id}', ${kusy})">Poslať do kalkulačky</button>
       </div>
-      <p class="muted" style="margin:0 0 18px;font-size:.88rem">Gramáže sú prepočítané na
-        ${kusy} kusov. Stĺpec „v recepte" je pôvodná hodnota, tá sa nemení.
-        Tlačidlo hore z toho istého počtu spraví nákupný zoznam s cenou.</p>
+      <div style="margin:0 0 18px">
+        <label for="rozpisPoznamka">Moja poznámka</label>
+        <textarea id="rozpisPoznamka" rows="2"
+          placeholder="${OTVORENY_ULOZENY
+            ? 'čo si chceš k tomuto uloženému receptu zapamätať'
+            : 'zapíš a ulož — uloží sa medzi uložené recepty hore'}">${
+          esc(poznamkaUlozeneho())}</textarea>
+        <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn ghost sm" onclick="Admin.ulozPoznamkuRozpisu()">Uložiť poznámku</button>
+          <span class="muted" id="rozpisPoznStav" style="font-size:.85rem"></span>
+        </div>
+      </div>
       ${zoradene.map((r) => `
         <div style="margin-bottom:24px">
           <h3 style="margin:0 0 2px">${esc(r.recept.nazov)}</h3>
@@ -1044,6 +1071,44 @@
             <p style="white-space:pre-wrap;margin:8px 0 0">${esc(r.recept.postup)}</p>
           </details>` : ''}
         </div>`).join('')}`;
+  }
+
+  function poznamkaUlozeneho() {
+    const u = (RECEPTAR && RECEPTAR.ulozene || []).find((x) => x.id === OTVORENY_ULOZENY);
+    return u ? (u.note || '') : '';
+  }
+
+  // Poznámka patrí uloženému receptu. Keď rozpis vznikol len výberom hore,
+  // ešte nemá kam — tak sa pri uložení rovno založí nový uložený recept
+  // aj s ňou, nech sa text nestratí.
+  async function ulozPoznamkuRozpisu() {
+    const pole = document.getElementById('rozpisPoznamka');
+    const stav = document.getElementById('rozpisPoznStav');
+    if (!pole) return;
+    const note = pole.value.trim();
+
+    if (!OTVORENY_ULOZENY) {
+      const ulozeny = await ulozVyber(note);
+      if (ulozeny) {
+        OTVORENY_ULOZENY = ulozeny.id;
+        stav.textContent = `Uložené ako „${ulozeny.name}".`;
+      }
+      return;
+    }
+
+    stav.textContent = 'Ukladám…';
+    try {
+      await apiFetch(`/api/admin/receptar?co=ulozene&id=${encodeURIComponent(OTVORENY_ULOZENY)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note }),
+      });
+      const u = (RECEPTAR.ulozene || []).find((x) => x.id === OTVORENY_ULOZENY);
+      if (u) u.note = note;
+      stav.textContent = 'Uložené.';
+    } catch (err) {
+      stav.textContent = chybaUlozenych(err);
+    }
   }
 
   // Zoznam receptov je zbalený — pri dvoch príchutiach sa to ešte dá
@@ -1921,7 +1986,7 @@
     renderRecepty, ulozRecept, pridajPolozku, posunPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
     novyReceptForm, ulozNovyRecept, doKalkulacky, zmazRecept,
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
-    ulozVyber, otvorUlozeny, premenujUlozeny, zmazUlozeny,
+    ulozVyber, otvorUlozeny, premenujUlozeny, zmazUlozeny, ulozPoznamkuRozpisu,
     novyZoznam, vyberZoznam, ulozZoznam, zmazZoznam, objednavkyDoZoznamu,
     zobrazPeniaze, penazeMesiac, ulozPlatby,
   };
