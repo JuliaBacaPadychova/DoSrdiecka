@@ -160,6 +160,16 @@ V správe webu pribudli tri záložky:
   ako všade inde. Druh SUROVINY (`ingredients.kind`) ostáva — podľa neho
   sa obal a réžia rátajú na kus, nie na gramy.
 
+  Po každej úprave (pridanie suroviny, odobratie, uloženie) sa zoznam
+  receptov načíta nanovo, ale **pohľad ostáva tam, kde bol**: `loadRecepty`
+  si pred prekreslením zapamätá, ktoré recepty sú rozbalené a kde stránka
+  stojí, a po ňom to vráti. Predtým to skočilo na začiatok stránky
+  a recept sa zbalil — pri recepte o desiatich surovinách to znamenalo
+  zakaždým znova doscrollovať a rozkliknúť. Zoznam sa počas načítavania
+  ani nenahrádza hláškou „Načítavam": stránka by sa zrazila na pár
+  riadkov a prehliadač by scroll posunul sám. Hláška je len pri prvom
+  otvorení záložky.
+
   Výťažnosť („recept je napísaný na 20 ks") sa mení len tlačidlom Uložiť,
   nikdy sama od seba. Keď sa ukladala pri každej zmene políčka, dala sa
   šípkou posunúť na 20,002 a ticho tým zmeniť cenu za kus.

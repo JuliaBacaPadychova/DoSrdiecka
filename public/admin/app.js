@@ -802,9 +802,25 @@
     }
   }
 
+  // Po každej úprave sa celý zoznam receptov prekreslí. Bez toho, čo je
+  // nižšie, to znamená skok na začiatok stránky a zbalený recept — a pri
+  // recepte o desiatich surovinách sa treba zakaždým znova doscrollovať
+  // a rozkliknúť. Preto si pred prekreslením zapamätáme, čo bolo
+  // rozbalené a kde stránka stála, a po ňom to vrátime.
+  //
+  // Zoznam sa počas načítavania ani nenahrádza hláškou "Načítavam" —
+  // stránka by sa zrazila na pár riadkov a prehliadač by scroll posunul
+  // sám. Hláška je len pri prvom otvorení záložky, keď ešte nie je čo
+  // ukázať.
   async function loadRecepty(rozbalit) {
     const el = document.getElementById('receptyList');
-    el.innerHTML = '<p class="muted">Načítavam recepty…</p>';
+    const otvorene = new Set([...el.querySelectorAll('details[id^="recept-"]')]
+      .filter((d) => d.open)
+      .map((d) => d.id));
+    if (rozbalit) otvorene.add('recept-' + rozbalit);
+    const scroll = window.scrollY;
+
+    if (!RECEPTAR) el.innerHTML = '<p class="muted">Načítavam recepty…</p>';
     try {
       RECEPTAR = await apiFetch('/api/admin/receptar');
       if (!PRODUCTS_CACHE.length) {
@@ -814,10 +830,13 @@
       naplnPrichute();
       renderUlozene();
       renderRecepty();
-      if (rozbalit) {
-        const box = document.getElementById('recept-' + rozbalit);
+      // Najprv rozbaliť, až potom scroll: rozbalený recept mení výšku
+      // stránky, takže pri opačnom poradí by sa trafilo inam.
+      otvorene.forEach((id) => {
+        const box = document.getElementById(id);
         if (box) box.open = true;
-      }
+      });
+      if (scroll) window.scrollTo(0, scroll);
     } catch (err) {
       el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
     }
@@ -1199,7 +1218,7 @@
                   onclick="Admin.posunPolozku('${r.id}', '${p.id}', -1)"${poradie === 0 ? ' disabled' : ''}>↑</button>
                 <button class="btn ghost sm" title="posunúť nižšie"
                   onclick="Admin.posunPolozku('${r.id}', '${p.id}', 1)"${poradie === vlastne.length - 1 ? ' disabled' : ''}>↓</button>
-                <button class="btn ghost sm zmazat" onclick="Admin.zmazPolozku('${p.id}', '${esc(su ? su.name : '')}')">Odobrať</button>
+                <button class="btn ghost sm zmazat" onclick="Admin.zmazPolozku('${p.id}', '${esc(su ? su.name : '')}', '${r.id}')">Odobrať</button>
               </td>
             </tr>`;
           }).join('')}</tbody></table>
@@ -1247,7 +1266,7 @@
                 <span class="muted">${r.yield_unit === 'g' ? 'g do kusu' : 'kusov z dávky'}</span>
               </td>
               <td class="akcie" style="width:90px">
-                <button class="btn ghost sm zmazat" onclick="Admin.zrusPriradenie('${v.id}')">Odobrať</button>
+                <button class="btn ghost sm zmazat" onclick="Admin.zrusPriradenie('${v.id}', '${r.id}')">Odobrať</button>
               </td>
             </tr>`).join('')}</tbody></table>` : '<p class="muted">Zatiaľ k žiadnej.</p>'}
 
@@ -1480,11 +1499,11 @@
     } catch (err) { alert(err.message); }
   }
 
-  async function zmazPolozku(id, nazov) {
+  async function zmazPolozku(id, nazov, receptId) {
     if (!confirm(`Naozaj odobrať ${nazov || 'surovinu'} z receptu?`)) return;
     try {
       await apiFetch(`/api/admin/receptar?co=polozka&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      await loadRecepty();
+      await loadRecepty(receptId);
     } catch (err) { alert(err.message); }
   }
 
@@ -1517,11 +1536,11 @@
     } catch (err) { alert(err.message); }
   }
 
-  async function zrusPriradenie(id) {
+  async function zrusPriradenie(id, receptId) {
     if (!confirm('Naozaj odobrať recept z tejto príchute?')) return;
     try {
       await apiFetch(`/api/admin/receptar?co=vazba&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      await loadRecepty();
+      await loadRecepty(receptId);
     } catch (err) { alert(err.message); }
   }
 
