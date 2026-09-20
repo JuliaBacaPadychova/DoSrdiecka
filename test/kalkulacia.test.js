@@ -262,6 +262,40 @@ test("nákupný zoznam ráta s tým istým prepočtom ako rozpis", () => {
   assert.equal(dvojnasobok.riadky[0].mnozstvo, 230);
 });
 
+// Ten istý sneh je 12 minipavloviek alebo JEDEN korpus na tortu. Torta
+// je krajný prípad "kusov z dávky": z dávky vyjde jeden kus, takže celá
+// dávka ide do jednej torty. Keby sa prázdne pieces_per_batch a jednotka
+// niekedy poplietli, torta by dostala dvanástinu snehu.
+const DATA_PAVLOVA = {
+  ingredients: [{ id: "i-bielok", name: "Vajcia bielko", unit: "g", pack_size: 30, pack_price: 0.3 }],
+  recipes: [{ id: "r-korpus", name: "Pavlova korpus", yield_qty: 12, yield_unit: "ks" }],
+  recipe_items: [{ id: "ri-b", recipe_id: "r-korpus", ingredient_id: "i-bielok", amount: 125 }],
+  product_recipes: [
+    { id: "v-mini", product_id: "mini", recipe_id: "r-korpus", qty_per_piece: 1, pieces_per_batch: 12 },
+    { id: "v-torta", product_id: "torta", recipe_id: "r-korpus", qty_per_piece: 1, pieces_per_batch: 1 },
+  ],
+};
+
+test("dávka snehu je 12 minipavloviek alebo jeden korpus na tortu", () => {
+  const mini = rozpisReceptov([{ product_id: "mini", kusy: 12 }], DATA_PAVLOVA)[0];
+  assert.equal(mini.davky, 1, "12 minipavloviek = jedna dávka");
+  assert.equal(mini.polozky[0].mnozstvo, 125);
+
+  const torta = rozpisReceptov([{ product_id: "torta", kusy: 1 }], DATA_PAVLOVA)[0];
+  assert.equal(torta.davky, 1, "jedna torta = tiež celá dávka");
+  assert.equal(torta.polozky[0].mnozstvo, 125);
+
+  const sest = rozpisReceptov([{ product_id: "mini", kusy: 6 }], DATA_PAVLOVA)[0];
+  assert.equal(sest.davky, 0.5, "6 minipavloviek je pol dávky");
+
+  // Torta a zákusky na ten istý deň sa musia sčítať do jedného receptu.
+  const spolu = rozpisReceptov(
+    [{ product_id: "torta", kusy: 1 }, { product_id: "mini", kusy: 6 }], DATA_PAVLOVA);
+  assert.equal(spolu.length, 1, "je to jeden recept, nie dva riadky");
+  assert.equal(spolu[0].davky, 1.5);
+  assert.equal(spolu[0].polozky[0].mnozstvo, 187.5);
+});
+
 test("prázdne pieces_per_batch znamená výťažnosť receptu", () => {
   const bezUdaja = rozpisReceptov([{ product_id: "choux", kusy: 10 }], DATA_VETERNIK)[0];
   assert.equal(bezUdaja.davky, 0.5);

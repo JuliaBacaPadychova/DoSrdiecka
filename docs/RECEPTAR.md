@@ -250,6 +250,37 @@ Dve veci, o ktorých treba vedieť:
   15 ml. Kôra z citróna je nová surovina `Citrón` v kusoch — šťava
   ostáva vedená zvlášť, lebo sa kupuje aj hotová.
 
+## Pavlova: jeden sneh, dva výrobky
+
+`supabase/migracia-pavlova-korpus.sql` pridáva recept **Pavlova korpus**
+z karty „PAVLOVA — MINIPAVLOVKY": 125 g bielkov, 215 g krupicového cukru,
+1,5 ČL škrobu (10,5 g) a 1 ČL octu (5 ml), sušenie 140/100 °C, 100 minút.
+
+Je to **jeden recept priradený k dvom výrobkom**, nie dva recepty — ten
+istý sneh, iný tvar:
+
+| Výrobok | Kusov z dávky | Čo to znamená |
+|---|---:|---|
+| Mini Pavlova — Jemná klasika | 12 | dávka vydá 12 minipavloviek 6–7 cm |
+| Pavlova torta — Ø 20 cm | 1 | celá dávka je jeden korpus |
+
+Je to ten istý mechanizmus ako pri odpalovanom ceste (20 choux vs.
+12 veterníkov), len dotiahnutý do krajnosti: pri torte vyjde z dávky
+jediný kus. Torta a minipavlovky na ten istý termín sa preto v nákupnom
+zozname sčítajú do jedného receptu — 1 torta a 6 minipavloviek je
+1,5 dávky snehu, nie dva samostatné riadky.
+
+Dve veci sú v recepte zapísané ako **otvorené**, lebo na karte nie sú:
+
+- či dávka stačí na celý priemer Ø 20 cm (ak nie, stačí pri torte zmeniť
+  „kusov z dávky" — 0,667 znamená dávku a pol na jednu tortu),
+- ako dlho sa suší korpus na tortu; je hrubší než minipavlovka, takže
+  100 minút z karty pre neho neplatí. Skutočný čas patrí do postupu po
+  prvom pečení.
+
+„Chcem inú kombináciu chutí" priradené nie je — tam sa zloženie dohaduje
+z poznámky k objednávke, rovnako ako pri Choux.
+
 ## Čo ešte treba doplniť
 
 Tieto veci sa dopĺňajú v správe webu, nie v kóde:
@@ -262,6 +293,12 @@ Tieto veci sa dopĺňajú v správe webu, nie v kóde:
   ich používajú, v číselníku neboli vôbec. Založené bez ceny.
 - **Citrón** — pribudol kvôli kôre do citrónového curdu, cena za kus
   chýba.
+- **Ocot** — pribudol kvôli korpusu na pavlovu, balenie ani cena nie sú.
+  Je ho v dávke 5 ml, takže na cenu za kus to vplyv nemá.
+- **Zloženie Mini Pavlovy a Pavlova torty** — priradený je zatiaľ len
+  korpus. Podľa popisu na webe k nemu patrí ešte vanilkový krém, citrónový
+  curd a čerstvé maliny (pri torte ovocné coulis); kým nie sú priradené,
+  nákupný zoznam na pavlovu pýta len sneh.
 - **Réžia** — zatiaľ nie je; keď bude známa, pridá sa ako položka druhu
   `rezia` počítaná na kus.
 
