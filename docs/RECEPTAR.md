@@ -243,8 +243,9 @@ Dve veci, o ktorých treba vedieť:
 - **Malinové pyré sa kupuje aj robí.** Na karte je „150 g malinového pyré
   (z 1,5–2 násobku mrazeného ovocia)". V recepte je zapísaná existujúca
   surovina `Pyré malina` (24 €/kg), takže kalkulácia počíta s kupovaným
-  pyré. Keď sa bude robiť z mrazených malín, treba založiť surovinu
-  `Maliny mrazené` a v recepte ju vymeniť — cena za kus sa tým zmení.
+  pyré. Surovina `Maliny mrazené` už v číselníku je (pribudla s coulis na
+  pavlovu), takže ak sa pyré bude robiť z nich, stačí ju v recepte
+  vymeniť — cena za kus sa tým zmení.
 - **Žĺtok je v číselníku v gramoch** (1 žĺtok = 20 g), preto sú z dvoch
   žĺtkov 40 g a z troch 60 g. Lyžica citrónovej šťavy je počítaná ako
   15 ml. Kôra z citróna je nová surovina `Citrón` v kusoch — šťava
@@ -281,6 +282,39 @@ Dve veci sú v recepte zapísané ako **otvorené**, lebo na karte nie sú:
 „Chcem inú kombináciu chutí" priradené nie je — tam sa zloženie dohaduje
 z poznámky k objednávke, rovnako ako pri Choux.
 
+### Krém a coulis na tortu
+
+`supabase/migracia-pavlova-krem.sql` dopĺňa k tortě zvyšok karty
+„PAVLOVA 20 cm": **Pavlova krém** (380 g mascarpone, 380 ml šľahačky
+min. 33 %, 100 g práškového cukru, štipka vanilky) a **Pavlova malinové
+coulis** (200 g mrazených malín, 40 g kryštálového cukru). Oba sú
+napísané na jednu tortu Ø 20 cm, takže dve torty si vypýtajú dve dávky.
+
+Názvy začínajú slovom „Pavlova" zámerne: v abecednom zozname stoja vedľa
+seba a je z nich vidieť, že inde sa nepoužívajú.
+
+**Dužina z 3–4 marakují a čerstvé ovocie na ozdobu nie sú medzi
+surovinami**, ale v poznámke receptu Pavlova krém — kupujú sa podľa
+sezóny a dohody so zákazníčkou, takže by v kalkulácii boli vymyslené
+číslo. Do ceny torty ich treba prirátať zvlášť.
+
+### Prečo sú dve malinové coulis
+
+`Malinové coulis` (do choux) a `Pavlova malinové coulis` nie sú tá istá
+receptúra napísaná dvakrát:
+
+| | Malinové coulis | Pavlova malinové coulis |
+|---|---|---|
+| Základ | 150 g kupovaného pyré | 200 g mrazených malín |
+| Cukor | 15 g (10 g na 100 g ovocia) | 40 g (20 g na 100 g) |
+| Pektín NH | 2,5 g | žiadny |
+| Citrónová šťava | pár kvapiek | žiadna |
+| Ako hustne | tuhne pektínom | odparením, potom sa mixuje a pasíruje |
+
+Prvé musí držať tvar vo vnútri choux, druhé sa vrstvi na korpus. Jedno
+pre oboje by znamenalo buď želé na pavlove, alebo coulis vytečené
+z choux.
+
 ## Čo ešte treba doplniť
 
 Tieto veci sa dopĺňajú v správe webu, nie v kóde:
@@ -295,10 +329,14 @@ Tieto veci sa dopĺňajú v správe webu, nie v kóde:
   chýba.
 - **Ocot** — pribudol kvôli korpusu na pavlovu, balenie ani cena nie sú.
   Je ho v dávke 5 ml, takže na cenu za kus to vplyv nemá.
-- **Zloženie Mini Pavlovy a Pavlova torty** — priradený je zatiaľ len
-  korpus. Podľa popisu na webe k nemu patrí ešte vanilkový krém, citrónový
-  curd a čerstvé maliny (pri torte ovocné coulis); kým nie sú priradené,
-  nákupný zoznam na pavlovu pýta len sneh.
+- **Maliny mrazené** — pribudli kvôli coulis na pavlovu, balenie ani cena
+  nie sú. Bez nich vyjde kalkulácia torty nižšie, než je pravda.
+- **Zloženie Mini Pavlovy** — priradený je zatiaľ len korpus. Podľa popisu
+  na webe k nemu patrí ešte vanilkový krém, citrónový curd a čerstvé
+  maliny. Pri Pavlova torte je zloženie kompletné (korpus, krém, coulis).
+- **Krém a coulis pre Mini Pavlovu** — recepty z karty na tortu sa dajú
+  priradiť aj k nej, len treba vedieť, koľko minipavloviek z jednej dávky
+  vyjde. Karta to nehovorí, preto to priradenie zatiaľ nie je.
 - **Réžia** — zatiaľ nie je; keď bude známa, pridá sa ako položka druhu
   `rezia` počítaná na kus.
 
