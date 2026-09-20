@@ -293,10 +293,43 @@ napísané na jednu tortu Ø 20 cm, takže dve torty si vypýtajú dve dávky.
 Názvy začínajú slovom „Pavlova" zámerne: v abecednom zozname stoja vedľa
 seba a je z nich vidieť, že inde sa nepoužívajú.
 
-**Dužina z 3–4 marakují a čerstvé ovocie na ozdobu nie sú medzi
-surovinami**, ale v poznámke receptu Pavlova krém — kupujú sa podľa
-sezóny a dohody so zákazníčkou, takže by v kalkulácii boli vymyslené
-číslo. Do ceny torty ich treba prirátať zvlášť.
+**Doplnky sú medzi surovinami**, nie len v poznámke: marakuja (4 ks —
+karta hovorí 3–4, v nákupnom zozname je lepšie mať o plod viac) a ovocie
+na ozdobu. Ovocie je zámerne **bez gramáže aj bez ceny**, lebo sa mení
+podľa sezóny a dohody so zákazníčkou: v recepte je vidieť, do ceny
+nevstupuje a kalkulácia ho vypíše medzi nedopočítanými. Vymyslené číslo
+by bolo horšie než priznaná medzera.
+
+### Krém z čiernych ríbezlí na minipavlovky
+
+`supabase/migracia-pavlova-ribezle.sql` pridáva **Pavlova krém z čiernych
+ríbezlí** z druhej karty na minipavlovky — napísaný na 12 minipavloviek:
+160 g mrazených čiernych ríbezlí, 100 g bielej čokolády 28 %, 120 g
+mascarpone, 200 ml šľahačky min. 33 %, 40 g práškového cukru a ovocie na
+ozdobu.
+
+Ganáž a krém sú na karte dve časti, ale v databáze je to **jeden recept**.
+Celá ganáž ide do tohto krému a nikde inde sa nepoužíva; samostatný recept
+by znamenal dve miesta na opravu a riziko, že sa ríbezle započítajú
+dvakrát — presne to sa v exceli stalo karamelu. (Karamel je samostatný
+recept preto, že sa *delí* medzi polevu a šľahačku.) Obe fázy vrátane
+troch hodín chladenia sú v postupe oddelené.
+
+Ríbezle sú vedené **mrazené, nie ako pyré**: karta hovorí „80 g pyré
+z dvojnásobku, čiže zo 160 g mrazeného ovocia", a kupuje sa tých 160 g.
+Pri malinovom curde je to zatiaľ naopak (kupované `Pyré malina`) — keby
+sa aj ten robil z mrazených, stačí surovinu v recepte vymeniť.
+
+K príchuti recept priradený nie je. Mini Pavlova má na webe jedinú
+konkrétnu príchuť „Jemná klasika" a tá je popísaná ako *vanilkový krém,
+lemon curd a čerstvé maliny* — teda iný krém. Priradiť k nej ríbezľový
+krém by ticho zmenilo to, čo si zákazníčka objednáva; či ide o novú
+príchuť alebo o novú podobu Jemnej klasiky, je rozhodnutie majiteľky.
+
+Karta k tomuto krému počíta ešte **100–130 g citrónového curdu** na dávku
+(1–2 ČL do jednej minipavlovky, čiže cca 10 g na kus). Curd je vlastný
+recept, takže sa k príchuti priradí ako recept s gramážou na kus, nie ako
+surovina.
 
 ### Prečo sú dve malinové coulis
 
@@ -329,11 +362,16 @@ Tieto veci sa dopĺňajú v správe webu, nie v kóde:
   chýba.
 - **Ocot** — pribudol kvôli korpusu na pavlovu, balenie ani cena nie sú.
   Je ho v dávke 5 ml, takže na cenu za kus to vplyv nemá.
-- **Maliny mrazené** — pribudli kvôli coulis na pavlovu, balenie ani cena
-  nie sú. Bez nich vyjde kalkulácia torty nižšie, než je pravda.
-- **Zloženie Mini Pavlovy** — priradený je zatiaľ len korpus. Podľa popisu
-  na webe k nemu patrí ešte vanilkový krém, citrónový curd a čerstvé
-  maliny. Pri Pavlova torte je zloženie kompletné (korpus, krém, coulis).
+- **Maliny mrazené**, **Čierne ríbezle mrazené**, **Marakuja** — pribudli
+  kvôli pavlove, cena ani balenie nie sú. Bez nich vyjde kalkulácia nižšie,
+  než je pravda.
+- **Ovocie na ozdobu** — bez ceny zostane aj naďalej, je to vedomé
+  rozhodnutie (mení sa podľa sezóny). Do ceny torty ho treba prirátať
+  zvlášť.
+- **Zloženie Mini Pavlovy** — priradený je zatiaľ len korpus. Recepty na
+  krém z čiernych ríbezlí aj citrónový curd už v receptári sú, ale
+  k príchuti priradené nie sú: najprv treba vedieť, ku ktorej príchuti
+  patria. Pri Pavlova torte je zloženie kompletné (korpus, krém, coulis).
 - **Krém a coulis pre Mini Pavlovu** — recepty z karty na tortu sa dajú
   priradiť aj k nej, len treba vedieť, koľko minipavloviek z jednej dávky
   vyjde. Karta to nehovorí, preto to priradenie zatiaľ nie je.
