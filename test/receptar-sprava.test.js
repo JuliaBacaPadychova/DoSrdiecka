@@ -254,9 +254,22 @@ test("chýbajúca tabuľka uložených nezhodí celý receptár", async (t) => {
   });
 });
 
+// Druh receptu (krém / vklad / …) sa už neeviduje — políčko je preč
+// zo správy aj stĺpec z databázy. Keby sa do zoznamu upraviteľných polí
+// vrátil, zápis by na stĺpec, ktorý neexistuje, spadol až v Supabase.
+test("druh receptu sa cez správu zapísať nedá", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    const o = await zavolaj("POST", "/api/admin/receptar?co=recept",
+      { name: "Malinový curd", yield_qty: 300, yield_unit: "g", kind: "vklad" });
+    assert.equal(o.code, 200);
+    assert.equal(db.recipes[0].name, "Malinový curd");
+    assert.equal(db.recipes[0].kind, undefined, "druh sa z tela požiadavky zahodí");
+  });
+});
+
 test("popis výťažnosti sa dá uložiť aj vymazať", async (t) => {
   await sReceptarom(t, async ({ db, zavolaj }) => {
-    db.recipes.push({ id: "r-krem", name: "Vanilkový krém", kind: "krem",
+    db.recipes.push({ id: "r-krem", name: "Vanilkový krém",
       yield_qty: 10, yield_unit: "ks", yield_label: "", steps: "", note: "", active: true });
 
     const o = await zavolaj("PATCH", "/api/admin/receptar?co=recept&id=r-krem",

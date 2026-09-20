@@ -983,9 +983,6 @@
     }
   }
 
-  // Poradie, v akom sa pečie: najprv cesto, potom náplne, nakoniec ozdoby.
-  const PORADIE_DRUHOV = ['cesto', 'krem', 'vklad', 'poleva', 'ozdoba', 'ine'];
-
   function cisloSk(v) {
     if (v === null || v === undefined) return '—';
     // Celé číslo bez desatinných miest, zvyšok max na tri.
@@ -1024,8 +1021,11 @@
       el.innerHTML = `<p class="muted">${esc(prichut)} nemá priradené žiadne recepty.</p>`;
       return;
     }
+    // Podľa abecedy — rovnako ako v úprave receptov a vo výberoch.
+    // Recept už nemá druh, podľa ktorého sa dalo radiť „poradím pečenia";
+    // názov je jediné, čo o recepte platí vždy a čo si vieš vybaviť.
     const zoradene = [...rozpis].sort((a, b) =>
-      PORADIE_DRUHOV.indexOf(a.recept.druh) - PORADIE_DRUHOV.indexOf(b.recept.druh));
+      a.recept.nazov.localeCompare(b.recept.nazov, 'sk'));
 
     el.innerHTML = `
       <div class="admin-row" style="margin-bottom:4px">
@@ -1149,9 +1149,9 @@
       const pouzitie = podlaAbecedy(
         vazby.filter((v) => v.recipe_id === r.id), (v) => nazovPrichute(v.product_id));
 
-      // Hlavička: že je to krém, vidno z názvu receptu — druh tam bol
-      // navyše. Na jeho mieste stojí „kusov čoho" z úpravy receptu, teda
-      // čoho je tých 10 kusov. Vzadu ostávajú celé názvy príchutí.
+      // Hlavička: že je to krém, vidno z názvu receptu — druh sa preto
+      // neeviduje vôbec. Na jeho mieste stojí „kusov čoho" z úpravy
+      // receptu, teda čoho je tých 10 kusov. Vzadu sú celé názvy príchutí.
       return `
       <details id="recept-${r.id}" style="margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:10px">
         <summary style="cursor:pointer">
@@ -1287,8 +1287,8 @@
     }
   }
 
-  // Vo výbere sú názvy receptov, nie druhy — recept sa hľadá podľa toho,
-  // ako sa volá.
+  // Vo výbere sú názvy receptov — recept sa hľadá podľa toho, ako sa
+  // volá, nič iné sa o ňom neeviduje.
   function naplnFilterReceptov() {
     const el = document.getElementById('recFilter');
     if (!el || !RECEPTAR) return;
@@ -1528,6 +1528,16 @@
   function novyReceptForm(zobrazit = true) {
     document.getElementById('novyReceptForm').style.display = zobrazit ? 'block' : 'none';
     document.getElementById('nrErr').style.display = 'none';
+    novyReceptJednotka();
+  }
+
+  // Recept na gramy (curd, coulis) nie je na „kusov čoho", ale na „čoho" —
+  // 300 g curdu. Popiska sa preto riadi jednotkou, rovnako ako v úprave
+  // receptov; inak sa pri gramoch pýta na kusy, ktoré recept nemá.
+  function novyReceptJednotka() {
+    const naGramy = document.getElementById('nrJednotka').value === 'g';
+    document.getElementById('nrPopisLabel').textContent = naGramy ? 'Čoho' : 'Kusov čoho';
+    document.getElementById('nrPopis').placeholder = naGramy ? 'napr. curdu' : 'napr. veterník';
   }
 
   async function ulozNovyRecept() {
@@ -1535,7 +1545,6 @@
     errEl.style.display = 'none';
     const telo = {
       name: document.getElementById('nrNazov').value.trim(),
-      kind: document.getElementById('nrDruh').value,
       yield_qty: document.getElementById('nrVytaznost').value,
       yield_unit: document.getElementById('nrJednotka').value,
       yield_label: document.getElementById('nrPopis').value.trim(),
@@ -1984,7 +1993,7 @@
     saveSettings,
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,
     renderRecepty, ulozRecept, pridajPolozku, posunPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
-    novyReceptForm, ulozNovyRecept, doKalkulacky, zmazRecept,
+    novyReceptForm, novyReceptJednotka, ulozNovyRecept, doKalkulacky, zmazRecept,
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
     ulozVyber, otvorUlozeny, premenujUlozeny, zmazUlozeny, ulozPoznamkuRozpisu,
     novyZoznam, vyberZoznam, ulozZoznam, zmazZoznam, objednavkyDoZoznamu,

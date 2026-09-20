@@ -62,7 +62,6 @@ create table if not exists ingredients (
 create table if not exists recipes (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
-  kind text not null default 'krem' check (kind in ('cesto','krem','poleva','vklad','ozdoba','ine')),
   yield_qty numeric(10,3) not null,
   yield_unit text not null default 'ks' check (yield_unit in ('ks','g')),
   steps text not null default '',
@@ -210,8 +209,8 @@ on conflict (name) do nothing;
 -- ("10KS", "8ks", "12ks", "20KS"). Podľa neho sa recept prepočítava na
 -- objednaný počet kusov.
 -- ---------------------------------------------------------------------
-insert into recipes (name, kind, yield_qty, yield_unit, source_url, note, steps) values
-  ('Odpalované cesto', 'cesto', 20, 'ks',
+insert into recipes (name, yield_qty, yield_unit, source_url, note, steps) values
+  ('Odpalované cesto', 20, 'ks',
    'https://herohero.co/sweetpoint/post/balamakyqztffucdybiykmmeqxbyajzgag',
    'To isté cesto vydá cca 12 veterníkov / 12 Paris-Brestov / 25 profiterolek — pri veterníku sa nastaví qty_per_piece.',
    $rec$Vajcia rozmixuj ponorným mixérom a nechaj na izbovej teplote.
@@ -227,7 +226,7 @@ Pečenie: rúru predhrej na 200 °C, tvary striekaj na studený plech s perforov
 Mrazené choux +15 min a nie viac, do 3 minút postupne otvárať dvierka.
 Mrazené len pár dní stačí +14 min.$rec$),
 
-  ('Craquelin svetlý', 'cesto', 20, 'ks',
+  ('Craquelin svetlý', 20, 'ks',
    'https://herohero.co/sweetpoint/post/balamakyqztffucdmxlllrivdcqoynihw',
    'Dvojitá dávka oproti pôvodnému receptu — pri jednoduchej vždy chýbali kolieska. Výťažnosť 20 ks overiť.',
    $rec$Všetky suroviny zmiešaj a vypracuj kompaktné cesto (robot s K-metlou alebo ručne).
@@ -236,12 +235,12 @@ Vykrajuj kolieska s priemerom mierne väčším, než je nastriekané odpalovan�
 Zamraz — v zmrazenom stave sa dobre manipuluje a drží tvar.
 Pred pečením kolieska vylúpni a polož na surové odpalované cesto.$rec$),
 
-  ('Craquelin tmavý', 'cesto', 20, 'ks',
+  ('Craquelin tmavý', 20, 'ks',
    'https://herohero.co/sweetpoint/post/balamakyqztffucdmxlllrivdcqoynihw',
    'Dvojitá dávka, rovnako ako pri svetlom. Výťažnosť 20 ks overiť.',
    $rec$Postup rovnaký ako pri svetlom craqueline, len s kakaom.$rec$),
 
-  ('Mangový krém', 'krem', 10, 'ks', '', '',
+  ('Mangový krém', 10, 'ks', '', '',
    $rec$Želatínu namoč do studenej vody.
 Mango pyré s mliekom zohrej k varu.
 Medzitým v miske zmiešaj cukor, žĺtka a škrob.
@@ -250,7 +249,7 @@ Za stáleho miešania prevar do zhustnutia.
 Odstav, vmiešaj vyžmýkanú želatínu, potom mascarpone a dobre premixuj.
 Zakry fóliou na kontakt a nechaj chladiť aspoň 3 hodiny.$rec$),
 
-  ('Jablkové confit', 'vklad', 10, 'ks', '',
+  ('Jablkové confit', 10, 'ks', '',
    'V exceli bolo v texte 35 g cukru, v prepočtovom stĺpci 40 g — tu je 40 g, overiť.',
    $rec$V kastróle zohrej jablkové pyré s vodou.
 V inej miske zmiešaj cukor s pektínom a agarom.
@@ -258,7 +257,7 @@ Pridaj k teplému pyré a dôkladne rozmiešaj.
 Priveď k varu a krátko prevar.
 Zakry fóliou na kontakt, nechaj stuhnúť niekoľko hodín a pred použitím rozmačkaj vidličkou.$rec$),
 
-  ('Pistáciový krém', 'krem', 10, 'ks',
+  ('Pistáciový krém', 10, 'ks',
    'https://herohero.co/sweetpoint/post/balamakyqztffucdtvvvnoehxetkakdvkkuw', '',
    $rec$Bielu čokoládu rozpusti nad parou alebo krátko v mikrovlnke (max 45–50 °C).
 Smotanu zohrej len mierne (cca 40–50 °C), nesmie vrieť.
@@ -269,7 +268,7 @@ Nakoniec zapracuj mascarpone izbovej teploty do hladkého krému.
 Zakry fóliou na kontakt a nechaj chladiť aspoň 4 hodiny.
 Nešľahať a nemixovať — len krátko premiešať metličkou.$rec$),
 
-  ('Mango šľahaná ganache', 'krem', 8, 'ks', '', '',
+  ('Mango šľahaná ganache', 8, 'ks', '', '',
    $rec$Želatínu nechaj napučať v studenej vode.
 Smotanu a mango pyré zohrej na 80–85 °C.
 Horúcu zmes vlej na bielu čokoládu, nechaj minútu stáť, premiešaj.
@@ -278,7 +277,7 @@ Pridaj mascarpone a krátko premixuj tyčovým mixérom.
 Zakry fóliou na kontakt a nechaj chladiť ideálne 8 hodín.
 Šľahaj na nízkych až stredných otáčkach, zastav pri mäkkých až stredných špičkách — ganache musí držať tvar, ale byť krémová.$rec$),
 
-  ('Rebarborová šľahaná ganache', 'krem', 10, 'ks', '',
+  ('Rebarborová šľahaná ganache', 10, 'ks', '',
    'Voliteľne ½ ČL limetkovej alebo pomarančovej kôry.',
    $rec$Želatínu namoč do studenej vody (10 min).
 Smotanu a rebarborové pyré zohrej na 80–85 °C.
@@ -288,7 +287,7 @@ Pridaj mascarpone a premixuj tyčovým mixérom do hladkej emulzie.
 Zakry fóliou na kontakt, chladenie minimálne 6 hodín, ideálne cez noc.
 Potom vyšľahaj do mäkkých až stredných špičiek — kyslosť pyré emulziu zatuhne rýchlejšie, sleduj štruktúru už po 20–30 sekundách.$rec$),
 
-  ('Šľahaná ganache z bielej čokolády', 'krem', 20, 'ks', '',
+  ('Šľahaná ganache z bielej čokolády', 20, 'ks', '',
    'Ganache navrch.',
    $rec$Smotanu s glukózovým sirupom zohrej na strednom plameni až k bodu varu.
 Horúcu smotanu nalej na bielu čokoládu a miešaj stierkou, kým sa čokoláda nerozpustí.
@@ -296,7 +295,7 @@ Zmes premixuj ponorným mixérom dohladka.
 Nechaj vychladnúť na 30 °C, pridaj smotanový syr a premixuj tyčovým mixérom.
 Zakry fóliou na kontakt a daj do chladničky minimálne na 8 hodín.$rec$),
 
-  ('Kávová ganache', 'krem', 12, 'ks', '',
+  ('Kávová ganache', 12, 'ks', '',
    'Podľa poznámky v exceli by dávka vyšla aj na 20 ks — overiť skôr, než sa podľa toho bude počítať.',
    $rec$Smotanu daj do kastróla, prisyp kávu a zohrej tesne k bodu varu.
 Stiahni z platne a nechaj 10 minút lúhovať. Cez sitko nalej na obe čokolády.
@@ -304,13 +303,13 @@ Nechaj rozpustiť a premixuj tyčovým mixérom. Pridaj mascarpone a znovu premi
 Nalej do čistej nádoby, prikry fóliou na kontakt a daj chladiť aspoň 10 hodín.
 Nakoniec vyšľahaj do nadýchaného, ale pevného krému.$rec$),
 
-  ('Malinové coulis', 'vklad', 150, 'g', '',
+  ('Malinové coulis', 150, 'g', '',
    'Recept je na cca 150 g hotového coulis — koľko gramov ide na jeden kus, sa nastaví pri príchuti.',
    $rec$Pyré zohrej, cukor zmiešaj s pektínom a vsyp za stáleho miešania.
 Priveď k varu a krátko prevar. Dochuť pár kvapkami citrónovej šťavy.
 Zakry fóliou na kontakt a nechaj stuhnúť.$rec$),
 
-  ('Višňové coulis', 'vklad', 150, 'g', '',
+  ('Višňové coulis', 150, 'g', '',
    'Schwarzwald štýl. Recept je na cca 150 g hotového coulis.',
    $rec$Pyré zohrej, cukor zmiešaj s pektínom a vsyp za stáleho miešania.
 Priveď k varu a krátko prevar.
@@ -430,12 +429,12 @@ on conflict (product_id, recipe_id) do nothing;
 -- používa. Keby mal recept menej surovín, než má v exceli, znamená to
 -- preklep v názve — riadok by sa potichu nevložil.
 -- ---------------------------------------------------------------------
-select r.name as recept, r.kind as druh, r.yield_qty as vytaznost,
+select r.name as recept, r.yield_qty as vytaznost,
        r.yield_unit as jednotka,
        count(distinct ri.id) as pocet_surovin,
        count(distinct pr.id) as v_prichutiach
 from recipes r
 left join recipe_items ri on ri.recipe_id = r.id
 left join product_recipes pr on pr.recipe_id = r.id
-group by r.id, r.name, r.kind, r.yield_qty, r.yield_unit
-order by r.kind, r.name;
+group by r.id, r.name, r.yield_qty, r.yield_unit
+order by r.name;

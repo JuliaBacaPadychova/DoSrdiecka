@@ -31,7 +31,7 @@ const TYPY = {
   },
   recept: {
     tabulka: "recipes",
-    polia: ["name", "kind", "yield_qty", "yield_unit", "yield_label", "steps",
+    polia: ["name", "yield_qty", "yield_unit", "yield_label", "steps",
             "source_url", "note", "active"],
     texty: ["steps", "source_url", "note", "yield_label"],
   },
@@ -96,7 +96,7 @@ function skontrolujPocet(fields) {
 async function nacitatReceptar() {
   const [suroviny, recepty, polozky, vazby, zoznamy, ulozene] = await Promise.all([
     rest("ingredients?select=*&order=name.asc"),
-    rest("recipes?select=*&order=kind.asc,name.asc"),
+    rest("recipes?select=*&order=name.asc"),
     rest("recipe_items?select=*&order=sort_order.asc"),
     rest("product_recipes?select=*"),
     rest("shopping_plans?select=*&order=day.desc.nullslast,created_at.desc"),

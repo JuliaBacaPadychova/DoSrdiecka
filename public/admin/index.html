@@ -235,21 +235,11 @@
       <div id="novyReceptForm" style="display:none;margin-bottom:18px">
         <div class="form">
           <div><label for="nrNazov">Názov receptu</label><input id="nrNazov"></div>
-          <div><label for="nrDruh">Druh</label>
-            <select id="nrDruh">
-              <option value="cesto">cesto</option>
-              <option value="krem" selected>krém</option>
-              <option value="vklad">vklad</option>
-              <option value="poleva">poleva</option>
-              <option value="ozdoba">ozdoba</option>
-              <option value="ine">iné</option>
-            </select>
-          </div>
           <div><label for="nrVytaznost">Recept je napísaný na</label><input id="nrVytaznost" type="number" min="0" step="1" value="10"></div>
           <div><label for="nrJednotka">Čoho</label>
-            <select id="nrJednotka"><option value="ks">kusov</option><option value="g">gramov</option></select>
+            <select id="nrJednotka" onchange="Admin.novyReceptJednotka()"><option value="ks">kusov</option><option value="g">gramov</option></select>
           </div>
-          <div><label for="nrPopis">Kusov čoho</label><input id="nrPopis" placeholder="napr. veterník"></div>
+          <div><label for="nrPopis" id="nrPopisLabel">Kusov čoho</label><input id="nrPopis" placeholder="napr. veterník"></div>
           <div class="full"><label for="nrPoznamka">Poznámka</label><input id="nrPoznamka"></div>
           <div class="full"><label for="nrPostup">Postup</label><textarea id="nrPostup" rows="3"></textarea></div>
         </div>

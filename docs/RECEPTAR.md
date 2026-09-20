@@ -13,7 +13,7 @@ webu upravila, neprepíše.
 | Tabuľka | Čo v nej je | Bývalý hárok |
 |---|---|---|
 | `ingredients` | suroviny, balenie, cena, alergény | Ciselnik |
-| `recipes` | recept: druh, výťažnosť, postup | Všetko / Odpalované cesto |
+| `recipes` | recept: výťažnosť, postup, poznámka | Všetko / Odpalované cesto |
 | `recipe_items` | čo a koľko ide do receptu | stĺpce B a C |
 | `product_recipes` | ktoré recepty tvoria príchuť na webe | (v exceli nebolo) |
 
@@ -147,6 +147,19 @@ V správe webu pribudli tri záložky:
   Poradie surovín drží stĺpec `recipe_items.sort_order` — v recepte na
   poradí záleží a databáza bez neho vracia riadky, ako sa jej zachce.
 
+  **Druh receptu (cesto / krém / vklad / poleva / ozdoba / iné) sa
+  neeviduje** — `supabase/migracia-bez-druhu-receptu.sql` stĺpec
+  `recipes.kind` maže. Tá migrácia sa smie spustiť **až po nasadení**
+  kódu, ktorý s druhom nepočíta: staršie znenie `api/admin/receptar.js`
+  si recepty pýta zoradené podľa `kind` a na zmazanom stĺpci celá
+  záložka Recepty spadne na „server_error". Nikde sa podľa neho nepočítalo a z hlavičiek
+  receptov zmizol už skôr; že je „Malinový curd" vklad, je vidieť
+  z názvu. Ostávalo teda políčko, ktoré treba pri zakladaní receptu
+  vyplniť a potom ho nikto nečíta. Cena za to je poradie v rozpise:
+  riadilo sa druhom (najprv cesto, potom náplne), teraz je podľa abecedy
+  ako všade inde. Druh SUROVINY (`ingredients.kind`) ostáva — podľa neho
+  sa obal a réžia rátajú na kus, nie na gramy.
+
   Výťažnosť („recept je napísaný na 20 ks") sa mení len tlačidlom Uložiť,
   nikdy sama od seba. Keď sa ukladala pri každej zmene políčka, dala sa
   šípkou posunúť na 20,002 a ticho tým zmeniť cenu za kus.
@@ -211,6 +224,32 @@ z nej ubudne alebo pribudne, keď cena tej suroviny stúpne o pätinu:
 Zvyšných desať surovín (múka, cukry, mlieko, želatína, vajcia) robí
 dohromady menej než 8 centov na kus — tie stačí prejsť raz za rok.
 
+## Curdy
+
+`supabase/migracia-curdy.sql` pridáva dva recepty z kariet *CURDY*:
+
+| Recept | Základ | Napísaný na |
+|---|---|---|
+| Malinový curd | pyré (robí sa z mrazených malín) | 300 g curdu |
+| Citrónový curd | šťava priamo do curdu | 300 g curdu |
+
+Sú napísané **na gramy, nie na kusy** — rovnako ako coulis. Koľko z nich
+ide do jedného zákusku, sa povie až pri priradení k príchuti („Gramov do
+jedného zákusku"); dovtedy nie sú priradené k žiadnej a do žiadneho
+nákupného zoznamu nevstúpia.
+
+Dve veci, o ktorých treba vedieť:
+
+- **Malinové pyré sa kupuje aj robí.** Na karte je „150 g malinového pyré
+  (z 1,5–2 násobku mrazeného ovocia)". V recepte je zapísaná existujúca
+  surovina `Pyré malina` (24 €/kg), takže kalkulácia počíta s kupovaným
+  pyré. Keď sa bude robiť z mrazených malín, treba založiť surovinu
+  `Maliny mrazené` a v recepte ju vymeniť — cena za kus sa tým zmení.
+- **Žĺtok je v číselníku v gramoch** (1 žĺtok = 20 g), preto sú z dvoch
+  žĺtkov 40 g a z troch 60 g. Lyžica citrónovej šťavy je počítaná ako
+  15 ml. Kôra z citróna je nová surovina `Citrón` v kusoch — šťava
+  ostáva vedená zvlášť, lebo sa kupuje aj hotová.
+
 ## Čo ešte treba doplniť
 
 Tieto veci sa dopĺňajú v správe webu, nie v kóde:
@@ -221,6 +260,8 @@ Tieto veci sa dopĺňajú v správe webu, nie v kóde:
   chýba, takže sa zatiaľ do ceny nerátajú a sú označené.
 - **Pektín NH, agar, citrónová šťava, pyré jablko, pyré višňa** — recepty
   ich používajú, v číselníku neboli vôbec. Založené bez ceny.
+- **Citrón** — pribudol kvôli kôre do citrónového curdu, cena za kus
+  chýba.
 - **Réžia** — zatiaľ nie je; keď bude známa, pridá sa ako položka druhu
   `rezia` počítaná na kus.
 

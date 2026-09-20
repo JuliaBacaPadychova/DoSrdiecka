@@ -19,6 +19,6 @@ update recipes
 
 -- Kontrola: na koľko je ktorý recept napísaný. Čísla majú byť okrúhle
 -- (8, 10, 12, 20 kusov; coulis 150 g).
-select name as recept, kind as druh, yield_qty as vytaznost, yield_unit as jednotka
+select name as recept, yield_qty as vytaznost, yield_unit as jednotka
   from recipes
- order by kind, name;
+ order by name;
