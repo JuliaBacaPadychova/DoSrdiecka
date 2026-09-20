@@ -31,8 +31,8 @@ comment on column product_recipes.pieces_per_batch is
 -- ---------------------------------------------------------------------
 -- RECEPTY
 -- ---------------------------------------------------------------------
-insert into recipes (name, kind, yield_qty, yield_unit, note, steps) values
-  ('Slaný a sladký karamel', 'ine', 10, 'ks',
+insert into recipes (name, yield_qty, yield_unit, note, steps) values
+  ('Slaný a sladký karamel', 10, 'ks',
    'Z jednej dávky vyjde karamel na polevu (240 g slaného) aj na šľahačku (250 g sladkého). Preto sa v ich receptoch karamel neuvádza znovu — inak by sa rátal dvakrát, ako to bolo v exceli.',
    $rec$Cukor rozpusti suchou metódou, bez miešania a na strednom plameni.
 Miešať začni až vtedy, keď sa začne prepaľovať prvý karamel.
@@ -41,14 +41,14 @@ Karamel povar ešte 2–3 minúty a rozdeľ na dve polovice — do jednej vsyp �
 Nechaj vychladnúť pri izbovej teplote.
 Pozor: priprav karamel vo väčšom hrnci, nie v malej rajnici.$rec$),
 
-  ('Karamelová poleva', 'poleva', 10, 'ks',
+  ('Karamelová poleva', 10, 'ks',
    'Karamel je vedený samostatným receptom, preto tu nie je. Pomer karamel : čokoláda je 4:1, čiže na 65 g čokolády ide 240 g slaného karamelu.',
    $rec$Polevu priprav roztopením slaného karamelu s bielou čokoládou nad vodným kúpeľom.
 Na 10 veterníkov treba približne 240 g pripraveného slaného karamelu, roztápaného s bielou čokoládou v pomere 4:1.
 Klobúčiky namoč do pripravenej polevy, prebytočnú polevu nechaj stiecť.
 Môžeš dozdobiť karamelizovanými orieškami.$rec$),
 
-  ('Vanilkový krém Suzys', 'krem', 10, 'ks',
+  ('Vanilkový krém Suzys', 10, 'ks',
    'POZOR: mascarpone má v exceli tri rôzne hodnoty — text 480 g, stĺpec 380 g, kalkulačka 280 g. Zapísaných je 280 g podľa kalkulačky, treba overiť.',
    $rec$Bielu čokoládu rozpusti nad vodným kúpeľom alebo v mikrovlnke; pri mikrovlnke premiešaj každých 10–20 sekúnd.
 Bielu čokoládu daj novú, nie temperovanú — tá sa rozpúšťa ťažšie.
@@ -57,38 +57,38 @@ Z krému odober 2–3 PL do roztopenej čokolády, dobre premiešaj a vráť k z
 Krém krátko prešľahaj a prenes do cukrárskeho vrecka so špičkou Wilton 1M.
 Krém rozdeľ do dvoch sáčkov — ak narveš jeden na plno, tlakom ho zrazíš.$rec$),
 
-  ('Karamelová šľahačka', 'krem', 10, 'ks',
+  ('Karamelová šľahačka', 10, 'ks',
    'Gramáže sú na 12 kusov zámerne, aby komfortne vyšli na 10 — pri pôvodnej dávke šľahačka nevyšla na všetky. Karamel je vedený samostatným receptom (odoberá sa z neho 250 g sladkého).',
    $rec$Z pripraveného sladkého karamelu odober 250 g.
 Vyšľahaj so šľahačkou a mascarpone na pevný šľahačkový krém.
 Šľahačku prenes do cukrárskeho vrecka so špičkou Wilton 1M.
 Ak sa ti krém pri miešaní zdá už stuhnutý, prestaň miešať. Keď máš pocit, že ešte trošku, tak prestaň.$rec$),
 
-  ('Pistáciová poleva', 'poleva', 10, 'ks', '',
+  ('Pistáciová poleva', 10, 'ks', '',
    $rec$Bielu čokoládu rozpusti s pistáciovou pastou a kakaovým maslom nad vodným kúpeľom alebo v mikrovlnke.
 Klobúčiky namáčaj do polevy ihneď, nechaj jemne odkvapkať a odlož na podložku.$rec$),
 
-  ('Pistáciový krém — veterník', 'krem', 10, 'ks',
+  ('Pistáciový krém — veterník', 10, 'ks',
    'Iný pomer než pistáciový krém do choux — ten je na menšie kusy. Preto sú to dva samostatné recepty.',
    $rec$Najskôr rozpusti bielu čokoládu s pistáciovou pastou a nechaj jemne vychladnúť.
 Mascarpone, šľahačku 33 % a cukor vymiešaj do pevnej hmoty, tú po malých kúskoch prenes do čokolády.
 Keď bude čokoláda vychladená krémom, pridaj ju do vyšľahanej hmoty a zapracuj už len stierkou — nemixuj.$rec$),
 
-  ('Malinová šľahačka', 'krem', 10, 'ks', '',
+  ('Malinová šľahačka', 10, 'ks', '',
    $rec$Aspoň 2 hodiny vopred priprav malinovú ganáž zmiešaním horúceho malinového pyré a bielej čokolády; odlož do chladničky.
 Šľahačku 40 %, mascarpone a malinovú ganáž vyšľahaj do pevnej hmoty.
 Cez špičku Wilton 1M navrstvi pistáciový krém, malinovú šľahačku a priklop klobúčik s pistáciovou polevou.$rec$),
 
-  ('Čokoládová poleva', 'poleva', 10, 'ks', '',
+  ('Čokoládová poleva', 10, 'ks', '',
    $rec$Tmavú čokoládu rozpusti s kakaovým maslom nad vodným kúpeľom alebo v mikrovlnke.
 Klobúčiky namáčaj do polevy ihneď, nechaj jemne odkvapkať a odlož na podložku.$rec$),
 
-  ('Čokoládový krém', 'krem', 10, 'ks', '',
+  ('Čokoládový krém', 10, 'ks', '',
    $rec$Najskôr rozpusti tmavú čokoládu a nechaj jemne vychladnúť.
 Mascarpone, šľahačku 33 % a cukor vymiešaj do pevnej hmoty, tú po malých kúskoch prenes do čokolády.
 Keď bude čokoláda vychladená krémom, pridaj ju do vyšľahanej hmoty a zapracuj už len stierkou — nemixuj.$rec$),
 
-  ('Vanilková šľahačka', 'krem', 10, 'ks', '',
+  ('Vanilková šľahačka', 10, 'ks', '',
    $rec$Šľahačku 40 %, mascarpone, cukor a vanilku vyšľahaj naraz do pevnej hmoty.
 Cez špičku Wilton 1M navrstvi čokoládový krém, vanilkovú šľahačku a priklop klobúčik s čokoládovou polevou.
 Hotové veterníky odlož do chladničky na 1–2 hodiny.$rec$)
@@ -179,7 +179,7 @@ on conflict (product_id, recipe_id) do nothing;
 -- ---------------------------------------------------------------------
 -- KONTROLA PO SPUSTENÍ
 -- ---------------------------------------------------------------------
-select r.name as recept, r.kind as druh, r.yield_qty as vytaznost,
+select r.name as recept, r.yield_qty as vytaznost,
        count(distinct ri.id) as pocet_surovin,
        string_agg(distinct p.name || ' — ' || p.sub, ', ') as prichute,
        max(pr.pieces_per_batch) as kusov_z_davky
@@ -187,5 +187,5 @@ from recipes r
 left join recipe_items ri on ri.recipe_id = r.id
 left join product_recipes pr on pr.recipe_id = r.id
 left join products p on p.id = pr.product_id
-group by r.id, r.name, r.kind, r.yield_qty
-order by r.kind, r.name;
+group by r.id, r.name, r.yield_qty
+order by r.name;

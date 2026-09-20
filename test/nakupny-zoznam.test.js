@@ -28,7 +28,7 @@ function naplnReceptar(db) {
     { id: "i-mas", name: "Mascarpone", unit: "g", pack_size: 250, pack_price: 2.53, negligible: false },
     { id: "i-sol", name: "Soľ", unit: "g", pack_size: null, pack_price: 0.44, negligible: false },
   );
-  db.recipes.push({ id: "r-krem", name: "Pistáciový krém", kind: "krem", yield_qty: 10, yield_unit: "ks" });
+  db.recipes.push({ id: "r-krem", name: "Pistáciový krém", yield_qty: 10, yield_unit: "ks" });
   db.recipe_items.push(
     { id: "ri-1", recipe_id: "r-krem", ingredient_id: "i-mas", amount: 260, optional: false },
     { id: "ri-2", recipe_id: "r-krem", ingredient_id: "i-sol", amount: null, optional: false },

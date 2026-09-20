@@ -233,7 +233,7 @@ test("nákupný zoznam je zoradený podľa slovenskej abecedy", () => {
 
 const DATA_VETERNIK = {
   ingredients: [{ id: "i-muka", name: "Múka hladká", unit: "g", pack_size: 1000, pack_price: 0.88 }],
-  recipes: [{ id: "r-cesto", name: "Odpalované cesto", kind: "cesto", yield_qty: 20, yield_unit: "ks" }],
+  recipes: [{ id: "r-cesto", name: "Odpalované cesto", yield_qty: 20, yield_unit: "ks" }],
   recipe_items: [{ id: "ri", recipe_id: "r-cesto", ingredient_id: "i-muka", amount: 115 }],
   product_recipes: [
     { id: "v1", product_id: "choux", recipe_id: "r-cesto", qty_per_piece: 1 },
@@ -294,7 +294,7 @@ test("suroviny v rozpise idú v poradí, v akom prídu z databázy", () => {
       { id: "b", name: "Múka hladká", unit: "g", pack_size: 1000, pack_price: 0.88 },
       { id: "c", name: "Maslo 82%", unit: "g", pack_size: 250, pack_price: 3.08 },
     ],
-    recipes: [{ id: "r", name: "Cesto", kind: "cesto", yield_qty: 10, yield_unit: "ks" }],
+    recipes: [{ id: "r", name: "Cesto", yield_qty: 10, yield_unit: "ks" }],
     // Tak, ako ich vráti databáza zoradené podľa sort_order.
     recipe_items: [
       { id: "1", recipe_id: "r", ingredient_id: "a", amount: 95, sort_order: 1 },
