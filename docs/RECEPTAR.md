@@ -149,7 +149,10 @@ V správe webu pribudli tri záložky:
 
   **Druh receptu (cesto / krém / vklad / poleva / ozdoba / iné) sa
   neeviduje** — `supabase/migracia-bez-druhu-receptu.sql` stĺpec
-  `recipes.kind` maže. Nikde sa podľa neho nepočítalo a z hlavičiek
+  `recipes.kind` maže. Tá migrácia sa smie spustiť **až po nasadení**
+  kódu, ktorý s druhom nepočíta: staršie znenie `api/admin/receptar.js`
+  si recepty pýta zoradené podľa `kind` a na zmazanom stĺpci celá
+  záložka Recepty spadne na „server_error". Nikde sa podľa neho nepočítalo a z hlavičiek
   receptov zmizol už skôr; že je „Malinový curd" vklad, je vidieť
   z názvu. Ostávalo teda políčko, ktoré treba pri zakladaní receptu
   vyplniť a potom ho nikto nečíta. Cena za to je poradie v rozpise:

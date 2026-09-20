@@ -1,7 +1,21 @@
 -- ---------------------------------------------------------------------
 -- MIGRÁCIA: recept už nemá druh
 -- ---------------------------------------------------------------------
--- Spusti raz v Supabase -> SQL Editor -> New query.
+-- Spusti raz v Supabase -> SQL Editor -> New query, ale AŽ POTOM, čo je
+-- na webe nasadená verzia kódu, ktorá s druhom už nepočíta.
+--
+-- Poradie je dôležité: staršie znenie `api/admin/receptar.js` si recepty
+-- pýta zoradené podľa `kind`. Keď sa stĺpec zmaže skôr, než sa nasadí
+-- nový kód, Supabase tú požiadavku odmietne a v správe webu sa celá
+-- záložka Recepty (a s ňou Kalkulačka aj Peniaze) ozve ako
+-- "server_error". Nič sa tým nepokazí — po nasadení je to zase v poriadku.
+--
+-- Keby sa to predsa stalo a web treba sfunkčniť hneď, stĺpec sa dá
+-- dočasne vrátiť (prázdny, len aby bolo podľa čoho radiť):
+--
+--   alter table recipes add column if not exists kind text not null default 'krem';
+--
+-- a po nasadení nového kódu spustiť túto migráciu znova.
 --
 -- Recept mal popri názve ešte druh (cesto / krém / vklad / poleva /
 -- ozdoba / iné). Nikde sa podľa neho nepočítalo a z hlavičiek receptov
