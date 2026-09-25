@@ -262,6 +262,97 @@ test("nákupný zoznam ráta s tým istým prepočtom ako rozpis", () => {
   assert.equal(dvojnasobok.riadky[0].mnozstvo, 230);
 });
 
+// --- torty: prepočet podľa priemeru a vrstiev ---
+//
+// Torta sa neškáluje počtom kusov, ale plochou. Čísla sú z PDF a z hárku
+// "Prepocet vrstiev a kremu": z 12 na 18 cm je koeficient 2,25, a keď
+// z tých 4 korpusov urobím 3, korpus je 2,25 x 0,75 = 1,6875.
+const DATA_TORTA = {
+  ingredients: [
+    { id: "i-muka", name: "Múka T650", unit: "g", pack_size: 1000, pack_price: 0.88 },
+    { id: "i-masc", name: "Mascarpone", unit: "g", pack_size: 250, pack_price: 2.53 },
+  ],
+  recipes: [
+    { id: "r-korpus", name: "Brownie korpus", yield_qty: 1, yield_unit: "ks", diameter_cm: 12, layers: 4 },
+    { id: "r-krem", name: "Brownie vanilkový krém", yield_qty: 1, yield_unit: "ks", diameter_cm: 12, layers: 3 },
+    { id: "r-ganache", name: "Brownie ganache", yield_qty: 1, yield_unit: "ks", diameter_cm: 12, layers: 1 },
+  ],
+  recipe_items: [
+    { id: "ri-1", recipe_id: "r-korpus", ingredient_id: "i-muka", amount: 90 },
+    { id: "ri-2", recipe_id: "r-krem", ingredient_id: "i-masc", amount: 100 },
+    { id: "ri-3", recipe_id: "r-ganache", ingredient_id: "i-masc", amount: 10 },
+  ],
+  product_recipes: [
+    { id: "v-1", product_id: "t18", recipe_id: "r-korpus", qty_per_piece: 1 },
+    { id: "v-2", product_id: "t18", recipe_id: "r-krem", qty_per_piece: 1 },
+    { id: "v-3", product_id: "t18", recipe_id: "r-ganache", qty_per_piece: 1 },
+    { id: "v-4", product_id: "t12", recipe_id: "r-korpus", qty_per_piece: 1 },
+  ],
+  products: [
+    { id: "t18", name: "Brownie torta", sub: "Ø 18 cm", diameter_cm: 18 },
+    { id: "t12", name: "Brownie torta", sub: "Ø 12 cm", diameter_cm: 12 },
+  ],
+};
+
+test("torta na 12 cm je presne dávka z receptu", () => {
+  const r = rozpisReceptov([{ product_id: "t12", kusy: 1 }], DATA_TORTA)[0];
+  assert.equal(r.davky, 1);
+  assert.equal(r.polozky[0].mnozstvo, 90);
+});
+
+test("z 12 na 18 cm sa gramáže násobia plochou, nie priemerom", () => {
+  const rozpis = rozpisReceptov([{ product_id: "t18", kusy: 1 }], DATA_TORTA);
+  const korpus = rozpis.find((r) => r.recept.nazov === "Brownie korpus");
+  // 18x18 / 12x12 = 2,25. Keby sa počítalo priemerom, vyšlo by 1,5.
+  assert.equal(korpus.davky, 2.25);
+  assert.equal(korpus.polozky[0].mnozstvo, 202.5, "90 g muky x 2,25");
+});
+
+test("menej korpusov a krémov zmenší dávku každej zložky zvlášť", () => {
+  const rozpis = rozpisReceptov(
+    [{ product_id: "t18", kusy: 1, vrstvy: { "r-korpus": 3, "r-krem": 2 } }], DATA_TORTA);
+  const korpus = rozpis.find((r) => r.recept.nazov === "Brownie korpus");
+  const krem = rozpis.find((r) => r.recept.nazov === "Brownie vanilkový krém");
+  const ganache = rozpis.find((r) => r.recept.nazov === "Brownie ganache");
+  // Vypísaný počet dávok je zaokrúhlený na tisíciny (1,6875 -> 1,688),
+  // samotné gramáže sa ale rátajú z nezaokrúhlenej hodnoty.
+  assert.equal(korpus.davky, 1.688, "2,25 x 3/4");
+  assert.equal(korpus.polozky[0].mnozstvo, 151.875, "90 g muky x 1,6875");
+  assert.equal(krem.davky, 1.5, "2,25 x 2/3");
+  assert.equal(krem.polozky[0].mnozstvo, 150);
+  assert.equal(ganache.davky, 2.25, "ganache sa vrstvami neriadi, len plochou");
+  assert.equal(ganache.polozky[0].mnozstvo, 22.5);
+});
+
+test("priemer zo zadania prebije priemer výrobku", () => {
+  const r = rozpisReceptov([{ product_id: "t12", kusy: 1, priemer_cm: 16 }], DATA_TORTA)[0];
+  // 16x16 / 12x12 = 1,7778 — v PDF zaokrúhlené na 1,7, my počítame presne.
+  assert.ok(Math.abs(r.davky - 1.778) < 0.001, `vyšlo ${r.davky}`);
+  assert.equal(r.na_tortu.priemer, 16);
+});
+
+test("dve torty sú dve dávky, nie jedna", () => {
+  const r = rozpisReceptov([{ product_id: "t18", kusy: 2 }], DATA_TORTA)
+    .find((x) => x.recept.nazov === "Brownie korpus");
+  assert.equal(r.davky, 4.5);
+});
+
+test("nákupný zoznam na tortu ráta s tým istým koeficientom", () => {
+  const z = nakupnyZoznam([{ product_id: "t18", kusy: 1 }], DATA_TORTA);
+  const muka = z.riadky.find((r) => r.surovina === "Múka T650");
+  assert.equal(muka.mnozstvo, 202.5);
+});
+
+test("recept bez priemeru sa priemerom neprepočítava", () => {
+  // Zákusky ostávajú na kusoch aj vtedy, keď zadanie priemer nesie.
+  const bezPriemeru = {
+    ...DATA_VETERNIK,
+    products: [{ id: "veternik", name: "Veterník", sub: "", diameter_cm: 18 }],
+  };
+  const r = rozpisReceptov([{ product_id: "veternik", kusy: 12, priemer_cm: 18 }], bezPriemeru)[0];
+  assert.equal(r.davky, 1, "12 veterníkov je stále jedna dávka cesta");
+});
+
 // Ten istý sneh je 12 minipavloviek alebo JEDEN korpus na tortu. Torta
 // je krajný prípad "kusov z dávky": z dávky vyjde jeden kus, takže celá
 // dávka ide do jednej torty. Keby sa prázdne pieces_per_batch a jednotka

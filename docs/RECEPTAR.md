@@ -28,7 +28,18 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
 2. **Jedno cesto, rôzne tvary** — odpalované cesto je napísané na 20 choux
    a to isté cesto vydá 12 veterníkov. Nie sú to dva recepty; rozdiel je
    v `qty_per_piece` pri príchuti.
-3. **Dve ceny, nie jedna:**
+3. **Torta sa neprepočítava kusmi, ale plochou** — `(nový priemer² /
+   pôvodný priemer²)`. Z 12 na 18 cm je to 324/144 = 2,25. Recept na tortu
+   má vyplnený `recipes.diameter_cm` (na aký priemer je napísaný) a torta
+   na webe má `products.diameter_cm`. Druhý koeficient je počet vrstiev:
+   `recipes.layers` hovorí, na koľko je recept napísaný (brownie korpus 4,
+   krém 3), `product_recipes.layers`, koľko ich ide do tejto torty. Spolu
+   `koeficient = plocha × (koľko vrstiev / na koľko)`, čiže na 18 cm
+   a 3 korpusy 2,25 × 0,75 = 1,6875. Každá zložka sa počíta zvlášť, lebo
+   korpusov a krémov býva rôzny počet. V *Čo mám miešať* sa priemer aj
+   vrstvy dajú prepísať — je to ručný prepočet, nikam sa neukladá.
+   Recept bez priemeru (zákusky) sa počíta po starom, na kusy.
+4. **Dve ceny, nie jedna:**
    - *spotreba* = `gramy × cena balenia / gramáž balenia` — čo naozaj
      minieš. Toto je číslo na cenotvorbu.
    - *nákup* = `zaokrúhli nahor(potreba / balenie) × cena balenia` — čo
@@ -39,11 +50,11 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
    ale minie sa jej 67 g — zvyšok nie je náklad tejto objednávky.
    Excel ukazoval len nákupnú cenu, takže cena za kus vychádzala vyššia,
    než v skutočnosti je.
-4. **Nič nemizne potichu.** Keď surovina nemá vyplnené balenie (soľ, sóda,
+5. **Nič nemizne potichu.** Keď surovina nemá vyplnené balenie (soľ, sóda,
    obal) alebo riadok nemá gramáž („štipka soli"), v kalkulácii sa vypíše
    ako *doplň balenie* / *bez gramáže*. V exceli ho `IFERROR` zahodil a
    cena vyšla nižšia, než bola.
-5. **Voda** má `negligible = true` — do ceny sa vedome neráta.
+6. **Voda** má `negligible = true` — do ceny sa vedome neráta.
 
 ## Jednotky
 
@@ -377,6 +388,40 @@ Prvé musí držať tvar vo vnútri choux, druhé sa vrstvi na korpus. Jedno
 pre oboje by znamenalo buď želé na pavlove, alebo coulis vytečené
 z choux.
 
+## Brownie torta
+
+`supabase/migracia-brownie-torta.sql` prenáša PDF *BROWNIE TORTA* a excel
+*Brownie torta mousse disk*. Päť receptov s prefixom **Brownie** (korpus,
+slaný karamel, vanilkový krém, ovocné coulis, ganache), všetky napísané na
+Ø 12 cm, plus štyri vklady bez prefixu, ktoré sa dajú použiť aj inde:
+*Malinový želé disk* a *Malinový mousse* (Ø 16), *Jahodové compoté* (Ø 16)
+a *Mangový mousse* (Ø 18).
+
+Recepty sú priradené ku **všetkým veľkostiam naraz** — priemer si každá
+veľkosť nesie sama, takže recept netreba kopírovať. Objednávka na
+Ø 20 cm sa v nákupnom zozname prepočíta sama; dovtedy sa neprepočítavala
+vôbec.
+
+Kde sa PDF a excel nezhodli, platí PDF a rozhodnutie majiteľky:
+
+| Vec | Ako je to zapísané |
+|---|---|
+| Práškový cukor v kréme | 50 g (PDF), nie 30 g z hárku *Kalkulacka* |
+| Cukor muscovado | vedený ako `Cukor trstinový`, tak ako to má excel |
+| Slaný karamel | celá dávka z PDF; v *Kalkulacke* chýbala. Vyjde jej viac, než sa do 12 cm torty zmestí — koľko naozaj treba, sa upraví po prvom skladaní |
+| Ovocné coulis | doplnené podľa PDF; v *Kalkulacke* chýbalo celé. Ovocie je `Ovocná zmes mrazená` |
+| Prášok, sóda, soľ | v lyžičkách, teda **bez gramáže** — do ceny nevstúpia a priemerom sa neprepočítajú |
+
+To posledné je vedomý ústupok: majiteľka ich chce v recepte vidieť ako
+lyžičky. Znamená to, že pri Ø 22 cm (koeficient 3,36) si ich musí
+domyslieť sama. Keby mali vstúpiť do prepočtu, treba do nich vpísať gramy
+a lyžičku nechať v poznámke.
+
+Vrstvy sú nastavené takto: korpus 4, krém 3, coulis 3 (ide na prvý, druhý
+aj tretí korpus), slaný karamel 3 (hárok *Prepocet vrstiev a kremu*
+odporúča pri ňom rovnaký koeficient ako pri kréme) a ganache 1 — tá sa
+vrstvami neriadi, len plochou.
+
 ## Čo ešte treba doplniť
 
 Tieto veci sa dopĺňajú v správe webu, nie v kóde:
@@ -391,6 +436,10 @@ Tieto veci sa dopĺňajú v správe webu, nie v kóde:
   chýba.
 - **Ocot** — pribudol kvôli korpusu na pavlovu, balenie ani cena nie sú.
   Je ho v dávke 5 ml, takže na cenu za kus to vplyv nemá.
+- **Ovocná zmes mrazená**, **Pyré jahoda**, **Jahody čerstvé**,
+  **Limetková šťava**, **Čokoláda biela 32%** — pribudli kvôli brownie
+  torte a vkladom, cena ani balenie nie sú. Kým tam nie sú, cena torty je
+  podhodnotená.
 - **Maliny mrazené**, **Čierne ríbezle mrazené**, **Marakuja** — pribudli
   kvôli pavlove, cena ani balenie nie sú. Bez nich vyjde kalkulácia nižšie,
   než je pravda.

@@ -51,7 +51,7 @@ test("čítanie vráti suroviny aj recepty naraz", async (t) => {
     const o = await zavolaj("GET", "/api/admin/receptar");
     assert.equal(o.code, 200);
     assert.deepEqual(Object.keys(o.body).sort(),
-      ["polozky", "recepty", "skupiny", "suroviny", "ulozene", "vazby", "zoznamy"]);
+      ["polozky", "recepty", "skupiny", "suroviny", "ulozene", "vazby", "vyrobky", "zoznamy"]);
     assert.equal(o.body.suroviny[0].name, "Mascarpone");
   });
 });
