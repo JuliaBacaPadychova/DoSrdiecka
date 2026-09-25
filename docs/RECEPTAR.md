@@ -40,8 +40,11 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
 
    V *Čo mám miešať* sa počet vrstiev zadáva **raz pre celú tortu** —
    políčka *Korpusov* a *Náplní*. Čím je ktorá zložka, drží skupina
-   receptu (`recipe_groups.layer_role`): *Cestá* sú korpusy, *Krémy*
-   a *Vklady* náplne, obter, poleva a disky sa vrstvami neriadia. Disk
+   receptu (`recipe_groups.layer_role`): *Korpusy* (alebo *Cestá*, keď
+   vlastná skupina na korpusy nie je) sú korpusy, *Krémy* a *Vklady*
+   náplne, obter, poleva a disky sa vrstvami neriadia. Tortový korpus má
+   zámerne vlastnú skupinu — odpalované cesto na choux je tiež cesto, ale
+   s vrstvami torty nemá nič spoločné. Disk
    ani mousse nesmú byť medzi náplňami: do torty ide jeden disk bez
    ohľadu na počet vrstiev, takže by ich zmena počtu náplní zdvojila —
    preto majú vlastnú skupinu bez roly. Jednotlivý recept sa dá po tom

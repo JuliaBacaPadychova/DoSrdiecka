@@ -30,8 +30,16 @@ comment on column recipe_groups.layer_role is
   'Čím je zložka z tejto skupiny v torte: korpus, náplň, alebo prázdne = vrstvami sa neriadi (obter, poleva, disk).';
 
 -- Priradí sa len tam, kde ešte rola nie je, a podľa názvu skupiny.
--- Premenovaná skupina sa nechytí — rolu jej nastavíš v správe webu.
-update recipe_groups set layer_role = 'korpus' where name = 'Cestá'  and layer_role is null;
+-- Premenovaná alebo vlastná skupina sa nechytí — rolu jej nastavíš
+-- v správe webu výberom "V torte je to".
+--
+-- Korpus nie je cesto: tortový korpus má vlastnú skupinu, hoci odpalované
+-- cesto na choux je tiež cesto. Preto sú v zozname obe mená — ak máš
+-- skupinu Korpusy, rolu dostane ona; ak nie, dostanú ju Cestá.
+update recipe_groups set layer_role = 'korpus' where name = 'Korpusy' and layer_role is null;
+update recipe_groups set layer_role = 'korpus' where name = 'Cestá'
+  and layer_role is null
+  and not exists (select 1 from recipe_groups where name = 'Korpusy');
 update recipe_groups set layer_role = 'naplna' where name = 'Krémy'  and layer_role is null;
 update recipe_groups set layer_role = 'naplna' where name = 'Vklady' and layer_role is null;
 
@@ -55,7 +63,8 @@ on conflict (name) do nothing;
 -- ktorý ešte skupinu nemá — vlastné zaradenie ostáva.
 -- ---------------------------------------------------------------------
 with zaradenie (recept, skupina) as (values
-  ('Brownie korpus',         'Cestá'),
+  -- Korpus ide do skupiny Korpusy, keď taká je; inak medzi Cestá.
+  ('Brownie korpus',         coalesce((select name from recipe_groups where name = 'Korpusy'), 'Cestá')),
   ('Brownie vanilkový krém', 'Krémy'),
   ('Brownie ovocné coulis',  'Vklady'),
   ('Brownie slaný karamel',  'Vklady'),

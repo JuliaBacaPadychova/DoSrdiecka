@@ -908,7 +908,7 @@
                 style="max-width:320px"></td>
           <td style="width:220px">${rola(s)}</td>
           <td class="muted" style="width:110px">${pocty.get(s.id) || 0} receptov</td>
-          <td class="akcie" style="width:180px">
+          <td class="akcie" style="width:1%">
             <button class="btn ghost sm" title="vyššie" onclick="Admin.posunSkupinu('${s.id}', -1)"${
               i === 0 ? ' disabled' : ''}>↑</button>
             <button class="btn ghost sm" title="nižšie" onclick="Admin.posunSkupinu('${s.id}', 1)"${
@@ -1029,9 +1029,12 @@
 
   // Výber skupiny pri recepte aj v novom recepte. Prázdna možnosť je
   // zámerne prvá: recept nemusí patriť nikam.
+  // Vo výbere idú skupiny podľa abecedy, nie v poradí nadpisov: tu sa
+  // skupina hľadá podľa názvu. Poradie nadpisov v zozname receptov drží
+  // naďalej to, čo si majiteľka nastavila šípkami.
   function moznostiSkupin(vybrana) {
     return '<option value="">— nezaradené —</option>'
-      + (skupinyAleboNic() || []).map((s) =>
+      + podlaAbecedy(skupinyAleboNic() || [], (s) => s.name).map((s) =>
         `<option value="${s.id}"${s.id === vybrana ? ' selected' : ''}>${esc(s.name)}</option>`).join('');
   }
 
@@ -1632,7 +1635,7 @@
                   value="${cislo(p.amount)}" placeholder="podľa chuti">
                 ${esc(su ? su.unit : '')}
               </td>
-              <td class="akcie" style="width:150px">
+              <td class="akcie" style="width:1%">
                 <button class="btn ghost sm" title="posunúť vyššie"
                   onclick="Admin.posunPolozku('${r.id}', '${p.id}', -1)"${poradie === 0 ? ' disabled' : ''}>↑</button>
                 <button class="btn ghost sm" title="posunúť nižšie"
@@ -1689,7 +1692,7 @@
                 <span class="muted">${naTortu(r) ? 'vrstiev'
                   : r.yield_unit === 'g' ? 'g do kusu' : 'kusov z dávky'}</span>
               </td>
-              <td class="akcie" style="width:90px">
+              <td class="akcie" style="width:1%">
                 <button class="btn ghost sm zmazat" onclick="Admin.zrusPriradenie('${v.id}', '${r.id}')">Odobrať</button>
               </td>
             </tr>`; }).join('')}</tbody></table>` : '<p class="muted">Zatiaľ k žiadnej.</p>'}
