@@ -305,6 +305,22 @@ test("skupina sa dá založiť, premenovať a priradiť k receptu", async (t) =>
   });
 });
 
+// Skupina hovorí, čím je zložka v torte: podľa toho sa pri zmene počtu
+// korpusov alebo náplní prepočíta tá správna časť. Disk ani obter sa
+// vrstvami riadiť nesmú — jeden disk je jeden disk.
+test("skupine sa dá nastaviť, čím je v torte", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    const g = await zavolaj("POST", "/api/admin/receptar?co=skupina", { name: "Cestá", sort_order: 1 });
+    const id = g.body.zaznam.id;
+
+    await zavolaj("PATCH", `/api/admin/receptar?co=skupina&id=${id}`, { layer_role: "korpus" });
+    assert.equal(db.recipe_groups[0].layer_role, "korpus");
+
+    await zavolaj("PATCH", `/api/admin/receptar?co=skupina&id=${id}`, { layer_role: null });
+    assert.equal(db.recipe_groups[0].layer_role, null, "prázdna rola = vrstvami sa neriadi");
+  });
+});
+
 test("poradie receptu v rozpise príchute sa dá uložiť", async (t) => {
   await sReceptarom(t, async ({ db, zavolaj }) => {
     db.product_recipes.push({ id: "v1", product_id: "p-choux", recipe_id: "r1",
