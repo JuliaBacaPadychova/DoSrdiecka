@@ -829,6 +829,7 @@
       }
       naplnPrichute();
       renderUlozene();
+      renderSkupiny();
       renderRecepty();
       // Najprv rozbaliť, až potom scroll: rozbalený recept mení výšku
       // stránky, takže pri opačnom poradí by sa trafilo inam.
@@ -840,6 +841,160 @@
     } catch (err) {
       el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
     }
+  }
+
+  // ---------- skupiny receptov ----------
+  //
+  // Skupina je vlastná tabuľka, nie pevný zoznam v kóde — majiteľka si ju
+  // pridáva a preusporadúva sama. Kým sa migrácia nespustí, API vráti
+  // `skupiny: null`; vtedy sa celé zoskupovanie vypne a zoznam vyzerá ako
+  // predtým. Nikdy nie je dôvod, aby kvôli nespustenej migrácii nešla
+  // celá záložka.
+  function skupinyAleboNic() {
+    return RECEPTAR && Array.isArray(RECEPTAR.skupiny) ? RECEPTAR.skupiny : null;
+  }
+
+  function skupinaReceptu(recept) {
+    const zoznam = skupinyAleboNic() || [];
+    return zoznam.find((s) => s.id === recept.group_id) || null;
+  }
+
+  // Nezaradené majú poradie -1: idú navrch, aby bolo vidieť, čo ešte
+  // treba prehodiť, a nie aby sa stratili na konci dlhého zoznamu.
+  function poradieSkupiny(recept) {
+    const s = skupinaReceptu(recept);
+    return s ? Number(s.sort_order) || 0 : -1;
+  }
+
+  function renderSkupiny() {
+    const box = document.getElementById('skupinyBox');
+    const el = document.getElementById('skupinyList');
+    const skupiny = skupinyAleboNic();
+    if (!box || !el) return;
+    if (!skupiny) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+
+    const pocty = new Map();
+    (RECEPTAR.recepty || []).forEach((r) => {
+      if (r.group_id) pocty.set(r.group_id, (pocty.get(r.group_id) || 0) + 1);
+    });
+
+    el.innerHTML = `
+      <table class="admin-table"><tbody>${skupiny.map((s, i) => `
+        <tr>
+          <td><input data-skupina="${s.id}" data-povodne="${esc(s.name)}" value="${esc(s.name)}"
+                style="max-width:320px"></td>
+          <td class="muted" style="width:110px">${pocty.get(s.id) || 0} receptov</td>
+          <td class="akcie" style="width:180px">
+            <button class="btn ghost sm" title="vyššie" onclick="Admin.posunSkupinu('${s.id}', -1)"${
+              i === 0 ? ' disabled' : ''}>↑</button>
+            <button class="btn ghost sm" title="nižšie" onclick="Admin.posunSkupinu('${s.id}', 1)"${
+              i === skupiny.length - 1 ? ' disabled' : ''}>↓</button>
+            <button class="btn ghost sm zmazat" onclick="Admin.zmazSkupinu('${s.id}')">Zmazať</button>
+          </td>
+        </tr>`).join('')}</tbody></table>
+      <div class="form" style="margin-top:12px">
+        <div><label for="novaSkupina">Nová skupina</label>
+          <input id="novaSkupina" placeholder="napr. Ganáže"></div>
+        <div style="display:flex;align-items:flex-end;gap:10px">
+          <button class="btn ghost sm" onclick="Admin.pridajSkupinu()">Pridať</button>
+          <button class="btn ghost sm" onclick="Admin.ulozNazvySkupin()">Uložiť názvy</button>
+          <span class="muted" id="skupinyStav" style="font-size:.85rem"></span>
+        </div>
+      </div>`;
+  }
+
+  function skupinyStav(text, chyba) {
+    const el = document.getElementById('skupinyStav');
+    if (el) { el.textContent = text; el.className = chyba ? 'err' : 'muted'; }
+  }
+
+  async function pridajSkupinu() {
+    const pole = document.getElementById('novaSkupina');
+    const name = pole ? pole.value.trim() : '';
+    if (!name) { skupinyStav('Napíš názov skupiny.', true); return; }
+    const skupiny = skupinyAleboNic() || [];
+    const sort_order = skupiny.reduce((max, s) => Math.max(max, Number(s.sort_order) || 0), 0) + 1;
+    try {
+      await apiFetch('/api/admin/receptar?co=skupina', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, sort_order }),
+      });
+      await loadRecepty();
+    } catch (err) {
+      skupinyStav(/duplicate|unique|23505/i.test(err.message)
+        ? 'Skupina s takým názvom už je.' : err.message, true);
+    }
+  }
+
+  // Názvy sa ukladajú naraz, rovnako ako gramáže v recepte — aby sa dalo
+  // prepísať viac skupín a potvrdiť to jedným klikom.
+  async function ulozNazvySkupin() {
+    const zmenene = [...document.querySelectorAll('[data-skupina]')]
+      .filter((i) => i.value.trim() !== i.dataset.povodne);
+    if (!zmenene.length) { skupinyStav('Nič sa nezmenilo.'); return; }
+    if (zmenene.some((i) => !i.value.trim())) {
+      skupinyStav('Názov skupiny nemôže byť prázdny.', true); return;
+    }
+    skupinyStav('Ukladám…');
+    try {
+      await Promise.all(zmenene.map((i) =>
+        apiFetch(`/api/admin/receptar?co=skupina&id=${encodeURIComponent(i.dataset.skupina)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: i.value.trim() }),
+        })));
+      await loadRecepty();
+      skupinyStav(`Uložené (${zmenene.length}).`);
+    } catch (err) {
+      skupinyStav(/duplicate|unique|23505/i.test(err.message)
+        ? 'Skupina s takým názvom už je.' : err.message, true);
+    }
+  }
+
+  // Poradie sa prehadzuje výmenou dvoch čísel — nie prečíslovaním celého
+  // zoznamu. Menej zápisov a pri súbežnej úprave sa nerozhodí zvyšok.
+  async function posunSkupinu(id, smer) {
+    const skupiny = skupinyAleboNic() || [];
+    const i = skupiny.findIndex((s) => s.id === id);
+    const j = i + smer;
+    if (i < 0 || j < 0 || j >= skupiny.length) return;
+    // Rovnaké čísla by výmenou nič nezmenili — prečíslujeme podľa poradia.
+    const poradia = skupiny.map((s, k) => Number(s.sort_order) || (k + 1));
+    [poradia[i], poradia[j]] = [poradia[j], poradia[i]];
+    if (poradia[i] === poradia[j]) { poradia[i] = i + 1; poradia[j] = j + 1; }
+    skupinyStav('Ukladám…');
+    try {
+      await Promise.all([i, j].map((k) =>
+        apiFetch(`/api/admin/receptar?co=skupina&id=${encodeURIComponent(skupiny[k].id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sort_order: poradia[k] }),
+        })));
+      await loadRecepty();
+      skupinyStav('Poradie uložené.');
+    } catch (err) { skupinyStav(err.message, true); }
+  }
+
+  async function zmazSkupinu(id) {
+    const skupiny = skupinyAleboNic() || [];
+    const s = skupiny.find((x) => x.id === id);
+    const pocet = (RECEPTAR.recepty || []).filter((r) => r.group_id === id).length;
+    if (!confirm(`Naozaj zmazať skupinu „${s ? s.name : ''}"?`
+      + (pocet ? `\n${pocet} receptov sa presunie medzi nezaradené. Samotné recepty ostanú.` : ''))) return;
+    try {
+      await apiFetch(`/api/admin/receptar?co=skupina&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await loadRecepty();
+    } catch (err) { skupinyStav(err.message, true); }
+  }
+
+  // Výber skupiny pri recepte aj v novom recepte. Prázdna možnosť je
+  // zámerne prvá: recept nemusí patriť nikam.
+  function moznostiSkupin(vybrana) {
+    return '<option value="">— nezaradené —</option>'
+      + (skupinyAleboNic() || []).map((s) =>
+        `<option value="${s.id}"${s.id === vybrana ? ' selected' : ''}>${esc(s.name)}</option>`).join('');
   }
 
   function nazovPrichute(productId) {
@@ -1034,17 +1189,84 @@
     }
   }
 
+  // Rozpis sa dá preusporiadať šípkami, tak si ho treba pamätať — inak by
+  // sa po každom kliku musel znova prepočítať na serveri.
+  let ROZPIS_STAV = null;
+
+  // Poradie miešania závisí od prípravy, nie od druhu: ríbezľová ganáž sa
+  // chladí tri hodiny, takže ide prvá, hoci je to krém. Preto sa poradie
+  // drží pri PRÍCHUTI (product_recipes.sort_order) a pri každej môže byť
+  // iné. Nula znamená "nenastavené" — vtedy platí poradie skupín a v rámci
+  // skupiny abeceda, takže rozpis dáva zmysel aj bez toho, aby ho niekto
+  // usporiadal ručne.
+  function vazbaRozpisu(recipeId, product_id) {
+    return ((RECEPTAR && RECEPTAR.vazby) || [])
+      .find((v) => v.recipe_id === recipeId && v.product_id === product_id) || null;
+  }
+
+  function zoradRozpis(rozpis, product_id) {
+    const receptPodlaId = new Map(((RECEPTAR && RECEPTAR.recepty) || []).map((r) => [r.id, r]));
+    const kluc = (r) => {
+      const vazba = vazbaRozpisu(r.recept.id, product_id);
+      const rucne = Number(vazba && vazba.sort_order) || 0;
+      const recept = receptPodlaId.get(r.recept.id);
+      return { rucne, skupina: recept ? poradieSkupiny(recept) : 0 };
+    };
+    return [...rozpis].sort((a, b) => {
+      const ka = kluc(a);
+      const kb = kluc(b);
+      // Ručne usporiadané idú pred neusporiadané — inak by nový recept
+      // priradený k príchuti nenápadne skočil doprostred nastaveného poradia.
+      if (ka.rucne && kb.rucne) return ka.rucne - kb.rucne;
+      if (ka.rucne !== kb.rucne) return ka.rucne ? -1 : 1;
+      return (ka.skupina - kb.skupina)
+        || a.recept.nazov.localeCompare(b.recept.nazov, 'sk');
+    });
+  }
+
+  // Prvý klik šípkou poradie očísluje podľa toho, ako je rozpis práve
+  // vypísaný, a až potom prehodí dva susedné recepty. Kým sa nekliklo,
+  // nie je čo ukladať a poradie ostáva odvodené od skupín.
+  async function posunVRozpise(recipeId, smer) {
+    if (!ROZPIS_STAV) return;
+    const { rozpis, product_id } = ROZPIS_STAV;
+    const zoradene = zoradRozpis(rozpis, product_id);
+    const i = zoradene.findIndex((r) => r.recept.id === recipeId);
+    const j = i + Number(smer);
+    if (i < 0 || j < 0 || j >= zoradene.length) return;
+    [zoradene[i], zoradene[j]] = [zoradene[j], zoradene[i]];
+
+    const zmeny = [];
+    zoradene.forEach((r, poradie) => {
+      const vazba = vazbaRozpisu(r.recept.id, product_id);
+      if (!vazba || Number(vazba.sort_order) === poradie + 1) return;
+      vazba.sort_order = poradie + 1;
+      zmeny.push(apiFetch(`/api/admin/receptar?co=vazba&id=${encodeURIComponent(vazba.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sort_order: poradie + 1 }),
+      }));
+    });
+
+    renderRozpis(rozpis, product_id, ROZPIS_STAV.prichut, ROZPIS_STAV.kusy);
+    try {
+      await Promise.all(zmeny);
+      const stav = document.getElementById('rozpisPoradieStav');
+      if (stav) stav.textContent = 'Poradie uložené.';
+    } catch (err) {
+      const stav = document.getElementById('rozpisPoradieStav');
+      if (stav) { stav.textContent = err.message; stav.className = 'err'; }
+    }
+  }
+
   function renderRozpis(rozpis, product_id, prichut, kusy) {
     const el = document.getElementById('receptyRozpis');
+    ROZPIS_STAV = { rozpis, product_id, prichut, kusy };
     if (!rozpis.length) {
       el.innerHTML = `<p class="muted">${esc(prichut)} nemá priradené žiadne recepty.</p>`;
       return;
     }
-    // Podľa abecedy — rovnako ako v úprave receptov a vo výberoch.
-    // Recept už nemá druh, podľa ktorého sa dalo radiť „poradím pečenia";
-    // názov je jediné, čo o recepte platí vždy a čo si vieš vybaviť.
-    const zoradene = [...rozpis].sort((a, b) =>
-      a.recept.nazov.localeCompare(b.recept.nazov, 'sk'));
+    const zoradene = zoradRozpis(rozpis, product_id);
 
     el.innerHTML = `
       <div class="admin-row" style="margin-bottom:4px">
@@ -1063,9 +1285,20 @@
           <span class="muted" id="rozpisPoznStav" style="font-size:.85rem"></span>
         </div>
       </div>
-      ${zoradene.map((r) => `
+      <p class="muted" style="margin:-8px 0 14px;font-size:.85rem">Šípkami si nastavíš poradie,
+        v akom to ideš robiť — platí pre túto príchuť a pamätá si ho aj uložený recept.
+        <span id="rozpisPoradieStav" class="muted"></span></p>
+      ${zoradene.map((r, i) => `
         <div style="margin-bottom:24px">
-          <h3 style="margin:0 0 2px">${esc(r.recept.nazov)}</h3>
+          <div class="admin-row" style="align-items:center;gap:10px;margin:0 0 2px">
+            <h3 style="margin:0">${esc(r.recept.nazov)}</h3>
+            <span class="akcie">
+              <button class="btn ghost sm" title="skôr" onclick="Admin.posunVRozpise('${r.recept.id}', -1)"${
+                i === 0 ? ' disabled' : ''}>↑</button>
+              <button class="btn ghost sm" title="neskôr" onclick="Admin.posunVRozpise('${r.recept.id}', 1)"${
+                i === zoradene.length - 1 ? ' disabled' : ''}>↓</button>
+            </span>
+          </div>
           <p class="muted" style="margin:0 0 8px;font-size:.85rem">
             Recept je na ${cisloSk(r.recept.vytaznost)} ${esc(r.recept.jednotka_vytaznosti)}${
               r.recept.popis_vytaznosti ? ' ' + esc(r.recept.popis_vytaznosti) : ''}${
@@ -1150,9 +1383,11 @@
       .filter((r) => (!filter || r.id === filter))
       .filter((r) => (!filterPrichut
         || (filterPrichut === 'nepriradene' ? !pouzite.has(r.id) : priPrichuti.has(r.id))))
-      // Podľa abecedy, nie po skupinách: hľadá sa podľa názvu, takže
-      // recept musí byť tam, kde ho abeceda kladie — aj po premenovaní.
-      .sort((a, b) => a.name.localeCompare(b.name, 'sk'));
+      // Vnútri skupiny podľa abecedy: hľadá sa podľa názvu, takže recept
+      // musí byť tam, kde ho abeceda kladie — aj po premenovaní. Skupiny
+      // medzi sebou idú v poradí, ktoré si majiteľka nastavila.
+      .sort((a, b) => (poradieSkupiny(a) - poradieSkupiny(b))
+        || a.name.localeCompare(b.name, 'sk'));
 
     if (!vybrane.length) { el.innerHTML = '<p class="muted">Tomuto výberu nič nezodpovedá.</p>'; return; }
 
@@ -1162,7 +1397,27 @@
     const moznostiPrichuti = prichuteAbecedne()
       .map((p) => `<option value="${p.id}">${esc(p.name)} — ${esc(p.sub)}</option>`).join('');
 
+    // Nadpis sa vypíše pri prvom recepte danej skupiny. Keď skupiny ešte
+    // nie sú (nespustená migrácia), nevypíše sa žiadny a zoznam vyzerá
+    // ako predtým.
+    const pocetVSkupine = new Map();
+    vybrane.forEach((r) => {
+      const kluc = r.group_id || '';
+      pocetVSkupine.set(kluc, (pocetVSkupine.get(kluc) || 0) + 1);
+    });
+    let poslednaSkupina = null;
+
     el.innerHTML = vybrane.map((r) => {
+      let nadpis = '';
+      if (skupinyAleboNic()) {
+        const kluc = r.group_id || '';
+        if (kluc !== poslednaSkupina) {
+          poslednaSkupina = kluc;
+          const s = skupinaReceptu(r);
+          nadpis = `<h4 class="skupina-nadpis">${s ? esc(s.name) : 'Nezaradené'}`
+            + ` <span class="pocet">(${pocetVSkupine.get(kluc)})</span></h4>`;
+        }
+      }
       const vlastne = polozky.filter((p) => p.recipe_id === r.id);
       // Podľa abecedy, nie podľa toho, v akom poradí sa priradili.
       const pouzitie = podlaAbecedy(
@@ -1171,7 +1426,7 @@
       // Hlavička: že je to krém, vidno z názvu receptu — druh sa preto
       // neeviduje vôbec. Na jeho mieste stojí „kusov čoho" z úpravy
       // receptu, teda čoho je tých 10 kusov. Vzadu sú celé názvy príchutí.
-      return `
+      return `${nadpis}
       <details id="recept-${r.id}" style="margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:10px">
         <summary style="cursor:pointer">
           <strong>${esc(r.name)}</strong>
@@ -1183,7 +1438,7 @@
         </summary>
 
         <div style="padding:12px 0 0 4px">
-          <div class="form tri" style="margin:0 0 12px">
+          <div class="form ${skupinyAleboNic() ? 'styri' : 'tri'}" style="margin:0 0 12px">
             <div><label for="nazov-${r.id}">Názov receptu</label>
               <input id="nazov-${r.id}" data-nazov="${r.id}" data-povodne="${esc(r.name)}"
                 value="${esc(r.name)}">
@@ -1199,6 +1454,11 @@
                 data-povodne="${esc(r.yield_label || '')}" value="${esc(r.yield_label || '')}"
                 placeholder="${r.yield_unit === 'g' ? 'napr. karamelu' : 'napr. veterník'}">
             </div>
+            ${skupinyAleboNic() ? `
+            <div><label for="skupina-${r.id}">Skupina</label>
+              <select id="skupina-${r.id}" data-skupina-receptu="${r.id}"
+                data-povodne="${esc(r.group_id || '')}">${moznostiSkupin(r.group_id)}</select>
+            </div>` : ''}
           </div>
           <table class="admin-table"><tbody>${vlastne.map((p, poradie) => {
             const su = surovinaPodlaId.get(p.ingredient_id);
@@ -1417,6 +1677,15 @@
       }));
     }
 
+    const skupina = box.querySelector('[data-skupina-receptu]');
+    if (skupina && skupina.value !== skupina.dataset.povodne) {
+      ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: skupina.value }),
+      }));
+    }
+
     const pozn = box.querySelector('[data-poznamka]');
     if (pozn && pozn.value !== pozn.dataset.povodne) {
       ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
@@ -1547,6 +1816,14 @@
   function novyReceptForm(zobrazit = true) {
     document.getElementById('novyReceptForm').style.display = zobrazit ? 'block' : 'none';
     document.getElementById('nrErr').style.display = 'none';
+    // Výber skupiny sa naplní až tu — pri otvorení formulára sú skupiny
+    // už načítané a môžu byť iné než pri poslednom otvorení.
+    const box = document.getElementById('nrSkupinaBox');
+    const vyber = document.getElementById('nrSkupina');
+    if (box && vyber) {
+      box.style.display = skupinyAleboNic() ? 'block' : 'none';
+      vyber.innerHTML = moznostiSkupin('');
+    }
     novyReceptJednotka();
   }
 
@@ -1564,6 +1841,7 @@
     errEl.style.display = 'none';
     const telo = {
       name: document.getElementById('nrNazov').value.trim(),
+      group_id: (document.getElementById('nrSkupina') || {}).value || '',
       yield_qty: document.getElementById('nrVytaznost').value,
       yield_unit: document.getElementById('nrJednotka').value,
       yield_label: document.getElementById('nrPopis').value.trim(),
@@ -2012,6 +2290,7 @@
     saveSettings,
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,
     renderRecepty, ulozRecept, pridajPolozku, posunPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
+    pridajSkupinu, ulozNazvySkupin, posunSkupinu, zmazSkupinu, posunVRozpise,
     novyReceptForm, novyReceptJednotka, ulozNovyRecept, doKalkulacky, zmazRecept,
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
     ulozVyber, otvorUlozeny, premenujUlozeny, zmazUlozeny, ulozPoznamkuRozpisu,

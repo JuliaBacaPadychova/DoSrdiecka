@@ -147,18 +147,37 @@ V správe webu pribudli tri záložky:
   Poradie surovín drží stĺpec `recipe_items.sort_order` — v recepte na
   poradí záleží a databáza bez neho vracia riadky, ako sa jej zachce.
 
-  **Druh receptu (cesto / krém / vklad / poleva / ozdoba / iné) sa
-  neeviduje** — `supabase/migracia-bez-druhu-receptu.sql` stĺpec
-  `recipes.kind` maže. Tá migrácia sa smie spustiť **až po nasadení**
-  kódu, ktorý s druhom nepočíta: staršie znenie `api/admin/receptar.js`
-  si recepty pýta zoradené podľa `kind` a na zmazanom stĺpci celá
-  záložka Recepty spadne na „server_error". Nikde sa podľa neho nepočítalo a z hlavičiek
-  receptov zmizol už skôr; že je „Malinový curd" vklad, je vidieť
-  z názvu. Ostávalo teda políčko, ktoré treba pri zakladaní receptu
-  vyplniť a potom ho nikto nečíta. Cena za to je poradie v rozpise:
-  riadilo sa druhom (najprv cesto, potom náplne), teraz je podľa abecedy
-  ako všade inde. Druh SUROVINY (`ingredients.kind`) ostáva — podľa neho
+  **Skupiny receptov** (`recipe_groups` + `recipes.group_id`) delia zoznam
+  na Cestá, Krémy, Vklady, Polevy, Ganáže a Iné — nadpismi, v poradí,
+  ktoré si majiteľka nastavila. Nie je to pevný zoznam v kóde: skupiny sa
+  dajú pridať, premenovať aj preusporiadať v správe webu (`Skupiny
+  receptov` nad zoznamom). Recept bez skupiny sa vypíše ako *Nezaradené*,
+  a to navrch — nech je vidieť, čo ešte treba prehodiť, a nič sa nestratí
+  na konci dlhého zoznamu. Zmazaná skupina recepty nemaže, len ich
+  uvoľní (`on delete set null`).
+
+  Kedysi mal recept namiesto toho stĺpec `kind` s pevným zoznamom druhov
+  a `supabase/migracia-bez-druhu-receptu.sql` ho zmazal. Nie je to to isté
+  vrátené späť: kind bolo políčko, ktoré treba vyplniť a nikto ho
+  nečítal; skupina riadi, čo majiteľka vidí, a spravuje si ju sama.
+  Druh SUROVINY (`ingredients.kind`) s tým nesúvisí a ostáva — podľa neho
   sa obal a réžia rátajú na kus, nie na gramy.
+
+  **Poradie v rozpise** („čo mám miešať") drží `product_recipes.sort_order`,
+  čiže sa nastavuje pri PRÍCHUTI, nie pri recepte. Poradie závisí od
+  prípravy, nie od druhu: ríbezľová ganáž sa chladí tri hodiny, takže ide
+  prvá, hoci je to krém — a pri inej príchuti to môže byť inak. Nastavuje
+  sa šípkami priamo v rozpise a platí aj pre uložené recepty tej príchute.
+  Nula znamená „nenastavené": vtedy platí poradie skupín a v rámci skupiny
+  abeceda, takže rozpis dáva zmysel aj bez toho, aby ho niekto usporiadal.
+  Prvý klik šípkou poradie očísluje podľa toho, ako je rozpis práve
+  vypísaný — rovnako ako pri surovinách v recepte.
+
+  Kým sa `supabase/migracia-skupiny-receptov.sql` nespustí, API vráti
+  `skupiny: null` a celé zoskupovanie sa vypne — zoznam vyzerá ako
+  predtým, bez nadpisov. Je to zámer: raz už kód počítal so stĺpcom,
+  ktorý migrácia zmazala, a spadla celá záložka na „server_error".
+  Tu je to naopak a záložka funguje pred migráciou aj po nej.
 
   Po každej úprave (pridanie suroviny, odobratie, uloženie) sa zoznam
   receptov načíta nanovo, ale **pohľad ostáva tam, kde bol**: `loadRecepty`

@@ -214,6 +214,17 @@ footer a.mail:hover{color:var(--terra);border-bottom-color:var(--terra)}
 .form.tri{grid-template-columns:2fr 1fr 1fr;align-items:end}
 @media(max-width:860px){.form.tri{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.form.tri{grid-template-columns:1fr}}
+/* To isté so štyrmi políčkami (pribudla skupina receptu). */
+.form.styri{grid-template-columns:2fr 1fr 1fr 1fr;align-items:end}
+@media(max-width:860px){.form.styri{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.form.styri{grid-template-columns:1fr}}
+/* Nadpis skupiny v zozname receptov: delí zoznam na časti, ale nekričí —
+   je to orientačný bod, nie hlavný nadpis karty. */
+.skupina-nadpis{margin:22px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line);
+  font-family:var(--sans);font-size:.82rem;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--terra)}
+.skupina-nadpis:first-child{margin-top:0}
+.skupina-nadpis .pocet{font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-soft)}
 /* Popisky polí boli v tlmenej farbe a strácali sa pri pohľade po formulári. Tmavšia farba a o kúsok väčšie písmo ich vrátia do zorného poľa, bez toho, aby prekričali samotné hodnoty. */
 label{display:block;font-size:.86rem;font-weight:700;color:var(--ink);letter-spacing:.01em;margin-bottom:6px}
 input,textarea,select{width:100%;font-family:var(--sans);font-size:.95rem;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 13px}
