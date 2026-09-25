@@ -324,6 +324,32 @@ test("menej korpusov a krémov zmenší dávku každej zložky zvlášť", () =>
   assert.equal(ganache.polozky[0].mnozstvo, 22.5);
 });
 
+// Želé disk a obterová ganáž idú do torty raz bez ohľadu na to, koľko je
+// korpusov — v recepte to hovorí prázdne "na koľko vrstiev". Keby sa brali
+// ako recept na jednu vrstvu, hromadné políčko "Náplní: 2" by ich zdvojilo.
+test("recept s prázdnymi vrstvami sa riadi len priemerom", () => {
+  const data = {
+    ...DATA_TORTA,
+    recipes: [...DATA_TORTA.recipes,
+      { id: "r-disk", name: "Malinový želé disk", yield_qty: 1, yield_unit: "ks",
+        diameter_cm: 16, layers: null }],
+    recipe_items: [...DATA_TORTA.recipe_items,
+      { id: "ri-d", recipe_id: "r-disk", ingredient_id: "i-masc", amount: 200 }],
+    product_recipes: [...DATA_TORTA.product_recipes,
+      { id: "v-d", product_id: "t18", recipe_id: "r-disk", qty_per_piece: 1 }],
+  };
+  const disk = (vrstvy) => rozpisReceptov([{ product_id: "t18", kusy: 1, vrstvy }], data)
+    .find((r) => r.recept.nazov === "Malinový želé disk");
+
+  const bez = disk(undefined);
+  assert.ok(Math.abs(bez.davky - 1.266) < 0.001, `18x18/16x16 = 1,266, vyšlo ${bez.davky}`);
+  assert.equal(bez.na_tortu.vrstiev, null, "nemá sa na čo pýtať");
+
+  // Aj keď zadanie vrstvy nesie (hromadné políčko), disku sa to nedotkne.
+  const s2 = disk({ "r-disk": 2 });
+  assert.equal(s2.davky, bez.davky, "dve náplne disk nezdvoja");
+});
+
 test("priemer zo zadania prebije priemer výrobku", () => {
   const r = rozpisReceptov([{ product_id: "t12", kusy: 1, priemer_cm: 16 }], DATA_TORTA)[0];
   // 16x16 / 12x12 = 1,7778 — v PDF zaokrúhlené na 1,7, my počítame presne.

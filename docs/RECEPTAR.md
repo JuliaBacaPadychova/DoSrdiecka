@@ -42,13 +42,17 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
    políčka *Korpusov* a *Náplní*. Čím je ktorá zložka, drží skupina
    receptu (`recipe_groups.layer_role`): *Korpusy* (alebo *Cestá*, keď
    vlastná skupina na korpusy nie je) sú korpusy, *Krémy* a *Vklady*
-   náplne, obter, poleva a disky sa vrstvami neriadia. Tortový korpus má
+   náplne, obter a poleva sa vrstvami neriadia. Tortový korpus má
    zámerne vlastnú skupinu — odpalované cesto na choux je tiež cesto, ale
-   s vrstvami torty nemá nič spoločné. Disk
-   ani mousse nesmú byť medzi náplňami: do torty ide jeden disk bez
-   ohľadu na počet vrstiev, takže by ich zmena počtu náplní zdvojila —
-   preto majú vlastnú skupinu bez roly. Jednotlivý recept sa dá po tom
-   ešte doladiť priamo v rozpise (karamel len v jednej vrstve).
+   s vrstvami torty nemá nič spoločné.
+
+   Skupina sama nestačí: želé disk a mousse patria medzi Vklady, ale do
+   torty idú raz bez ohľadu na počet vrstiev. Preto majú **prázdne
+   `recipes.layers`**, čo znamená „vrstvami sa neriadi" — nie „je na
+   jednu vrstvu". Je to rozdiel: pri jednotke by zmena počtu náplní z 1
+   na 2 disk ZDVOJILA. To isté platí pre obterovú ganáž. Jednotlivý
+   recept sa dá po tom ešte doladiť priamo v rozpise (karamel len
+   v jednej vrstve).
    Je to ručný prepočet, nikam sa neukladá; trvalý počet vrstiev sa mení
    v *Úprave receptov* pri priradení.
 

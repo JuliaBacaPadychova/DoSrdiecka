@@ -44,17 +44,22 @@ update recipe_groups set layer_role = 'naplna' where name = 'Krémy'  and layer_
 update recipe_groups set layer_role = 'naplna' where name = 'Vklady' and layer_role is null;
 
 -- ---------------------------------------------------------------------
--- SKUPINA NA DISKY A MOUSSE
+-- DISKY A MOUSSE SA VRSTVAMI NERIADIŤ NESMÚ
 --
--- Vlastná skupina bez roly. Zakladá sa až na koniec zoznamu, aby
--- neprehádzala poradie, ktoré si majiteľka nastavila.
+-- Patria medzi Vklady, ale do torty ide jeden disk bez ohľadu na to,
+-- koľko je korpusov. Vklady majú rolu náplne, takže keby bol disk vedený
+-- ako recept "na 1 vrstvu", zmena počtu náplní na 2 by ho ZDVOJILA.
+--
+-- Prázdne "na koľko vrstiev" znamená "vrstvami sa neriadi" — a to je pri
+-- diskoch, mousse aj obterovej ganáži to správne. Migrácia brownie torty
+-- im dala jednotku, tak sa to opravuje; recept s iným číslom sa nechytí,
+-- lebo to už je vedomé nastavenie.
 -- ---------------------------------------------------------------------
--- "on conflict" a nie "where not exists": agregačný select vráti riadok
--- aj vtedy, keď ho podmienka vyprázdni (max z ničoho je prázdno), takže
--- pri druhom spustení by sa skupina pokúsila vložiť znova.
-insert into recipe_groups (name, sort_order)
-select 'Disky a mousse', coalesce(max(sort_order), 0) + 1 from recipe_groups
-on conflict (name) do nothing;
+update recipes
+   set layers = null
+ where name in ('Malinový želé disk', 'Malinový mousse', 'Jahodové compoté',
+                'Mangový mousse', 'Brownie ganache')
+   and layers = 1;
 
 -- ---------------------------------------------------------------------
 -- ZARADENIE RECEPTOV NA BROWNIE TORTU
@@ -68,11 +73,14 @@ with zaradenie (recept, skupina) as (values
   ('Brownie vanilkový krém', 'Krémy'),
   ('Brownie ovocné coulis',  'Vklady'),
   ('Brownie slaný karamel',  'Vklady'),
-  ('Brownie ganache',        'Ganáže'),
-  ('Malinový želé disk',     'Disky a mousse'),
-  ('Malinový mousse',        'Disky a mousse'),
-  ('Jahodové compoté',       'Disky a mousse'),
-  ('Mangový mousse',         'Disky a mousse')
+  -- Obterová ganáž je iná vec než šľahané ganáže do zákuskov, preto má
+  -- vlastnú skupinu. Ak si ju majiteľka premenovala, ide do nej; inak
+  -- medzi Ganáže.
+  ('Brownie ganache',        coalesce((select name from recipe_groups where name = 'Obterová ganáž'), 'Ganáže')),
+  ('Malinový želé disk',     'Vklady'),
+  ('Malinový mousse',        'Vklady'),
+  ('Jahodové compoté',       'Vklady'),
+  ('Mangový mousse',         'Vklady')
 )
 update recipes r
    set group_id = g.id
@@ -94,3 +102,13 @@ select g.name as skupina, g.sort_order as poradie,
   left join recipes r on r.group_id = g.id
  group by g.id, g.name, g.sort_order, g.layer_role
  order by g.sort_order;
+
+-- Recepty na tortu a to, čím sa riadia. Disky, mousse a obterová ganáž
+-- majú mať vo vrstvách prázdno — inak by ich hromadné políčko zdvojilo.
+select r.name as recept, r.diameter_cm as priemer,
+       coalesce(r.layers::text, '— neriadi sa vrstvami —') as vrstiev,
+       coalesce(g.name, '— nezaradený —') as skupina
+  from recipes r
+  left join recipe_groups g on g.id = r.group_id
+ where r.diameter_cm is not null
+ order by r.name;
