@@ -118,6 +118,10 @@
           <span class="fieldhint">Toto sa pri viacerých príchutiach ukáže ako názov príchute.</span></div>
         <div><label for="pPrice">Cena od (€)</label><input id="pPrice" type="number" min="0" step="0.5"></div>
         <div><label for="pMinQty">Minimálny odber (ks)</label><input id="pMinQty" type="number" min="1" value="1"></div>
+        <div><label for="pDiameter">Priemer torty (cm)</label>
+          <input id="pDiameter" type="number" min="0" step="1" placeholder="len pri tortách">
+          <span class="fieldhint">Podľa neho sa prepočítajú recepty písané na iný priemer.
+            Pri zákuskoch nechaj prázdne.</span></div>
         <div><label for="pMinLabel">Popisok min. odberu</label><input id="pMinLabel" placeholder="napr. min. 6 ks"></div>
         <div class="full"><label for="pDesc">Popis</label><textarea id="pDesc"></textarea></div>
         <div class="full"><label for="pAlt">Alternatívy / poznámka</label><textarea id="pAlt"></textarea></div>
@@ -211,8 +215,13 @@
         ideš robiť. Vypíšu sa všetky recepty, ktoré k nej patria, s gramážou prepočítanou
         na ten počet. Samotné recepty sa tým nemenia.</p>
       <div class="form">
-        <div><label for="recPrichut">Príchuť</label><select id="recPrichut"></select></div>
+        <div><label for="recPrichut">Príchuť</label>
+          <select id="recPrichut" onchange="Admin.prichutZmenena()"></select></div>
         <div><label for="recKusy">Koľko kusov robím</label><input id="recKusy" type="number" min="1" step="1" value="6"></div>
+        <div id="recPriemerBox" style="display:none"><label for="recPriemer">Priemer torty (cm)</label>
+          <input id="recPriemer" type="number" min="1" step="1">
+          <span class="fieldhint">Recepty na tortu sa prepočítajú plochou: z 12 na 18 cm
+            je to 2,25×. Počet vrstiev prepíšeš dole pri jednotlivých receptoch.</span></div>
         <div style="display:flex;align-items:flex-end;gap:10px">
           <button class="btn" onclick="Admin.zobrazRozpis()">Zobraziť recepty</button>
           <button class="btn ghost" onclick="Admin.ulozVyber()">Uložiť tento recept</button>

@@ -31,8 +31,8 @@ const TYPY = {
   },
   recept: {
     tabulka: "recipes",
-    polia: ["name", "group_id", "yield_qty", "yield_unit", "yield_label", "steps",
-            "source_url", "note", "active"],
+    polia: ["name", "group_id", "yield_qty", "yield_unit", "yield_label",
+            "diameter_cm", "layers", "steps", "source_url", "note", "active"],
     texty: ["steps", "source_url", "note", "yield_label"],
   },
   polozka: {
@@ -43,7 +43,7 @@ const TYPY = {
   vazba: {
     tabulka: "product_recipes",
     polia: ["product_id", "recipe_id", "qty_per_piece", "pieces_per_batch",
-            "sort_order", "note"],
+            "layers", "sort_order", "note"],
     texty: ["note"],
   },
   skupina: {
@@ -103,8 +103,11 @@ function skontrolujPocet(fields) {
   return null;
 }
 
+// Výrobky sú tu kvôli prepočtu tort: priemer torty nesie výrobok
+// (Brownie torta Ø 20 cm), nie recept. Bez nich by sa objednávka na
+// tortu prepočítala, akoby bola dvanásťcentimetrová.
 async function nacitatReceptar() {
-  const [suroviny, recepty, polozky, vazby, zoznamy, ulozene, skupiny] = await Promise.all([
+  const [suroviny, recepty, polozky, vazby, zoznamy, ulozene, skupiny, vyrobky] = await Promise.all([
     rest("ingredients?select=*&order=name.asc"),
     rest("recipes?select=*&order=name.asc"),
     rest("recipe_items?select=*&order=sort_order.asc"),
@@ -112,17 +115,19 @@ async function nacitatReceptar() {
     rest("shopping_plans?select=*&order=day.desc.nullslast,created_at.desc"),
     bezTabulky("recipe_presets?select=*&order=name.asc"),
     bezTabulky("recipe_groups?select=*&order=sort_order.asc,name.asc"),
+    rest("products?select=id,name,sub,category_id,diameter_cm&order=sort_order.asc"),
   ]);
-  return { suroviny, recepty, polozky, vazby, zoznamy, ulozene, skupiny };
+  return { suroviny, recepty, polozky, vazby, zoznamy, ulozene, skupiny, vyrobky };
 }
 
 // Tvar, v akom počíta lib/kalkulacia.js.
-function preVypocet({ suroviny, recepty, polozky, vazby }) {
+function preVypocet({ suroviny, recepty, polozky, vazby, vyrobky }) {
   return {
     ingredients: suroviny,
     recipes: recepty,
     recipe_items: polozky,
     product_recipes: vazby,
+    products: vyrobky || [],
   };
 }
 
@@ -208,7 +213,14 @@ module.exports = withErrors(
     // takže sa nemôžu rozísť.
     if (req.method === "POST" && co === "kalkulacia") {
       const body = await readJson(req);
-      const polozky = Array.isArray(body.polozky) ? body.polozky : [];
+      // Priemer a vrstvy zo zadania sú ručný prepočet ("chcem 18 cm
+      // a 3 korpusy"), nie zmena receptu — nikam sa neukladajú.
+      const polozky = (Array.isArray(body.polozky) ? body.polozky : []).map((p) => ({
+        product_id: p.product_id,
+        kusy: p.kusy,
+        priemer_cm: p.priemer_cm,
+        vrstvy: p.vrstvy && typeof p.vrstvy === "object" ? p.vrstvy : null,
+      }));
       const data = preVypocet(await nacitatReceptar());
       return sendJson(res, 200, {
         zoznam: nakupnyZoznam(polozky, data),

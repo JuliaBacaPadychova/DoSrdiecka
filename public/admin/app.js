@@ -474,6 +474,8 @@
     document.getElementById('pDesc').value = p.description || '';
     document.getElementById('pAlt').value = p.alt_text || '';
     document.getElementById('pAllerg').value = p.allergens || '';
+    document.getElementById('pDiameter').value =
+      p.diameter_cm === null || p.diameter_cm === undefined ? '' : cislo(p.diameter_cm);
     document.getElementById('pSort').value = p.sort_order;
     document.getElementById('pActive').value = String(p.active);
     document.getElementById('pImageUrl').value = p.image_url || '';
@@ -497,6 +499,7 @@
     predvyplnPoradie();
     document.getElementById('pCategory').value = 'zakusky';
     document.getElementById('pActive').value = 'true';
+    document.getElementById('pDiameter').value = '';
     document.getElementById('pImagePreview').innerHTML = '';
     document.getElementById('pImageFile').value = '';
     const formular = document.getElementById('productForm');
@@ -553,6 +556,8 @@
         active: document.getElementById('pActive').value === 'true',
         image_url: document.getElementById('pImageUrl').value.trim(),
         sort_order: parseInt(document.getElementById('pSort').value, 10) || 0,
+        // Prázdny priemer je "nie je to torta", nie nula.
+        diameter_cm: document.getElementById('pDiameter').value.trim() || null,
       };
       if (!body.name || !Number.isFinite(body.price)) {
         errEl.textContent = 'Vyplň aspoň názov a cenu.';
@@ -831,6 +836,7 @@
       renderUlozene();
       renderSkupiny();
       renderRecepty();
+      prichutZmenena();
       // Najprv rozbaliť, až potom scroll: rozbalený recept mení výšku
       // stránky, takže pri opačnom poradí by sa trafilo inam.
       otvorene.forEach((id) => {
@@ -841,6 +847,13 @@
     } catch (err) {
       el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
     }
+  }
+
+  // Recept na tortu sa pozná podľa toho, že má vyplnený priemer. Vtedy
+  // sa neprepočítava na kusy, ale plochou a vrstvami.
+  function naTortu(recept) {
+    const p = Number(recept && recept.diameter_cm);
+    return Number.isFinite(p) && p > 0;
   }
 
   // ---------- skupiny receptov ----------
@@ -1167,6 +1180,43 @@
   // nadpisom, kam sa má uložiť; pri výbere hore ešte nemá kam.
   let OTVORENY_ULOZENY = null;
 
+  // Ručne prepísaný počet vrstiev pre tento prepočet: { recipe_id: počet }.
+  // Nikam sa neukladá — je to "čo keby", nie zmena zloženia torty. Trvalý
+  // počet vrstiev sa mení dole v Úprave receptov pri priradení.
+  let VRSTVY_ZADANIE = {};
+
+  function vyrobokPodlaId(productId) {
+    return PRODUCTS_CACHE.find((p) => p.id === productId) || null;
+  }
+
+  // Priemer sa pýta len pri torte. Predvyplní sa ten, ktorý má vybraná
+  // veľkosť — prepísať sa dá kedykoľvek, recept sa tým nemení.
+  function prichutZmenena() {
+    VRSTVY_ZADANIE = {};
+    const box = document.getElementById('recPriemerBox');
+    const pole = document.getElementById('recPriemer');
+    const vyber = document.getElementById('recPrichut');
+    if (!box || !pole || !vyber) return;
+    const vyrobok = vyrobokPodlaId(vyber.value);
+    const priemer = vyrobok ? cislo(vyrobok.diameter_cm) : '';
+    if (priemer) {
+      box.style.display = 'block';
+      pole.value = priemer;
+    } else {
+      box.style.display = 'none';
+      pole.value = '';
+    }
+  }
+
+  // Prepísanie počtu vrstiev rovno prepočíta rozpis — je to to isté
+  // zadanie, len s iným číslom.
+  function prepocitajVrstvy(recipeId, hodnota) {
+    const n = parseInt(hodnota, 10);
+    if (Number.isFinite(n) && n >= 0) VRSTVY_ZADANIE[recipeId] = n;
+    else delete VRSTVY_ZADANIE[recipeId];
+    zobrazRozpis(OTVORENY_ULOZENY);
+  }
+
   async function zobrazRozpis(ulozenyId) {
     OTVORENY_ULOZENY = ulozenyId || null;
     const el = document.getElementById('receptyRozpis');
@@ -1176,12 +1226,16 @@
       el.innerHTML = '<p class="err">Vyber príchuť a počet kusov.</p>';
       return;
     }
+    const priemerPole = document.getElementById('recPriemer');
+    const priemer_cm = priemerPole && priemerPole.value ? Number(priemerPole.value) : null;
     el.innerHTML = '<p class="muted">Počítam…</p>';
     try {
       const data = await apiFetch('/api/admin/receptar?co=kalkulacia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ polozky: [{ product_id, kusy }] }),
+        body: JSON.stringify({
+          polozky: [{ product_id, kusy, priemer_cm, vrstvy: VRSTVY_ZADANIE }],
+        }),
       });
       renderRozpis(data.rozpis || [], product_id, nazovPrichute(product_id), kusy);
     } catch (err) {
@@ -1299,6 +1353,17 @@
                 i === zoradene.length - 1 ? ' disabled' : ''}>↓</button>
             </span>
           </div>
+          ${r.na_tortu ? `
+          <p class="muted" style="margin:0 0 8px;font-size:.85rem">
+            Recept je napísaný na Ø ${cisloSk(r.recept.priemer)} cm${
+              r.recept.vrstiev ? ` a ${cisloSk(r.recept.vrstiev)} vrstvy` : ''} —
+            teraz počítam Ø ${cisloSk(r.na_tortu.priemer)} cm a
+            <input type="number" min="0" step="1" style="width:64px;padding:4px 8px"
+              value="${esc(r.na_tortu.vrstiev)}"
+              onchange="Admin.prepocitajVrstvy('${r.recept.id}', this.value)"> vrstvy,
+            čiže <strong>${cisloSk(r.davky)}×</strong> dávku.
+            ${r.recept.poznamka ? '<br>' + esc(r.recept.poznamka) : ''}
+          </p>` : `
           <p class="muted" style="margin:0 0 8px;font-size:.85rem">
             Recept je na ${cisloSk(r.recept.vytaznost)} ${esc(r.recept.jednotka_vytaznosti)}${
               r.recept.popis_vytaznosti ? ' ' + esc(r.recept.popis_vytaznosti) : ''}${
@@ -1308,7 +1373,7 @@
             teraz z neho potrebuješ <strong>${cisloSk(r.davky)}×</strong> dávku,
             čiže ${cisloSk(r.vytazok)} ${esc(r.recept.jednotka_vytaznosti)}.
             ${r.recept.poznamka ? '<br>' + esc(r.recept.poznamka) : ''}
-          </p>
+          </p>`}
           <table class="admin-table"><thead><tr>
             <th>Surovina</th><th>Teraz</th><th>V recepte</th><th></th>
           </tr></thead><tbody>${r.polozky.map((p) => `
@@ -1459,6 +1524,22 @@
               <select id="skupina-${r.id}" data-skupina-receptu="${r.id}"
                 data-povodne="${esc(r.group_id || '')}">${moznostiSkupin(r.group_id)}</select>
             </div>` : ''}
+            <div><label for="priemer-${r.id}">Priemer torty (cm)</label>
+              <input type="number" min="0" step="1" id="priemer-${r.id}" data-priemer="${r.id}"
+                data-povodne="${esc(r.diameter_cm === null || r.diameter_cm === undefined ? '' : cislo(r.diameter_cm))}"
+                value="${esc(r.diameter_cm === null || r.diameter_cm === undefined ? '' : cislo(r.diameter_cm))}"
+                placeholder="prázdne = nie je torta">
+              <span class="fieldhint">Na aký priemer je recept napísaný. Pri inom priemere sa
+                gramáže násobia plochou — z 12 na 18 cm je to 2,25×.</span>
+            </div>
+            <div><label for="vrstvy-${r.id}">Na koľko vrstiev</label>
+              <input type="number" min="0" step="1" id="vrstvy-${r.id}" data-vrstvy="${r.id}"
+                data-povodne="${esc(r.layers === null || r.layers === undefined ? '' : r.layers)}"
+                value="${esc(r.layers === null || r.layers === undefined ? '' : r.layers)}"
+                placeholder="prázdne = jedna">
+              <span class="fieldhint">Brownie korpus je na 4 korpusy, krém na 3 vrstvy.
+                Pri menšom počte sa dávka zmenší v tom pomere.</span>
+            </div>
           </div>
           <table class="admin-table"><tbody>${vlastne.map((p, poradie) => {
             const su = surovinaPodlaId.get(p.ingredient_id);
@@ -1507,34 +1588,44 @@
 
           <p class="muted" style="margin:14px 0 6px;font-size:.88rem">Patrí k príchutiam:</p>
           ${pouzitie.length ? `<table class="admin-table"><thead><tr>
-            <th>Príchuť</th><th>${r.yield_unit === 'g' ? 'Gramov do kusu' : 'Kusov z dávky'}</th><th></th>
-          </tr></thead><tbody>${pouzitie.map((v) => `
+            <th>Príchuť</th><th>${naTortu(r) ? 'Vrstiev v torte'
+              : r.yield_unit === 'g' ? 'Gramov do kusu' : 'Kusov z dávky'}</th><th></th>
+          </tr></thead><tbody>${pouzitie.map((v) => {
+            // Pri torte sa nastavuje počet vrstiev tejto zložky, nie kusy:
+            // do 18 cm torty môžu ísť 3 korpusy namiesto štyroch.
+            const pole = naTortu(r) ? 'layers'
+              : r.yield_unit === 'g' ? 'qty_per_piece' : 'pieces_per_batch';
+            const hodnota = pole === 'layers'
+              ? cislo(v.layers === null || v.layers === undefined ? r.layers : v.layers)
+              : pole === 'qty_per_piece'
+                ? cislo(v.qty_per_piece)
+                : cislo(v.pieces_per_batch === null || v.pieces_per_batch === undefined
+                    ? r.yield_qty : v.pieces_per_batch);
+            return `
             <tr>
               <td>${esc(nazovPrichute(v.product_id))}</td>
               <td style="width:230px">
-                <input type="number" min="0" step="${r.yield_unit === 'g' ? '0.1' : '1'}" style="width:90px"
-                  data-vazba="${v.id}"
-                  data-pole="${r.yield_unit === 'g' ? 'qty_per_piece' : 'pieces_per_batch'}"
-                  data-povodne="${r.yield_unit === 'g'
-                    ? cislo(v.qty_per_piece)
-                    : cislo(v.pieces_per_batch === null || v.pieces_per_batch === undefined
-                        ? r.yield_qty : v.pieces_per_batch)}"
-                  value="${r.yield_unit === 'g'
-                    ? cislo(v.qty_per_piece)
-                    : cislo(v.pieces_per_batch === null || v.pieces_per_batch === undefined
-                        ? r.yield_qty : v.pieces_per_batch)}">
-                <span class="muted">${r.yield_unit === 'g' ? 'g do kusu' : 'kusov z dávky'}</span>
+                <input type="number" min="0" step="${r.yield_unit === 'g' && !naTortu(r) ? '0.1' : '1'}" style="width:90px"
+                  data-vazba="${v.id}" data-pole="${pole}"
+                  data-povodne="${hodnota}" value="${hodnota}">
+                <span class="muted">${naTortu(r) ? 'vrstiev'
+                  : r.yield_unit === 'g' ? 'g do kusu' : 'kusov z dávky'}</span>
               </td>
               <td class="akcie" style="width:90px">
                 <button class="btn ghost sm zmazat" onclick="Admin.zrusPriradenie('${v.id}', '${r.id}')">Odobrať</button>
               </td>
-            </tr>`).join('')}</tbody></table>` : '<p class="muted">Zatiaľ k žiadnej.</p>'}
+            </tr>`; }).join('')}</tbody></table>` : '<p class="muted">Zatiaľ k žiadnej.</p>'}
 
           <div class="form" style="margin:10px 0 0">
             <div><label>Priradiť k príchuti</label>
               <select id="nova-prichut-${r.id}"><option value="">— vyber —</option>${moznostiPrichuti}</select>
             </div>
-            ${r.yield_unit === 'g' ? `
+            ${naTortu(r) ? `
+            <div><label for="nove-vrstiev-${r.id}">Koľko vrstiev ide do torty</label>
+              <input type="number" min="0" step="1" id="nove-vrstiev-${r.id}" value="${esc(r.layers || 1)}">
+              <span class="fieldhint">Recept je napísaný na ${esc(r.layers || 1)}.
+                Priemer si nesie torta sama, ten sa tu nezadáva.</span>
+            </div>` : r.yield_unit === 'g' ? `
             <div><label for="nove-nakus-${r.id}">Gramov do jedného zákusku</label>
               <input type="number" min="0" step="0.1" id="nove-nakus-${r.id}" placeholder="napr. 12">
               <span class="fieldhint">Recept je na ${cisloSk(r.yield_qty)} g — napíš,
@@ -1677,6 +1768,24 @@
       }));
     }
 
+    const priemer = box.querySelector('[data-priemer]');
+    if (priemer && priemer.value.trim() !== priemer.dataset.povodne) {
+      ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ diameter_cm: priemer.value.trim() }),
+      }));
+    }
+
+    const vrstvy = box.querySelector('[data-vrstvy]');
+    if (vrstvy && vrstvy.value.trim() !== vrstvy.dataset.povodne) {
+      ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layers: vrstvy.value.trim() }),
+      }));
+    }
+
     const skupina = box.querySelector('[data-skupina-receptu]');
     if (skupina && skupina.value !== skupina.dataset.povodne) {
       ulohy.push(apiFetch(`/api/admin/receptar?co=recept&id=${encodeURIComponent(receptId)}`, {
@@ -1780,10 +1889,28 @@
     const product_id = document.getElementById('nova-prichut-' + receptId).value;
     if (!product_id) { alert('Vyber príchuť.'); return; }
 
+    const recept = RECEPTAR.recepty.find((r) => r.id === receptId);
+
+    // Pri torte sa nepýtame na kusy ani gramy, ale na počet vrstiev —
+    // priemer si nesie samotná torta.
+    if (naTortu(recept)) {
+      const pole = document.getElementById('nove-vrstiev-' + receptId);
+      const vrstiev = pole ? pole.value : '';
+      if (!(Number(vrstiev) > 0)) { alert('Napíš, koľko vrstiev ide do torty.'); return; }
+      try {
+        await apiFetch('/api/admin/receptar?co=vazba', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id, recipe_id: receptId, qty_per_piece: 1, layers: vrstiev }),
+        });
+        await loadRecepty(receptId);
+      } catch (err) { alert(err.message); }
+      return;
+    }
+
     // Recept písaný na kusy pokryje toľko zákuskov, na koľko je napísaný —
     // jeden zákusok dostane jednu porciu a niet sa na čo pýtať. Pýtame sa
     // len pri recepte na gramy (coulis na 150 g).
-    const recept = RECEPTAR.recepty.find((r) => r.id === receptId);
     const naGramy = recept && recept.yield_unit === 'g';
     const pole = document.getElementById((naGramy ? 'nove-nakus-' : 'nove-zdavky-') + receptId);
     const hodnota = pole ? pole.value : '';
@@ -2291,6 +2418,7 @@
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,
     renderRecepty, ulozRecept, pridajPolozku, posunPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
     pridajSkupinu, ulozNazvySkupin, posunSkupinu, zmazSkupinu, posunVRozpise,
+    prichutZmenena, prepocitajVrstvy,
     novyReceptForm, novyReceptJednotka, ulozNovyRecept, doKalkulacky, zmazRecept,
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
     ulozVyber, otvorUlozeny, premenujUlozeny, zmazUlozeny, ulozPoznamkuRozpisu,

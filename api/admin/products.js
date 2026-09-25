@@ -15,6 +15,7 @@ const EDITABLE_FIELDS = [
   "image_url",
   "active",
   "sort_order",
+  "diameter_cm",
 ];
 
 function pickFields(body) {
