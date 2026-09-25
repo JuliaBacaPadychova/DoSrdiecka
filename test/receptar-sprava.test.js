@@ -50,7 +50,8 @@ test("čítanie vráti suroviny aj recepty naraz", async (t) => {
   await sReceptarom(t, async ({ zavolaj }) => {
     const o = await zavolaj("GET", "/api/admin/receptar");
     assert.equal(o.code, 200);
-    assert.deepEqual(Object.keys(o.body).sort(), ["polozky", "recepty", "suroviny", "ulozene", "vazby", "zoznamy"]);
+    assert.deepEqual(Object.keys(o.body).sort(),
+      ["polozky", "recepty", "skupiny", "suroviny", "ulozene", "vazby", "zoznamy"]);
     assert.equal(o.body.suroviny[0].name, "Mascarpone");
   });
 });
@@ -264,6 +265,53 @@ test("druh receptu sa cez správu zapísať nedá", async (t) => {
     assert.equal(o.code, 200);
     assert.equal(db.recipes[0].name, "Malinový curd");
     assert.equal(db.recipes[0].kind, undefined, "druh sa z tela požiadavky zahodí");
+  });
+});
+
+// Skupiny receptov pribudli neskôr než receptár. Kým sa nespustí
+// supabase/migracia-skupiny-receptov.sql, tabuľka neexistuje — a recepty
+// ani ceny od nej nezávisia, takže záložka musí fungovať ďalej. Presne
+// na tomto sa už raz potkol stĺpec kind: kód s ním počítal, migrácia ho
+// zmazala a spadla celá záložka.
+test("chýbajúca tabuľka skupín nezhodí celý receptár", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    delete db.recipe_groups;
+    const o = await zavolaj("GET", "/api/admin/receptar");
+    assert.equal(o.code, 200);
+    assert.equal(o.body.skupiny, null, "null znamená 'tabuľka tu ešte nie je'");
+    assert.equal(o.body.suroviny[0].name, "Mascarpone");
+  });
+});
+
+test("skupina sa dá založiť, premenovať a priradiť k receptu", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    const nova = await zavolaj("POST", "/api/admin/receptar?co=skupina", { name: "Cestá", sort_order: 1 });
+    assert.equal(nova.code, 200);
+    const id = nova.body.zaznam.id;
+
+    assert.equal((await zavolaj("POST", "/api/admin/receptar?co=skupina", {})).code, 400,
+      "skupina bez názvu nemá zmysel");
+
+    await zavolaj("PATCH", `/api/admin/receptar?co=skupina&id=${id}`, { name: "Cestá a korpusy" });
+    assert.equal(db.recipe_groups[0].name, "Cestá a korpusy");
+
+    db.recipes.push({ id: "r-cesto", name: "Odpalované cesto", yield_qty: 20, yield_unit: "ks",
+      yield_label: "", steps: "", note: "", group_id: null, active: true });
+    await zavolaj("PATCH", "/api/admin/receptar?co=recept&id=r-cesto", { group_id: id });
+    assert.equal(db.recipes[0].group_id, id, "recept sa dá zaradiť do skupiny");
+
+    await zavolaj("PATCH", "/api/admin/receptar?co=recept&id=r-cesto", { group_id: "" });
+    assert.equal(db.recipes[0].group_id, null, "prázdna skupina je nezaradený recept, nie prázdny text");
+  });
+});
+
+test("poradie receptu v rozpise príchute sa dá uložiť", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    db.product_recipes.push({ id: "v1", product_id: "p-choux", recipe_id: "r1",
+      qty_per_piece: 1, pieces_per_batch: null, sort_order: 0, note: "" });
+    const o = await zavolaj("PATCH", "/api/admin/receptar?co=vazba&id=v1", { sort_order: 2 });
+    assert.equal(o.code, 200);
+    assert.equal(db.product_recipes[0].sort_order, 2);
   });
 });
 

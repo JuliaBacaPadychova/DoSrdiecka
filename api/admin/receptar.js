@@ -31,7 +31,7 @@ const TYPY = {
   },
   recept: {
     tabulka: "recipes",
-    polia: ["name", "yield_qty", "yield_unit", "yield_label", "steps",
+    polia: ["name", "group_id", "yield_qty", "yield_unit", "yield_label", "steps",
             "source_url", "note", "active"],
     texty: ["steps", "source_url", "note", "yield_label"],
   },
@@ -42,8 +42,14 @@ const TYPY = {
   },
   vazba: {
     tabulka: "product_recipes",
-    polia: ["product_id", "recipe_id", "qty_per_piece", "pieces_per_batch", "note"],
+    polia: ["product_id", "recipe_id", "qty_per_piece", "pieces_per_batch",
+            "sort_order", "note"],
     texty: ["note"],
+  },
+  skupina: {
+    tabulka: "recipe_groups",
+    polia: ["name", "sort_order"],
+    texty: [],
   },
   zoznam: {
     tabulka: "shopping_plans",
@@ -68,14 +74,18 @@ function pick(body, typ) {
   return out;
 }
 
-// Uložené recepty pribudli neskôr než zvyšok receptára. Kým sa nespustí
-// supabase/migracia-ulozene-recepty.sql, tabuľka ešte neexistuje — a
-// recepty, ceny ani kalkulácia od nej nezávisia, takže kvôli chýbajúcej
-// skratke sa nesmie rozsypať celá záložka. `null` znamená "tabuľka tu
-// ešte nie je", prázdne pole "zatiaľ nič uložené"; správa to rozlíši.
-async function ulozeneBezpecne() {
+// Uložené recepty a skupiny pribudli neskôr než zvyšok receptára. Kým sa
+// nespustí príslušná migrácia, tabuľka ešte neexistuje — a recepty, ceny
+// ani kalkulácia od nej nezávisia, takže kvôli chýbajúcej skratke sa
+// nesmie rozsypať celá záložka. `null` znamená "tabuľka tu ešte nie je",
+// prázdne pole "zatiaľ nič v nej nie je"; správa to rozlíši.
+//
+// Nie je to opatrnosť navyše: keď raz kód počítal so stĺpcom, ktorý
+// migrácia medzitým zmazala, spadla celá záložka Recepty na "server_error".
+// Tu je to naopak — kód počíta s tabuľkou, ktorá ešte nemusí byť.
+async function bezTabulky(cesta) {
   try {
-    return await rest("recipe_presets?select=*&order=name.asc");
+    return await rest(cesta);
   } catch (err) {
     const kod = err.body && err.body.code ? String(err.body.code) : "";
     if (err.status === 404 || /^PGRST2/.test(kod) || kod === "42P01") return null;
@@ -94,15 +104,16 @@ function skontrolujPocet(fields) {
 }
 
 async function nacitatReceptar() {
-  const [suroviny, recepty, polozky, vazby, zoznamy, ulozene] = await Promise.all([
+  const [suroviny, recepty, polozky, vazby, zoznamy, ulozene, skupiny] = await Promise.all([
     rest("ingredients?select=*&order=name.asc"),
     rest("recipes?select=*&order=name.asc"),
     rest("recipe_items?select=*&order=sort_order.asc"),
     rest("product_recipes?select=*"),
     rest("shopping_plans?select=*&order=day.desc.nullslast,created_at.desc"),
-    ulozeneBezpecne(),
+    bezTabulky("recipe_presets?select=*&order=name.asc"),
+    bezTabulky("recipe_groups?select=*&order=sort_order.asc,name.asc"),
   ]);
-  return { suroviny, recepty, polozky, vazby, zoznamy, ulozene };
+  return { suroviny, recepty, polozky, vazby, zoznamy, ulozene, skupiny };
 }
 
 // Tvar, v akom počíta lib/kalkulacia.js.
@@ -209,7 +220,7 @@ module.exports = withErrors(
 
     if (req.method === "POST") {
       const fields = pick(await readJson(req), typ);
-      if ((co === "surovina" || co === "recept") && !fields.name) {
+      if ((co === "surovina" || co === "recept" || co === "skupina") && !fields.name) {
         return sendJson(res, 400, { error: "missing_name" });
       }
       if (co === "zoznam" && fields.items !== undefined && !Array.isArray(fields.items)) {
