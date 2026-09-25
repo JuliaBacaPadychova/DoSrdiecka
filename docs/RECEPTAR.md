@@ -410,12 +410,24 @@ Kde sa PDF a excel nezhodli, platí PDF a rozhodnutie majiteľky:
 | Cukor muscovado | vedený ako `Cukor trstinový`, tak ako to má excel |
 | Slaný karamel | celá dávka z PDF; v *Kalkulacke* chýbala. Vyjde jej viac, než sa do 12 cm torty zmestí — koľko naozaj treba, sa upraví po prvom skladaní |
 | Ovocné coulis | doplnené podľa PDF; v *Kalkulacke* chýbalo celé. Ovocie je `Ovocná zmes mrazená` |
-| Prášok, sóda, soľ | v lyžičkách, teda **bez gramáže** — do ceny nevstúpia a priemerom sa neprepočítajú |
+| Prášok, sóda, soľ | v gramoch podľa bežného prepočtu lyžičiek, lyžička ostáva v poznámke |
 
-To posledné je vedomý ústupok: majiteľka ich chce v recepte vidieť ako
-lyžičky. Znamená to, že pri Ø 22 cm (koeficient 3,36) si ich musí
-domyslieť sama. Keby mali vstúpiť do prepočtu, treba do nich vpísať gramy
-a lyžičku nechať v poznámke.
+To posledné potrebovalo rozhodnutie. V recepte sú lyžičky, ale lyžička sa
+nedá prepočítať na iný priemer — pri Ø 22 cm (koeficient 3,36) by z pol
+lyžičky prášku mala byť skoro jeden a pol. Preto je zapísaná **gramáž**
+a lyžička ostáva v poznámke pri surovine, takže v rozpise je vidieť oboje:
+
+| Surovina | V recepte | Zapísané | Pri Ø 22 cm vyjde |
+|---|---|---:|---:|
+| Prášok do pečiva | ½ lyžičky | 2 g | 6,7 g |
+| Sóda bikarbóna | ¼ lyžičky | 1,25 g | 4,2 g |
+| Soľ (korpus) | ½ lyžičky | 3 g | 10,1 g |
+| Soľ (karamel) | 1 lyžička | 6 g | — |
+
+Prepočet je bežný kuchynský odhad (lyžička prášku ~ 4 g, sódy ~ 5 g,
+soli ~ 6 g), nie vážené meranie. Keby po odvážení vyšlo iné číslo, prepíše
+sa v správe webu. Vanilka v kréme ostáva bez gramáže — „1 struk alebo
+1 lyžička pasty" sa na gramy previesť nedá bez toho, aby to bola fikcia.
 
 Vrstvy sú nastavené takto: korpus 4, krém 3, coulis 3 (ide na prvý, druhý
 aj tretí korpus), slaný karamel 3 (hárok *Prepocet vrstiev a kremu*

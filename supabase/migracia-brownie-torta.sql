@@ -74,13 +74,19 @@ on conflict (name) do nothing;
 -- Všetky sú napísané na priemer 12 cm, tak ako PDF. Prefix "Brownie"
 -- hovorí, že patria k tejto torte a inde sa nepoužívajú.
 --
--- Prášok do pečiva, sóda a soľ sú zámerne BEZ GRAMÁŽE — v recepte sú
--- vedené v lyžičkách. Ukážu sa v rozpise, do ceny nevstúpia a priemerom
--- sa neprepočítajú; pri väčšej torte ich treba domyslieť.
+-- Prášok do pečiva, sóda a soľ sú v recepte v lyžičkách, ale zapísané
+-- v gramoch — inak by sa priemerom neprepočítali a pri Ø 22 cm
+-- (koeficient 3,36) by z pol lyžičky prášku mala byť skoro jeden a pol.
+-- Lyžička ostáva v poznámke pri surovine, takže v rozpise je vidieť
+-- oboje. Prepočet je bežný kuchynský odhad, nie vážené meranie:
+--   1 lyžička prášku do pečiva ~ 4 g   -> 1/2 lyžičky = 2 g
+--   1 lyžička sódy bikarbóny  ~ 5 g   -> 1/4 lyžičky = 1,25 g
+--   1 lyžička soli            ~ 6 g   -> 1/2 lyžičky = 3 g
+-- Keby ti po odvážení vyšlo iné číslo, prepíš ho v správe webu.
 -- ---------------------------------------------------------------------
 insert into recipes (name, yield_qty, yield_unit, yield_label, diameter_cm, layers, note, steps) values
   ('Brownie korpus', 1, 'ks', 'tortu Ø 12 cm', 12, 4,
-   'Napísané na 12 cm a 4 korpusy — z jednej dávky sa pečie v dvoch 12 cm ráfikoch a každý sa prereže na polovicu. Cesto sa dá rozdeliť na tenší (1/3) a hrubší (2/3) ráfik; tenší skontroluj po 35 minútach, hrubší po 60. Prášok, sóda a soľ sú v lyžičkách, takže sa priemerom neprepočítajú.',
+   'Napísané na 12 cm a 4 korpusy — z jednej dávky sa pečie v dvoch 12 cm ráfikoch a každý sa prereže na polovicu. Cesto sa dá rozdeliť na tenší (1/3) a hrubší (2/3) ráfik; tenší skontroluj po 35 minútach, hrubší po 60. Prášok, sóda a soľ sú zapísané v gramoch podľa bežného prepočtu lyžičiek (4 / 5 / 6 g na lyžičku), aby sa prepočítali aj pri väčšom priemere — lyžička ostáva v poznámke pri surovine.',
    $rec$Všetky ingrediencie musia byť izbovej teploty. Rúru predhrej na 140 °C a vymasti tortovú formu.
 Vo vodnom kúpeli rozpusti maslo s čokoládou a nechaj vychladnúť.
 V jednej miske zmiešaj múku, prášok do pečiva, soľ, sódu, kakao a oba cukry. Kakao preosej, inak ostanú hrudky.
@@ -171,12 +177,12 @@ with polozka (recept, surovina, mnozstvo, poradie, pozn) as (values
   ('Brownie korpus',         'Vajcia ks',                        3,    6, ''),
   ('Brownie korpus',         'Kakao holandského typu',          20,    7, 'preosiať'),
   ('Brownie korpus',         'Cmar',                            40,    8, ''),
-  ('Brownie korpus',         'Prášok do pečiva',              null,    9, '1/2 lyžičky'),
-  ('Brownie korpus',         'Sóda bikarbóna',                null,   10, '1/4 lyžičky'),
-  ('Brownie korpus',         'Soľ',                           null,   11, '1/2 lyžičky'),
+  ('Brownie korpus',         'Prášok do pečiva',                 2,    9, '1/2 lyžičky'),
+  ('Brownie korpus',         'Sóda bikarbóna',                1.25,   10, '1/4 lyžičky'),
+  ('Brownie korpus',         'Soľ',                              3,   11, '1/2 lyžičky'),
   ('Brownie slaný karamel',  'Cukor krupicový',                200,    1, ''),
   ('Brownie slaný karamel',  'Smotana na šľahanie 40%',        200,    2, ''),
-  ('Brownie slaný karamel',  'Soľ',                           null,    3, '1 lyžička'),
+  ('Brownie slaný karamel',  'Soľ',                              6,    3, '1 lyžička'),
   ('Brownie vanilkový krém', 'Mascarpone',                     100,    1, ''),
   ('Brownie vanilkový krém', 'Cukor práškový',                  50,    2, ''),
   ('Brownie vanilkový krém', 'Tvaroh tučný',                   100,    3, ''),
@@ -214,6 +220,24 @@ from polozka p
 join recipes r on r.name = p.recept
 join ingredients i on i.name = p.surovina
 on conflict (recipe_id, ingredient_id) do nothing;
+
+-- Keby už tieto tri riadky v databáze boli (staršie znenie migrácie ich
+-- zakladalo bez gramáže), doplní sa im gramáž dodatočne. Riadok, ktorý
+-- už nejakú má, sa nechytí — vlastná úprava ostáva.
+with doplnok (recept, surovina, mnozstvo) as (values
+  ('Brownie korpus',        'Prášok do pečiva', 2),
+  ('Brownie korpus',        'Sóda bikarbóna',   1.25),
+  ('Brownie korpus',        'Soľ',              3),
+  ('Brownie slaný karamel', 'Soľ',              6)
+)
+update recipe_items ri
+   set amount = d.mnozstvo::numeric
+  from doplnok d
+  join recipes r on r.name = d.recept
+  join ingredients i on i.name = d.surovina
+ where ri.recipe_id = r.id
+   and ri.ingredient_id = i.id
+   and ri.amount is null;
 
 -- ---------------------------------------------------------------------
 -- ZLOŽENIE BROWNIE TORTY
