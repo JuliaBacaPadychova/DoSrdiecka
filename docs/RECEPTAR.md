@@ -36,8 +36,22 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
    krém 3), `product_recipes.layers`, koľko ich ide do tejto torty. Spolu
    `koeficient = plocha × (koľko vrstiev / na koľko)`, čiže na 18 cm
    a 3 korpusy 2,25 × 0,75 = 1,6875. Každá zložka sa počíta zvlášť, lebo
-   korpusov a krémov býva rôzny počet. V *Čo mám miešať* sa priemer aj
-   vrstvy dajú prepísať — je to ručný prepočet, nikam sa neukladá.
+   korpusov a krémov býva rôzny počet.
+
+   V *Čo mám miešať* sa počet vrstiev zadáva **raz pre celú tortu** —
+   políčka *Korpusov* a *Náplní*. Čím je ktorá zložka, drží skupina
+   receptu (`recipe_groups.layer_role`): *Cestá* sú korpusy, *Krémy*
+   a *Vklady* náplne, obter, poleva a disky sa vrstvami neriadia. Disk
+   ani mousse nesmú byť medzi náplňami: do torty ide jeden disk bez
+   ohľadu na počet vrstiev, takže by ich zmena počtu náplní zdvojila —
+   preto majú vlastnú skupinu bez roly. Jednotlivý recept sa dá po tom
+   ešte doladiť priamo v rozpise (karamel len v jednej vrstve).
+   Je to ručný prepočet, nikam sa neukladá; trvalý počet vrstiev sa mení
+   v *Úprave receptov* pri priradení.
+
+   Priemer sa nezadáva — nesie si ho vybraná veľkosť torty. Rozmer mimo
+   ponuky sa aj tak nedá objednať, takže políčko na priemer bolo len
+   mätúce zdvojenie toho, čo už hovorí výber príchute.
    Recept bez priemeru (zákusky) sa počíta po starom, na kusy.
 4. **Dve ceny, nie jedna:**
    - *spotreba* = `gramy × cena balenia / gramáž balenia` — čo naozaj

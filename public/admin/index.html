@@ -218,10 +218,12 @@
         <div><label for="recPrichut">Príchuť</label>
           <select id="recPrichut" onchange="Admin.prichutZmenena()"></select></div>
         <div><label for="recKusy">Koľko kusov robím</label><input id="recKusy" type="number" min="1" step="1" value="6"></div>
-        <div id="recPriemerBox" style="display:none"><label for="recPriemer">Priemer torty (cm)</label>
-          <input id="recPriemer" type="number" min="1" step="1">
-          <span class="fieldhint">Recepty na tortu sa prepočítajú plochou: z 12 na 18 cm
-            je to 2,25×. Počet vrstiev prepíšeš dole pri jednotlivých receptoch.</span></div>
+        <div id="recKorpusovBox" style="display:none"><label for="recKorpusov">Korpusov</label>
+          <input id="recKorpusov" type="number" min="0" step="1" onchange="Admin.zmenaVrstiev()">
+          <span class="fieldhint">Koľko korpusov má torta mať. Prepočíta sa tým celé cesto naraz.</span></div>
+        <div id="recNaplniBox" style="display:none"><label for="recNaplni">Náplní</label>
+          <input id="recNaplni" type="number" min="0" step="1" onchange="Admin.zmenaVrstiev()">
+          <span class="fieldhint">Vrstvy krému, coulis a karamelu dokopy. Obter a poleva sa tým neriadia.</span></div>
         <div style="display:flex;align-items:flex-end;gap:10px">
           <button class="btn" onclick="Admin.zobrazRozpis()">Zobraziť recepty</button>
           <button class="btn ghost" onclick="Admin.ulozVyber()">Uložiť tento recept</button>
@@ -247,6 +249,9 @@
         <p class="muted" style="margin:10px 0 0;font-size:.88rem">Skupiny si určuješ sama.
           Poradie šípkami je aj poradím nadpisov v zozname dole. Zmazaná skupina recepty
           nezmaže — presunú sa medzi nezaradené.</p>
+        <p class="muted" style="margin:8px 0 0;font-size:.88rem"><strong>V torte je to</strong>
+          hovorí, čo sa má zmeniť, keď hore prepíšeš počet korpusov alebo náplní.
+          Obter, poleva a disky nech ostanú na „neriadi sa vrstvami".</p>
         <div id="skupinyList" style="padding-top:12px"></div>
       </details>
 

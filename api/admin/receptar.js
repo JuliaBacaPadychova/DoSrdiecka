@@ -48,7 +48,7 @@ const TYPY = {
   },
   skupina: {
     tabulka: "recipe_groups",
-    polia: ["name", "sort_order"],
+    polia: ["name", "sort_order", "layer_role"],
     texty: [],
   },
   zoznam: {

@@ -892,11 +892,21 @@
       if (r.group_id) pocty.set(r.group_id, (pocty.get(r.group_id) || 0) + 1);
     });
 
+    const rola = (s) => `
+      <select style="max-width:200px" onchange="Admin.ulozRoluSkupiny('${s.id}', this.value)">
+        <option value=""${!s.layer_role ? ' selected' : ''}>— neriadi sa vrstvami —</option>
+        <option value="korpus"${s.layer_role === 'korpus' ? ' selected' : ''}>korpus</option>
+        <option value="naplna"${s.layer_role === 'naplna' ? ' selected' : ''}>náplň</option>
+      </select>`;
+
     el.innerHTML = `
-      <table class="admin-table"><tbody>${skupiny.map((s, i) => `
+      <table class="admin-table"><thead><tr>
+        <th>Skupina</th><th>V torte je to</th><th></th><th></th>
+      </tr></thead><tbody>${skupiny.map((s, i) => `
         <tr>
           <td><input data-skupina="${s.id}" data-povodne="${esc(s.name)}" value="${esc(s.name)}"
                 style="max-width:320px"></td>
+          <td style="width:220px">${rola(s)}</td>
           <td class="muted" style="width:110px">${pocty.get(s.id) || 0} receptov</td>
           <td class="akcie" style="width:180px">
             <button class="btn ghost sm" title="vyššie" onclick="Admin.posunSkupinu('${s.id}', -1)"${
@@ -987,6 +997,21 @@
         })));
       await loadRecepty();
       skupinyStav('Poradie uložené.');
+    } catch (err) { skupinyStav(err.message, true); }
+  }
+
+  // Rola hovorí, čím je zložka z tejto skupiny v torte. Ukladá sa hneď —
+  // je to jeden výber, nie rozpísaný formulár.
+  async function ulozRoluSkupiny(id, hodnota) {
+    skupinyStav('Ukladám…');
+    try {
+      await apiFetch(`/api/admin/receptar?co=skupina&id=${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layer_role: hodnota || null }),
+      });
+      await loadRecepty();
+      skupinyStav('Uložené.');
     } catch (err) { skupinyStav(err.message, true); }
   }
 
@@ -1189,27 +1214,77 @@
     return PRODUCTS_CACHE.find((p) => p.id === productId) || null;
   }
 
-  // Priemer sa pýta len pri torte. Predvyplní sa ten, ktorý má vybraná
-  // veľkosť — prepísať sa dá kedykoľvek, recept sa tým nemení.
+  // Čím je zložka v torte, drží skupina receptu: Cestá sú korpusy, Krémy
+  // a Vklady náplne, obter a disky sa vrstvami neriadia. Vďaka tomu sa
+  // počet vrstiev zadáva RAZ pre celú tortu a nie pri každom recepte.
+  function rolaReceptu(recept) {
+    const s = skupinaReceptu(recept);
+    return s && s.layer_role ? s.layer_role : null;
+  }
+
+  // Recepty vybranej príchute, ktoré majú danú rolu.
+  function receptyRoly(productId, rola) {
+    if (!RECEPTAR) return [];
+    const kReceptu = new Map(RECEPTAR.recepty.map((r) => [r.id, r]));
+    return RECEPTAR.vazby
+      .filter((v) => v.product_id === productId)
+      .map((v) => ({ vazba: v, recept: kReceptu.get(v.recipe_id) }))
+      .filter((x) => x.recept && naTortu(x.recept) && rolaReceptu(x.recept) === rola);
+  }
+
+  // Predvolený počet vrstiev roly: to, čo je nastavené pri priradení
+  // (alebo na koľko je recept napísaný). Keď sa zložky navzájom líšia,
+  // ukáže sa tá prvá — číslo je tak či tak na prepísanie.
+  function predvolenaVrstva(productId, rola) {
+    const zoznam = receptyRoly(productId, rola);
+    for (const { vazba, recept } of zoznam) {
+      const n = cislo(vazba.layers) ?? cislo(recept.layers);
+      if (n !== null) return n;
+    }
+    return null;
+  }
+
+  // Počet korpusov a náplní sa pýta len pri torte — a len vtedy, keď má
+  // čo riadiť. Priemer sa nepýta vôbec: nesie si ho vybraná veľkosť.
   function prichutZmenena() {
     VRSTVY_ZADANIE = {};
-    const box = document.getElementById('recPriemerBox');
-    const pole = document.getElementById('recPriemer');
     const vyber = document.getElementById('recPrichut');
-    if (!box || !pole || !vyber) return;
-    const vyrobok = vyrobokPodlaId(vyber.value);
-    const priemer = vyrobok ? cislo(vyrobok.diameter_cm) : '';
-    if (priemer) {
-      box.style.display = 'block';
-      pole.value = priemer;
-    } else {
-      box.style.display = 'none';
-      pole.value = '';
+    if (!vyber) return;
+    for (const [rola, box, pole] of [
+      ['korpus', 'recKorpusovBox', 'recKorpusov'],
+      ['naplna', 'recNaplniBox', 'recNaplni'],
+    ]) {
+      const el = document.getElementById(box);
+      const inp = document.getElementById(pole);
+      if (!el || !inp) continue;
+      const predvolena = predvolenaVrstva(vyber.value, rola);
+      if (predvolena === null) {
+        el.style.display = 'none';
+        inp.value = '';
+      } else {
+        el.style.display = 'block';
+        inp.value = predvolena;
+      }
     }
   }
 
-  // Prepísanie počtu vrstiev rovno prepočíta rozpis — je to to isté
-  // zadanie, len s iným číslom.
+  // Zmena počtu korpusov alebo náplní prepíše vrstvy VŠETKÝM zložkám tej
+  // roly naraz — to je celý zmysel toho políčka. Jednotlivý recept sa dá
+  // potom ešte doladiť v rozpise.
+  function zmenaVrstiev() {
+    const product_id = document.getElementById('recPrichut').value;
+    for (const [rola, pole] of [['korpus', 'recKorpusov'], ['naplna', 'recNaplni']]) {
+      const inp = document.getElementById(pole);
+      if (!inp || inp.value === '') continue;
+      const n = parseInt(inp.value, 10);
+      if (!Number.isFinite(n) || n < 0) continue;
+      receptyRoly(product_id, rola).forEach(({ recept }) => { VRSTVY_ZADANIE[recept.id] = n; });
+    }
+    if (ROZPIS_STAV) zobrazRozpis(OTVORENY_ULOZENY);
+  }
+
+  // Prepísanie počtu vrstiev pri jednom recepte — doladenie toho, čo
+  // nastavili políčka hore (napríklad karamel len v jednej vrstve).
   function prepocitajVrstvy(recipeId, hodnota) {
     const n = parseInt(hodnota, 10);
     if (Number.isFinite(n) && n >= 0) VRSTVY_ZADANIE[recipeId] = n;
@@ -1226,15 +1301,14 @@
       el.innerHTML = '<p class="err">Vyber príchuť a počet kusov.</p>';
       return;
     }
-    const priemerPole = document.getElementById('recPriemer');
-    const priemer_cm = priemerPole && priemerPole.value ? Number(priemerPole.value) : null;
     el.innerHTML = '<p class="muted">Počítam…</p>';
     try {
       const data = await apiFetch('/api/admin/receptar?co=kalkulacia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          polozky: [{ product_id, kusy, priemer_cm, vrstvy: VRSTVY_ZADANIE }],
+          // Priemer sa neposiela — berie sa z vybranej veľkosti torty.
+          polozky: [{ product_id, kusy, vrstvy: VRSTVY_ZADANIE }],
         }),
       });
       renderRozpis(data.rozpis || [], product_id, nazovPrichute(product_id), kusy);
@@ -1356,13 +1430,17 @@
           ${r.na_tortu ? `
           <p class="muted" style="margin:0 0 8px;font-size:.85rem">
             Recept je napísaný na Ø ${cisloSk(r.recept.priemer)} cm${
-              r.recept.vrstiev ? ` a ${cisloSk(r.recept.vrstiev)} vrstvy` : ''} —
-            teraz počítam Ø ${cisloSk(r.na_tortu.priemer)} cm a
-            <input type="number" min="0" step="1" style="width:64px;padding:4px 8px"
-              value="${esc(r.na_tortu.vrstiev)}"
-              onchange="Admin.prepocitajVrstvy('${r.recept.id}', this.value)"> vrstvy,
+              r.recept.vrstiev ? ` a ${cisloSk(r.recept.vrstiev)} vrstvy` : ''},
+            teraz je to Ø ${cisloSk(r.na_tortu.priemer)} cm —
             čiže <strong>${cisloSk(r.davky)}×</strong> dávku.
             ${r.recept.poznamka ? '<br>' + esc(r.recept.poznamka) : ''}
+          </p>
+          <p class="muted" style="margin:-4px 0 8px;font-size:.85rem">
+            Vrstiev v torte:
+            <input type="number" min="0" step="1" style="width:64px;padding:4px 8px"
+              value="${esc(r.na_tortu.vrstiev)}"
+              onchange="Admin.prepocitajVrstvy('${r.recept.id}', this.value)">
+            <span style="margin-left:6px">len pre tento recept — hore sa to mení naraz</span>
           </p>` : `
           <p class="muted" style="margin:0 0 8px;font-size:.85rem">
             Recept je na ${cisloSk(r.recept.vytaznost)} ${esc(r.recept.jednotka_vytaznosti)}${
@@ -2417,8 +2495,8 @@
     saveSettings,
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,
     renderRecepty, ulozRecept, pridajPolozku, posunPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
-    pridajSkupinu, ulozNazvySkupin, posunSkupinu, zmazSkupinu, posunVRozpise,
-    prichutZmenena, prepocitajVrstvy,
+    pridajSkupinu, ulozNazvySkupin, posunSkupinu, zmazSkupinu, ulozRoluSkupiny, posunVRozpise,
+    prichutZmenena, prepocitajVrstvy, zmenaVrstiev,
     novyReceptForm, novyReceptJednotka, ulozNovyRecept, doKalkulacky, zmazRecept,
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
     ulozVyber, otvorUlozeny, premenujUlozeny, zmazUlozeny, ulozPoznamkuRozpisu,
