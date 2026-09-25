@@ -539,6 +539,13 @@
     // ešte dolaďuje. Cena zákuskov a chlebíka je za kus a platí.
     const maTortu = PRODUCTS.some((p) => state.qty[p.id] > 0 && jeTorta(p));
     document.getElementById('sumTotal').textContent = (maTortu ? 'od ' : '') + total + ' €';
+    // Bez torty je suma konečná, tak ju netreba volať orientačnou ani
+    // sľubovať dopočítanie — potvrdzuje sa už len termín.
+    document.getElementById('sumTotalLabel').textContent =
+      maTortu ? 'Orientačná cena' : 'Cena';
+    document.getElementById('sumNote').textContent = maTortu
+      ? 'Predbežná, nezáväzná objednávka. Konečnú cenu ti potvrdím podľa zvolenej veľkosti a úprav.'
+      : 'Predbežná, nezáväzná objednávka. Termín ti potvrdím e-mailom.';
   }
 
   function setStep(n) {

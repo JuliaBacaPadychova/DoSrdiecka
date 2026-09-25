@@ -262,9 +262,15 @@ test("pri samotných zákuskoch je cena v e-mailoch bez „od“", async (t) => 
   assert.equal(out.body.total, 18);
 
   for (const sprava of sent) {
-    assert.match(sprava.text, /Orientačná cena: 18 €/);
+    assert.match(sprava.text, /Cena: 18 €/);
     assert.doesNotMatch(sprava.text, /od 18 €/, "cena za kus platí, netreba „od“");
+    assert.doesNotMatch(sprava.text, /Orientačná/,
+      "cena zákuskov je konečná, nie orientačná");
   }
+  const potvrdenie = sent.find((s) => /Ďakujem za objednávku/.test(s.text));
+  assert.match(potvrdenie.text, /Ozvem sa ti s potvrdením termínu\./,
+    "bez torty sa dopočítava len termín");
+  assert.doesNotMatch(potvrdenie.text, /konečnou cenou/);
 });
 
 test("keď je v objednávke torta, „od“ pri cene ostáva", async (t) => {
@@ -281,4 +287,7 @@ test("keď je v objednávke torta, „od“ pri cene ostáva", async (t) => {
     assert.match(sprava.text, /Orientačná cena: od 58 €/,
       "veľkosť aj úpravy torty sa ešte dolaďujú");
   }
+  const potvrdenie = sent.find((s) => /Ďakujem za objednávku/.test(s.text));
+  assert.match(potvrdenie.text, /potvrdením termínu a konečnou cenou/,
+    "pri torte sa dopočítava aj cena");
 });

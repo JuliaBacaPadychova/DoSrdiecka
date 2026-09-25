@@ -113,6 +113,13 @@ module.exports = withErrors(async function handler(req, res) {
   // odíde bez neho než by mal v predmete "undefined".
   const cislo = result.order_no ? `#${result.order_no}` : "";
   const cenaSpolu = `${maTortu ? "od " : ""}${result.total} €`;
+  // Orientačná je cena len vtedy, keď je v objednávke torta — tam sa ešte
+  // dolaďuje veľkosť a úpravy. Zákusky a chlebík majú cenu za kus a platí,
+  // takže ju netreba volať orientačnou ani sľubovať dopočítanie.
+  const cenaRiadok = `${maTortu ? "Orientačná cena" : "Cena"}: ${cenaSpolu}`;
+  const ozvemSa = maTortu
+    ? "Ozvem sa ti s potvrdením termínu a konečnou cenou."
+    : "Ozvem sa ti s potvrdením termínu.";
 
   if (notifyTo) {
     try {
@@ -131,7 +138,7 @@ module.exports = withErrors(async function handler(req, res) {
           `E-mail: ${email}\n` +
           `Poznámka: ${note || "—"}\n\n` +
           `Položky:\n${itemsText}\n\n` +
-          `Orientačná cena: ${cenaSpolu}\n\n` +
+          `${cenaRiadok}\n\n` +
           `Detaily nájdeš v admin časti webu.`,
       });
     } catch (mailErr) {
@@ -147,11 +154,11 @@ module.exports = withErrors(async function handler(req, res) {
         : `Ďakujem za objednávku na ${dlhyDatum(day)}`,
       text:
         `Ďakujem za objednávku!\n\n` +
-        `Tvoju predbežnú objednávku mám. Ozvem sa ti s potvrdením termínu a konečnou cenou.\n\n` +
+        `Tvoju predbežnú objednávku mám. ${ozvemSa}\n\n` +
         (cislo ? `Číslo objednávky: ${cislo}\n` : "") +
         `Termín: ${dlhyDatum(day)}\n` +
         `Objednávka:\n${itemsText}\n\n` +
-        `Orientačná cena: ${cenaSpolu}\n` +
+        `${cenaRiadok}\n` +
         (note ? `Poznámka: ${note}\n` : "") +
         `\n` +
         // Zámerne len mestská časť. Presnú adresu posiela majiteľka až
