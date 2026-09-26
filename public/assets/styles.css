@@ -11,7 +11,7 @@ body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--cream);
   background-image:radial-gradient(1200px 600px at 80% -5%, #fff8ec 0%, rgba(255,248,236,0) 60%);
   line-height:1.55;-webkit-font-smoothing:antialiased}
 h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:.01em;margin:0}
-.wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+.wrap{max-width:1280px;margin:0 auto;padding:0 22px}
 .eyebrow{font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--peach-deep);font-weight:600}
 .muted{color:var(--ink-soft)}
 .err{color:#a33;font-size:.88rem;margin:10px 0 0}
@@ -256,7 +256,7 @@ footer a{color:var(--peach-deep)}
 .demo-flag{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--peach-deep);font-weight:600}
 
 /* --- admin --- */
-.admin-wrap{max-width:960px;margin:0 auto;padding:40px 22px 80px}
+.admin-wrap{max-width:1760px;margin:0 auto;padding:40px 28px 80px}
 .admin-login{max-width:380px;margin:80px auto;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:var(--shadow)}
 .admin-login h1{font-size:1.5rem;margin-bottom:18px;display:flex;align-items:center;gap:8px}
 .admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0 22px;border-bottom:1px solid var(--line);padding-bottom:10px}
@@ -312,3 +312,23 @@ footer a{color:var(--peach-deep)}
 /* číslo objednávky v potvrdení a v správe */
 .success .ordno{margin-top:8px;font-size:1.05rem;font-weight:700;color:var(--terra)}
 .admin-table .ordno{font-weight:700;color:var(--terra);white-space:nowrap}
+
+/* --- široká obrazovka --- */
+/* Na šírke správy by dvojstĺpcový formulár rozťahoval políčka na pol metra.
+   Namiesto pevných dvoch stĺpcov sa ich zmestí toľko, koľko sa zmestí —
+   pri 260 px na políčko. .tri a .styri majú vlastné pomery, tie neruším. */
+/* Tabuľky v správe sú na telefóne širšie ako obrazovka a posúvali celú
+   stránku do strán. Nech sa posúva len tá jedna karta s tabuľkou. */
+@media(max-width:700px){
+  .admin-card{overflow-x:auto}
+}
+
+@media(min-width:1100px){
+  .admin-wrap .form:not(.tri):not(.styri){grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+  /* Políčka, ktoré by sa inak natiahli cez celú šírku a písalo by sa do
+     nich zle: dlhý text sa lepšie číta v stĺpci, výber stavu nepotrebuje
+     pol obrazovky a výber súboru už vôbec nie. */
+  .admin-wrap textarea{max-width:860px}
+  .admin-wrap input[type="file"]{max-width:520px}
+  .admin-table select,.admin-table input:not([type="checkbox"]){max-width:200px}
+}
