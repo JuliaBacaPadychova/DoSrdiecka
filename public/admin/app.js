@@ -1773,7 +1773,15 @@
                   data-vazba="${v.id}" data-pole="${pole}"
                   data-povodne="${hodnota}" value="${hodnota}">
                 <span class="muted">${naTortu(r) ? 'vrstiev'
-                  : r.yield_unit === 'g' ? 'g do kusu' : 'kusov z dávky'}</span>`}
+                  : r.yield_unit === 'g' ? 'g do kusu' : 'kusov z dávky'}</span>${
+                  // Keď má priradenie vlastné číslo iné, než na aké je recept
+                  // napísaný, treba to vidieť — inak sa recept upraví a nikto
+                  // netuší, prečo sa dávka nezmenila.
+                  pole === 'layers' && v.layers !== null && v.layers !== undefined
+                    && Number(v.layers) !== Number(r.layers)
+                  ? `<br><span class="muted" style="font-size:.78rem">recept je na ${
+                      esc(cislo(r.layers) || '—')} — vyprázdni políčko, nech platí recept</span>`
+                  : ''}`}
               </td>
               <td class="akcie" style="width:1%">
                 <button class="btn ghost sm zmazat" onclick="Admin.zrusPriradenie('${v.id}', '${r.id}')">Odobrať</button>
@@ -2079,7 +2087,13 @@
         await apiFetch('/api/admin/receptar?co=vazba', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ product_id, recipe_id: receptId, qty_per_piece: 1, layers: vrstiev }),
+          // Rovnaký počet, na aký je recept napísaný, sa NEUKLADÁ — prázdne
+          // znamená "platí recept". Kópia by sa časom rozišla: keď sa potom
+          // zmení recept, priradenie by ticho držalo staré číslo.
+          body: JSON.stringify({
+            product_id, recipe_id: receptId, qty_per_piece: 1,
+            layers: Number(vrstiev) === Number(recept.layers) ? null : vrstiev,
+          }),
         });
         await loadRecepty(receptId);
       } catch (err) { alert(err.message); }

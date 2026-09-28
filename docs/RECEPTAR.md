@@ -62,6 +62,16 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
    Príklad: obterová ganáž je v skupine s rolou *korpus*, takže jej
    `layers = 4` znamená „recept je napísaný na tortu so 4 korpusmi" a
    riadi ho políčko *Korpusov*.
+
+   `product_recipes.layers` je **vedomý zásah pri konkrétnej torte**, nie
+   kópia receptu: prázdne znamená „platí to, na čo je recept napísaný".
+   Migrácia brownie torty ho spočiatku vypĺňala sama (`r.layers`), čím
+   z každého priradenia spravila trvalý zásah — a keď sa potom recept
+   zmenil, priradenie ticho držalo staré číslo. Obterová ganáž tak mala
+   v recepte 4 a v priradení 1 a vychádzala z nej štvrtinová dávka.
+   Naprávalo sa to v `migracia-vrstvy-vazby.sql`; nové priradenie sa
+   rovnakým číslom, na aké je recept napísaný, už neukladá, a keď sa
+   líši, je to v tabuľke priradení napísané.
    Je to ručný prepočet, nikam sa neukladá; trvalý počet vrstiev sa mení
    v *Úprave receptov* pri priradení.
 
