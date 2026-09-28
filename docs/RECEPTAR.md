@@ -53,6 +53,15 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
    na 2 disk ZDVOJILA. To isté platí pre obterovú ganáž. Jednotlivý
    recept sa dá po tom ešte doladiť priamo v rozpise (karamel len
    v jednej vrstve).
+
+   Pozor na to, že **rola skupiny sama nestačí**: keď má recept prázdne
+   `layers`, neprepočíta sa ani vtedy, keď jeho skupina rolu má — prázdno
+   znamená „vrstvami sa neriadi" a prebije ju. Nápoveda pod políčkom to
+   povie priamo a pri takej kombinácii upozorní, že sa recept prepočíta
+   len priemerom. Bez toho to vyzerá, akoby nastavenie nefungovalo.
+   Príklad: obterová ganáž je v skupine s rolou *korpus*, takže jej
+   `layers = 4` znamená „recept je napísaný na tortu so 4 korpusmi" a
+   riadi ho políčko *Korpusov*.
    Je to ručný prepočet, nikam sa neukladá; trvalý počet vrstiev sa mení
    v *Úprave receptov* pri priradení.
 
