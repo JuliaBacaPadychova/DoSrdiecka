@@ -219,7 +219,8 @@
     return `
         <tr>
           <td class="ordno">${o.order_no ? '#' + o.order_no : '—'}</td>
-          <td>${o.day}</td>
+          <td><input type="date" value="${o.day}" class="termin"
+            onchange="Admin.presunObjednavku('${o.id}', this.value, '${o.day}')"></td>
           <td>${o.customer_name}<br><span class="muted">${o.phone || '—'}${
             o.email ? `<br>${o.email}` : ''}</span>${
             o.note ? `<br><span class="muted">Pozn.: ${o.note}</span>` : ''}</td>
@@ -258,6 +259,38 @@
           ${obsah}
         </div>`;
     }).join('');
+  }
+
+  // Presun objednávky na iný termín. Kapacita dňa aj prehľad peňazí idú
+  // za dňom objednávky, takže keď sa piekol iný deň (dohodli sa inak,
+  // alebo to majiteľka stihla skôr), treba termín prepísať. Inak drží
+  // kapacitu dňa, na ktorom sa nepieklo, a v Peniazoch spadne do zlého
+  // obdobia. Zákazníčke sa pritom nič neposiela — dohodli sa osobne.
+  async function presunObjednavku(id, novy, povodny) {
+    if (!novy || novy === povodny) return;
+    if (!confirm(`Presunúť objednávku z ${povodny} na ${novy}?\n\n`
+      + 'Kapacita sa uvoľní na pôvodnom termíne a zaberie sa na novom. '
+      + 'V Peniazoch bude objednávka patriť do obdobia nového termínu. '
+      + 'Zákazníčke sa neposiela nič.')) {
+      loadOrders();
+      return;
+    }
+    try {
+      const odpoved = await apiFetch(`/api/admin/orders?id=${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day: novy }),
+      });
+      loadOrders();
+      loadDays();
+      if (odpoved && odpoved.day_created) {
+        alert(`Presunuté. Termín ${novy} v kalendári ešte nebol — pridala som ho `
+          + 'ako zatvorený, takže sa na webe neponúka.');
+      }
+    } catch (err) {
+      alert('Presunúť sa to nepodarilo: ' + err.message);
+      loadOrders();
+    }
   }
 
   async function updateOrderStatus(id, status) {
@@ -2526,7 +2559,7 @@
 
   window.Admin = {
     login, logout, showTab,
-    updateOrderStatus, saveOrder, resetOrderForm, editDay, saveDay, savePassword,
+    updateOrderStatus, presunObjednavku, saveOrder, resetOrderForm, editDay, saveDay, savePassword,
     deleteDay, editProduct, vyberVyrobok, resetProductForm, saveProduct,
     saveSettings,
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,

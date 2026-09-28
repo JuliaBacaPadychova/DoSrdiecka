@@ -20,6 +20,23 @@ const CHYBY = {
   capacity_chlebik: "Na tento deň je chlebík už obsadený. Zvýš limit v Dni a limity, alebo zvoľ iný deň.",
 };
 
+// Objednávka musí mať svoj deň aj v kalendári — inak by nebola vidieť
+// v Dni a limity a jej kusy by sa do kapacity toho dňa nerátali. Zakladá
+// sa ZATVORENÝ: termín vznikol dohodou mimo web, tak sa na webe ponúkať
+// nemá. Vracia true, ak deň naozaj pribudol.
+async function zabezpecDen(day) {
+  const su = await rest(`open_days?day=eq.${encodeURIComponent(day)}&select=day`);
+  if (su && su.length) return false;
+  try {
+    await rest("open_days", { method: "POST", body: { day, is_open: false } });
+    return true;
+  } catch (err) {
+    // Dvaja naraz: deň medzitým založil niekto iný. To je v poriadku.
+    if (err && err.status === 409) return false;
+    throw err;
+  }
+}
+
 function kod(err) {
   const msg = (err && err.body && (err.body.message || err.body.hint)) || err.message || "";
   return Object.keys(CHYBY).find((c) => msg.includes(c));
@@ -138,6 +155,21 @@ module.exports = withErrors(
         fields.paid_note = String(body.paid_note || "").trim().slice(0, 500);
       }
 
+      // Presun na iný termín. Kapacita dňa aj Peniaze sa počítajú podľa
+      // dňa objednávky, takže keď sa piekol iný deň, než na aký bola
+      // objednaná, musí sa prepísať — inak drží kapacitu dňa, na ktorom
+      // sa nepieklo, a do prehľadu peňazí spadne do zlého obdobia.
+      let denZalozeny = false;
+      if (body.day !== undefined) {
+        const den = String(body.day || "");
+        if (!DAY_RE.test(den)) return sendJson(res, 400, { error: "invalid_day" });
+        // Deň sa zakladá PRED presunom zámerne: keby presun zlyhal,
+        // ostane len prázdny zatvorený deň, ktorý sa dá zmazať. Opačné
+        // poradie by nechalo objednávku na dni mimo kalendára.
+        denZalozeny = await zabezpecDen(den);
+        fields.day = den;
+      }
+
       if (Object.keys(fields).length === 0) {
         return sendJson(res, 400, { error: "no_fields" });
       }
@@ -147,7 +179,7 @@ module.exports = withErrors(
         body: fields,
         prefer: "return=representation",
       });
-      return sendJson(res, 200, { order: updated[0] || null });
+      return sendJson(res, 200, { order: updated[0] || null, day_created: denZalozeny });
     }
 
     sendJson(res, 405, { error: "method_not_allowed" });
