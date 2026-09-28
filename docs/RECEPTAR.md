@@ -33,7 +33,7 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
    má vyplnený `recipes.diameter_cm` (na aký priemer je napísaný) a torta
    na webe má `products.diameter_cm`. Druhý koeficient je počet vrstiev:
    `recipes.layers` hovorí, na koľko je recept napísaný (brownie korpus 4,
-   krém 3), `product_recipes.layers`, koľko ich ide do tejto torty. Spolu
+   krém 3), *Čo mám miešať*, koľko ich ide do tejto torty. Spolu
    `koeficient = plocha × (koľko vrstiev / na koľko)`, čiže na 18 cm
    a 3 korpusy 2,25 × 0,75 = 1,6875. Každá zložka sa počíta zvlášť, lebo
    korpusov a krémov býva rôzny počet.
@@ -63,25 +63,29 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
    `layers = 4` znamená „recept je napísaný na tortu so 4 korpusmi" a
    riadi ho políčko *Korpusov*.
 
-   `product_recipes.layers` je **vedomý zásah pri konkrétnej torte**, nie
-   kópia receptu: prázdne znamená „platí to, na čo je recept napísaný".
-   Migrácia brownie torty ho spočiatku vypĺňala sama (`r.layers`), čím
-   z každého priradenia spravila trvalý zásah — a keď sa potom recept
-   zmenil, priradenie ticho držalo staré číslo. Obterová ganáž tak mala
-   v recepte 4 a v priradení 1 a vychádzala z nej štvrtinová dávka.
-   Naprávalo sa to v `migracia-vrstvy-vazby.sql` a — keďže tá hľadala
-   recepty podľa názvu a premenovaný recept nenašla — ešte raz
-   v `migracia-vrstvy-vazby-2.sql`, ktorá vyprázdni počet vrstiev pri
-   všetkých priradeniach k tortám bez ohľadu na názvy. Poučenie: oprava
-   dát sa nemá viazať na názov, ktorý si majiteľka smie zmeniť.
+   Počet vrstiev sa pri priradení k príchuti **nezadáva**. Chvíľu sa dal
+   (`product_recipes.layers`) a bolo to len na škodu: je to to isté číslo,
+   aké už stojí v recepte, len na druhom mieste, a menila sa aj tak vždy
+   len jednorazovo v *Čo mám miešať*. Stĺpec v tabuľke preto už len
+   vypisuje, z čoho sa dávka počíta („priemerom torty a 4 vrstvami
+   z receptu", pri disku „len priemerom torty").
 
-   V tabuľke priradení sa počet vrstiev **nepredvypĺňa** z receptu —
-   prázdne políčko s popiskom „ako recept (4)" hovorí, že platí recept.
-   Vypĺňa sa len vtedy, keď má práve tá veľkosť natrvalo iný počet vrstiev;
-   vtedy sa pri nej aj vypíše, že sa od receptu líši. Jednorazová zmena
-   patrí do *Čo mám miešať* a nikam sa neukladá.
-   Je to ručný prepočet, nikam sa neukladá; trvalý počet vrstiev sa mení
-   v *Úprave receptov* pri priradení.
+   Čím to celé začalo: migrácia brownie torty `product_recipes.layers`
+   spočiatku vypĺňala sama (`r.layers`), čím z každého priradenia spravila
+   trvalý zásah — a keď sa potom recept zmenil, priradenie ticho držalo
+   staré číslo. Obterová ganáž tak mala v recepte 4 a v priradení 1
+   a vychádzala z nej štvrtinová dávka. Naprávalo sa to
+   v `migracia-vrstvy-vazby.sql` a — keďže tá hľadala recepty podľa názvu
+   a premenovaný recept nenašla — ešte raz v `migracia-vrstvy-vazby-2.sql`,
+   ktorá vyprázdni počet vrstiev pri všetkých priradeniach k tortám bez
+   ohľadu na názvy. Dve poučenia: oprava dát sa nemá viazať na názov, ktorý
+   si majiteľka smie zmeniť, a to isté číslo sa nemá dať zadať na dvoch
+   miestach. Stĺpec v databáze ostal (prázdny) a výpočet ho stále vie
+   prečítať, ale nič ho už nezapisuje.
+
+   Trvalý počet vrstiev sa teda mení **jedine** v recepte (*Na koľko
+   vrstiev*), jednorazová odchýlka v *Čo mám miešať* — tá sa nikam
+   neukladá.
 
    Priemer sa nezadáva — nesie si ho vybraná veľkosť torty. Rozmer mimo
    ponuky sa aj tak nedá objednať, takže políčko na priemer bolo len
