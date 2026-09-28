@@ -69,9 +69,17 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
    z každého priradenia spravila trvalý zásah — a keď sa potom recept
    zmenil, priradenie ticho držalo staré číslo. Obterová ganáž tak mala
    v recepte 4 a v priradení 1 a vychádzala z nej štvrtinová dávka.
-   Naprávalo sa to v `migracia-vrstvy-vazby.sql`; nové priradenie sa
-   rovnakým číslom, na aké je recept napísaný, už neukladá, a keď sa
-   líši, je to v tabuľke priradení napísané.
+   Naprávalo sa to v `migracia-vrstvy-vazby.sql` a — keďže tá hľadala
+   recepty podľa názvu a premenovaný recept nenašla — ešte raz
+   v `migracia-vrstvy-vazby-2.sql`, ktorá vyprázdni počet vrstiev pri
+   všetkých priradeniach k tortám bez ohľadu na názvy. Poučenie: oprava
+   dát sa nemá viazať na názov, ktorý si majiteľka smie zmeniť.
+
+   V tabuľke priradení sa počet vrstiev **nepredvypĺňa** z receptu —
+   prázdne políčko s popiskom „ako recept (4)" hovorí, že platí recept.
+   Vypĺňa sa len vtedy, keď má práve tá veľkosť natrvalo iný počet vrstiev;
+   vtedy sa pri nej aj vypíše, že sa od receptu líši. Jednorazová zmena
+   patrí do *Čo mám miešať* a nikam sa neukladá.
    Je to ručný prepočet, nikam sa neukladá; trvalý počet vrstiev sa mení
    v *Úprave receptov* pri priradení.
 

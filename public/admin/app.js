@@ -1746,7 +1746,12 @@
             </div>
           </div>
 
-          <p class="muted" style="margin:14px 0 6px;font-size:.88rem">Patrí k príchutiam:</p>
+          <p class="muted" style="margin:14px 0 6px;font-size:.88rem">Patrí k príchutiam:${
+            naTortu(r) && !bezVrstiev(r)
+              ? ' <span style="font-size:.85rem">Políčko nechaj prázdne — vtedy platí recept.'
+                + ' Vypĺňa sa len vtedy, keď má práve táto veľkosť natrvalo iný počet vrstiev'
+                + ' než ostatné; jednorazovú zmenu si urobíš hore v Čo mám miešať.</span>'
+              : ''}</p>
           ${pouzitie.length ? `<table class="admin-table"><thead><tr>
             <th>Príchuť</th><th>${naTortu(r) && bezVrstiev(r) ? '—'
               : naTortu(r) ? 'Vrstiev v torte'
@@ -1758,8 +1763,12 @@
             const pole = naTortu(r) && bezVrstiev(r) ? null
               : naTortu(r) ? 'layers'
               : r.yield_unit === 'g' ? 'qty_per_piece' : 'pieces_per_batch';
+            // Pri vrstvách sa číslo z receptu NEPREDVYPĹŇA. Prázdne políčko
+            // znamená "platí recept" a to je bežný stav — predvyplnené číslo
+            // vyzeralo ako údaj, ktorý treba udržiavať, a keď sa potom zmenil
+            // recept, ostalo tu staré.
             const hodnota = pole === 'layers'
-              ? cislo(v.layers === null || v.layers === undefined ? r.layers : v.layers)
+              ? cislo(v.layers)
               : pole === 'qty_per_piece'
                 ? cislo(v.qty_per_piece)
                 : cislo(v.pieces_per_batch === null || v.pieces_per_batch === undefined
@@ -1771,6 +1780,7 @@
                 ? '<span class="muted">riadi sa len priemerom</span>' : `
                 <input type="number" min="0" step="${r.yield_unit === 'g' && !naTortu(r) ? '0.1' : '1'}" style="width:90px"
                   data-vazba="${v.id}" data-pole="${pole}"
+                  ${pole === 'layers' ? `placeholder="ako recept (${esc(cislo(r.layers) || '—')})"` : ''}
                   data-povodne="${hodnota}" value="${hodnota}">
                 <span class="muted">${naTortu(r) ? 'vrstiev'
                   : r.yield_unit === 'g' ? 'g do kusu' : 'kusov z dávky'}</span>${
@@ -1779,7 +1789,7 @@
                   // netuší, prečo sa dávka nezmenila.
                   pole === 'layers' && v.layers !== null && v.layers !== undefined
                     && Number(v.layers) !== Number(r.layers)
-                  ? `<br><span class="muted" style="font-size:.78rem">recept je na ${
+                  ? `<br><span class="muted chyba" style="font-size:.78rem">recept je na ${
                       esc(cislo(r.layers) || '—')} — vyprázdni políčko, nech platí recept</span>`
                   : ''}`}
               </td>
