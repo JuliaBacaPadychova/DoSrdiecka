@@ -1778,7 +1778,8 @@
               <td>${esc(nazovPrichute(v.product_id))}</td>
               <td style="width:230px">${pole === null
                 ? '<span class="muted">riadi sa len priemerom</span>' : `
-                <input type="number" min="0" step="${r.yield_unit === 'g' && !naTortu(r) ? '0.1' : '1'}" style="width:90px"
+                <input type="number" min="0" step="${r.yield_unit === 'g' && !naTortu(r) ? '0.1' : '1'}"
+                  style="width:${pole === 'layers' ? '170px' : '90px'}"
                   data-vazba="${v.id}" data-pole="${pole}"
                   ${pole === 'layers' ? `placeholder="ako recept (${esc(cislo(r.layers) || '—')})"` : ''}
                   data-povodne="${hodnota}" value="${hodnota}">
