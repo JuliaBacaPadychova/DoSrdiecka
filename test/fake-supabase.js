@@ -103,12 +103,22 @@ function startFakeSupabase() {
     );
   }
 
+  // PostgREST vie zoradiť podľa viacerých stĺpcov naraz, oddelených
+  // čiarkou: "day.asc,order_no.asc". Druhý stĺpec rozhoduje až vtedy,
+  // keď sa prvý rovná.
   function applyOrder(rows, orderParam) {
     if (!orderParam) return rows;
-    const [field, dir] = orderParam.split(".");
-    const sorted = [...rows].sort((a, b) => (a[field] > b[field] ? 1 : a[field] < b[field] ? -1 : 0));
-    if (dir === "desc") sorted.reverse();
-    return sorted;
+    const kluce = orderParam.split(",").map((cast) => {
+      const [field, dir] = cast.split(".");
+      return { field, smer: dir === "desc" ? -1 : 1 };
+    });
+    return [...rows].sort((a, b) => {
+      for (const k of kluce) {
+        if (a[k.field] > b[k.field]) return k.smer;
+        if (a[k.field] < b[k.field]) return -k.smer;
+      }
+      return 0;
+    });
   }
 
   function tableFor(name) {

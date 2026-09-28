@@ -46,6 +46,29 @@ async function sReceptarom(t, fn) {
   await fn({ db: fake.db, zavolaj });
 }
 
+test("objednávky v Peniazoch idú od najnovšej, v rámci dňa podľa čísla", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    // Zámerne v neporiadku, ako ich vráti databáza bez zoradenia.
+    [
+      { no: 11, day: "2026-09-15" },
+      { no: 5, day: "2026-09-12" },
+      { no: 8, day: "2026-09-15" },
+      { no: 12, day: "2026-09-27" },
+      { no: 10, day: "2026-09-15" },
+    ].forEach((o) => db.orders.push({
+      id: "o" + o.no, order_no: o.no, day: o.day, customer_name: "Zákazník " + o.no,
+      phone: "", email: "", note: "", total_estimate: 4, status: "nova",
+      manual: false, paid_amount: null, paid_on: null, paid_note: "",
+      created_at: new Date().toISOString(),
+    }));
+
+    const out = await zavolaj("GET", "/api/admin/receptar?od=2026-09-01&do=2026-09-30");
+    assert.equal(out.code, 200);
+    assert.deepEqual(out.body.objednavky.map((o) => o.order_no), [12, 11, 10, 8, 5],
+      "najnovšia hore, nech sa za ňou nescrolluje");
+  });
+});
+
 test("čítanie vráti suroviny aj recepty naraz", async (t) => {
   await sReceptarom(t, async ({ zavolaj }) => {
     const o = await zavolaj("GET", "/api/admin/receptar");

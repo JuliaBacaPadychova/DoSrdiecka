@@ -179,7 +179,10 @@ module.exports = withErrors(
           nacitatReceptar(),
           rest(`orders?day=gte.${od}&day=lte.${doDna}` +
                "&select=id,order_no,day,customer_name,status,total_estimate," +
-               "paid_amount,paid_on,paid_note&order=day.asc"),
+               // Od najnovšej: nová objednávka má byť hore, nie na konci
+               // dlhej tabuľky. Druhý stĺpec rozhoduje v rámci jedného
+               // dňa — bez neho by čísla preskakovali.
+               "paid_amount,paid_on,paid_note&order=day.desc,order_no.desc"),
         ]);
         // Zoznam patrí do obdobia podľa termínu, na ktorý sa nakupuje.
         // Zoznam bez termínu nemá kam spadnúť — do súčtu sa nedostane a
