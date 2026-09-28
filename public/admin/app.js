@@ -889,6 +889,39 @@
     return Number.isFinite(p) && p > 0;
   }
 
+  // Nápoveda pri "Na koľko vrstiev". Bez nej sa nedá uhádnuť, či to číslo
+  // znamená korpusy alebo náplne — a hlavne, že rola skupiny sama nestačí:
+  // keď je políčko prázdne, recept sa neprepočíta ani vtedy, keď jeho
+  // skupina rolu má. Na tom sa dá stratiť pol hodiny hľadaním, prečo sa
+  // rozpis nehýbe.
+  function napovedaVrstiev(recept) {
+    if (!naTortu(recept)) {
+      return '<span class="fieldhint">Platí len pri receptoch na tortu, čiže tam, kde je'
+        + ' vyplnený priemer.</span>';
+    }
+    const rola = rolaReceptu(recept);
+    const skupina = skupinaReceptu(recept);
+    const meno = skupina ? esc(skupina.name) : 'bez skupiny';
+
+    if (!rola) {
+      return `<span class="fieldhint">Skupina <strong>${meno}</strong> nemá v torte rolu,
+        takže políčka <em>Korpusov</em> a <em>Náplní</em> sa tohto receptu nedotknú.
+        Rolu nastavíš hore v Skupinách receptov; tu napíš, na koľko vrstiev je recept
+        napísaný, alebo nechaj prázdne, ak sa vrstvami neriadi.</span>`;
+    }
+
+    const ktore = rola === 'korpus' ? 'Korpusov' : 'Náplní';
+    const coho = rola === 'korpus' ? 'korpusov' : 'vrstiev';
+    if (bezVrstiev(recept)) {
+      return `<span class="fieldhint chyba">Skupina <strong>${meno}</strong> sa riadi počtom
+        <strong>${ktore}</strong>, ale tu je prázdno — recept sa preto prepočíta len
+        priemerom a zmena sa ho nedotkne. Napíš, na koľko ${coho} je recept napísaný.</span>`;
+    }
+    return `<span class="fieldhint">Riadi sa políčkom <strong>${ktore}</strong> v Čo mám
+      miešať, lebo recept je v skupine <strong>${meno}</strong>. Číslo hovorí, na koľko
+      ${coho} je recept napísaný — pri menšom počte sa dávka zmenší v tom pomere.</span>`;
+  }
+
   // Prázdne "na koľko vrstiev" znamená, že sa recept vrstvami NERIADI:
   // obterová ganáž a želé disk idú do torty raz bez ohľadu na počet
   // korpusov. Pozor, cislo() je pomôcka na VÝPIS a prázdnu hodnotu vráti
@@ -1665,9 +1698,7 @@
                 data-povodne="${esc(r.layers === null || r.layers === undefined ? '' : r.layers)}"
                 value="${esc(r.layers === null || r.layers === undefined ? '' : r.layers)}"
                 placeholder="prázdne = neriadi sa vrstvami">
-              <span class="fieldhint">Brownie korpus je na 4 korpusy, krém na 3 vrstvy.
-                Pri menšom počte sa dávka zmenší v tom pomere. Nechaj prázdne pri tom, čo
-                ide do torty raz bez ohľadu na vrstvy — obter, poleva, želé disk.</span>
+              ${napovedaVrstiev(r)}
             </div>
           </div>
           <table class="admin-table"><tbody>${vlastne.map((p, poradie) => {

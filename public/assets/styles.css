@@ -142,6 +142,10 @@ footer a.mail:hover{color:var(--terra);border-bottom-color:var(--terra)}
 
 /* Vysvetlivka pod poľom vo formulári v správe webu. */
 .fieldhint{display:block;margin-top:5px;font-size:.76rem;color:var(--ink-soft);line-height:1.4}
+/* Nápoveda, ktorá hovorí, že je niečo nastavené naprázdno — napríklad
+   skupina sa riadi počtom korpusov, ale recept má vrstvy prázdne. Nie je
+   to chyba, ktorú treba hneď opraviť, preto varovná a nie červená. */
+.fieldhint.chyba{color:var(--terra);font-weight:600}
 
 /* Hlavný nadpis smie mať viac riadkov. Prvý riadok je ten veľký, ďalšie
    sú menšie — inak by dvojvetý nadpis zabral pol obrazovky. Riadky sú
