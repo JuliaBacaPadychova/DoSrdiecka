@@ -1747,52 +1747,41 @@
           </div>
 
           <p class="muted" style="margin:14px 0 6px;font-size:.88rem">Patrí k príchutiam:${
-            naTortu(r) && !bezVrstiev(r)
-              ? ' <span style="font-size:.85rem">Políčko nechaj prázdne — vtedy platí recept.'
-                + ' Vypĺňa sa len vtedy, keď má práve táto veľkosť natrvalo iný počet vrstiev'
-                + ' než ostatné; jednorazovú zmenu si urobíš hore v Čo mám miešať.</span>'
+            naTortu(r)
+              ? ' <span style="font-size:.85rem">Pri tortách sa tu nič nenastavuje — priemer si'
+                + ' nesie veľkosť sama a počet vrstiev prepíšeš hore v Čo mám miešať.</span>'
               : ''}</p>
           ${pouzitie.length ? `<table class="admin-table"><thead><tr>
-            <th>Príchuť</th><th>${naTortu(r) && bezVrstiev(r) ? '—'
-              : naTortu(r) ? 'Vrstiev v torte'
+            <th>Príchuť</th><th>${naTortu(r) ? 'Ako sa prepočíta'
               : r.yield_unit === 'g' ? 'Gramov do kusu' : 'Kusov z dávky'}</th><th></th>
           </tr></thead><tbody>${pouzitie.map((v) => {
             // Pri torte sa nastavuje počet vrstiev tejto zložky, nie kusy:
             // do 18 cm torty môžu ísť 3 korpusy namiesto štyroch.
-            // Recept, ktorý sa vrstvami neriadi, nemá pri príchuti čo nastavovať.
-            const pole = naTortu(r) && bezVrstiev(r) ? null
-              : naTortu(r) ? 'layers'
+            // Pri torte sa pri príchuti nenastavuje nič: priemer si nesie
+            // veľkosť sama a počet vrstiev sa mení v "Čo mám miešať", kde
+            // sa to aj hneď prepočíta. Políčko tu len mätúco pýtalo číslo,
+            // ktoré sa aj tak zadáva inde.
+            const pole = naTortu(r) ? null
               : r.yield_unit === 'g' ? 'qty_per_piece' : 'pieces_per_batch';
             // Pri vrstvách sa číslo z receptu NEPREDVYPĹŇA. Prázdne políčko
             // znamená "platí recept" a to je bežný stav — predvyplnené číslo
             // vyzeralo ako údaj, ktorý treba udržiavať, a keď sa potom zmenil
             // recept, ostalo tu staré.
-            const hodnota = pole === 'layers'
-              ? cislo(v.layers)
-              : pole === 'qty_per_piece'
-                ? cislo(v.qty_per_piece)
-                : cislo(v.pieces_per_batch === null || v.pieces_per_batch === undefined
-                    ? r.yield_qty : v.pieces_per_batch);
+            const hodnota = pole === 'qty_per_piece'
+              ? cislo(v.qty_per_piece)
+              : cislo(v.pieces_per_batch === null || v.pieces_per_batch === undefined
+                  ? r.yield_qty : v.pieces_per_batch);
             return `
             <tr>
               <td>${esc(nazovPrichute(v.product_id))}</td>
               <td style="width:230px">${pole === null
-                ? '<span class="muted">riadi sa len priemerom</span>' : `
-                <input type="number" min="0" step="${r.yield_unit === 'g' && !naTortu(r) ? '0.1' : '1'}"
-                  style="width:${pole === 'layers' ? '170px' : '90px'}"
+                ? `<span class="muted">${bezVrstiev(r)
+                    ? 'len priemerom torty'
+                    : `priemerom torty a ${cisloSk(r.layers)} vrstvami z receptu`}</span>` : `
+                <input type="number" min="0" step="${r.yield_unit === 'g' ? '0.1' : '1'}" style="width:90px"
                   data-vazba="${v.id}" data-pole="${pole}"
-                  ${pole === 'layers' ? `placeholder="ako recept (${esc(cislo(r.layers) || '—')})"` : ''}
                   data-povodne="${hodnota}" value="${hodnota}">
-                <span class="muted">${naTortu(r) ? 'vrstiev'
-                  : r.yield_unit === 'g' ? 'g do kusu' : 'kusov z dávky'}</span>${
-                  // Keď má priradenie vlastné číslo iné, než na aké je recept
-                  // napísaný, treba to vidieť — inak sa recept upraví a nikto
-                  // netuší, prečo sa dávka nezmenila.
-                  pole === 'layers' && v.layers !== null && v.layers !== undefined
-                    && Number(v.layers) !== Number(r.layers)
-                  ? `<br><span class="muted chyba" style="font-size:.78rem">recept je na ${
-                      esc(cislo(r.layers) || '—')} — vyprázdni políčko, nech platí recept</span>`
-                  : ''}`}
+                <span class="muted">${r.yield_unit === 'g' ? 'g do kusu' : 'kusov z dávky'}</span>`}
               </td>
               <td class="akcie" style="width:1%">
                 <button class="btn ghost sm zmazat" onclick="Admin.zrusPriradenie('${v.id}', '${r.id}')">Odobrať</button>
@@ -1803,14 +1792,10 @@
             <div><label>Priradiť k príchuti</label>
               <select id="nova-prichut-${r.id}"><option value="">— vyber —</option>${moznostiPrichuti}</select>
             </div>
-            ${naTortu(r) && bezVrstiev(r) ? `
-            <div><span class="fieldhint">Tento recept sa vrstvami neriadi — do torty ide
-              raz a prepočíta sa len priemerom.</span></div>` : naTortu(r) ? `
-            <div><label for="nove-vrstiev-${r.id}">Koľko vrstiev ide do torty</label>
-              <input type="number" min="0" step="1" id="nove-vrstiev-${r.id}" value="${esc(r.layers || 1)}">
-              <span class="fieldhint">Recept je napísaný na ${esc(r.layers || 1)}.
-                Priemer si nesie torta sama, ten sa tu nezadáva.</span>
-            </div>` : r.yield_unit === 'g' ? `
+            ${naTortu(r) ? `
+            <div><span class="fieldhint">Priemer si nesie torta sama a počet vrstiev sa mení
+              hore v Čo mám miešať — tu stačí vybrať veľkosť a priradiť.</span></div>`
+            : r.yield_unit === 'g' ? `
             <div><label for="nove-nakus-${r.id}">Gramov do jedného zákusku</label>
               <input type="number" min="0" step="0.1" id="nove-nakus-${r.id}" placeholder="napr. 12">
               <span class="fieldhint">Recept je na ${cisloSk(r.yield_qty)} g — napíš,
@@ -2076,35 +2061,16 @@
 
     const recept = RECEPTAR.recepty.find((r) => r.id === receptId);
 
-    // Pri torte sa nepýtame na kusy ani gramy, ale na počet vrstiev —
-    // priemer si nesie samotná torta.
+    // Pri torte sa nepýtame na nič: priemer si nesie veľkosť sama a počet
+    // vrstiev sa berie z receptu (a jednorazovo sa mení v Čo mám miešať).
+    // Počet vrstiev sa pri priradení ZÁMERNE neukladá — kópia by sa po
+    // úprave receptu rozišla a ticho držala staré číslo.
     if (naTortu(recept)) {
-      const pole = document.getElementById('nove-vrstiev-' + receptId);
-      const vrstiev = pole ? pole.value : '';
-      // Recept bez vrstiev (disk, obter) sa priradí rovno — nemá sa čoho pýtať.
-      if (bezVrstiev(recept)) {
-        try {
-          await apiFetch('/api/admin/receptar?co=vazba', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ product_id, recipe_id: receptId, qty_per_piece: 1 }),
-          });
-          await loadRecepty(receptId);
-        } catch (err) { alert(err.message); }
-        return;
-      }
-      if (!(Number(vrstiev) > 0)) { alert('Napíš, koľko vrstiev ide do torty.'); return; }
       try {
         await apiFetch('/api/admin/receptar?co=vazba', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          // Rovnaký počet, na aký je recept napísaný, sa NEUKLADÁ — prázdne
-          // znamená "platí recept". Kópia by sa časom rozišla: keď sa potom
-          // zmení recept, priradenie by ticho držalo staré číslo.
-          body: JSON.stringify({
-            product_id, recipe_id: receptId, qty_per_piece: 1,
-            layers: Number(vrstiev) === Number(recept.layers) ? null : vrstiev,
-          }),
+          body: JSON.stringify({ product_id, recipe_id: receptId, qty_per_piece: 1 }),
         });
         await loadRecepty(receptId);
       } catch (err) { alert(err.message); }
