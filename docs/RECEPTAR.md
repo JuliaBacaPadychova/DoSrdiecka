@@ -114,6 +114,20 @@ Každá surovina má vlastnú jednotku (`g` / `ml` / `ks`). V exceli mal
 stĺpec názov „v gramoch", ale pri želatíne v ňom boli plátky — preto
 `Želatína plátková` je v kusoch (1 plátok Silver 180 bloom = 5 g).
 
+Jednotka patrí **surovine, nie receptu**, lebo `pack_size` je v nej tiež
+a cena sa počíta `amount / pack_size × pack_price`. Keby si jeden recept
+smel písať smotanu v gramoch a druhý v mililitroch, cena by v jednom
+z nich tíško sedela o hustotu vedľa. Prepočty medzi jednotkami sa
+zámerne **nerobia**: 120 ml smotany je aj 120 g, ale 120 ml oleja je
+110 g, a hádať hustotu je horšie než sa nepýtať.
+
+Meniť sa dá na oboch miestach — v *Surovinách* aj priamo v riadku
+suroviny v *Úprave receptov*, kde to majiteľka vidí najskôr. Prepínač
+v recepte mení tú istú surovinu, preto pred uložením vypíše, v ktorých
+receptoch sa to prejaví a ako sa odteraz bude čítať balenie. Ponuka
+jednotiek je v `JEDNOTKY` na jednom mieste, nech sa oba výbery
+nerozídu.
+
 ## Z jednej dávky vyjde pri každej príchuti iný počet
 
 Z dávky odpalovaného cesta vyjde 20 choux, ale len 12 veterníkov — sú

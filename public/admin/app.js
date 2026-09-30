@@ -696,6 +696,11 @@
   let RECEPTAR = null;
   let SUROVINY_CACHE = [];
 
+  // Jednotky sú na jednom mieste, nech sa výber pri surovine a výber
+  // v recepte nerozídu. Ceny sa medzi nimi neprepočítavajú — `pack_size`
+  // je vždy v tej istej jednotke, akú má surovina.
+  const JEDNOTKY = ['g', 'ml', 'ks'];
+
   // Postgres radí diakritiku inak než slovenská abeceda, preto sa zoznamy
   // radia ešte raz tu — nech je Čokoláda za Cukrom a nie na konci.
   function podlaAbecedy(zoznam, kluc) {
@@ -721,6 +726,14 @@
 
   async function loadSuroviny() {
     const el = document.getElementById('surovinyList');
+    // Ponuka jednotiek je tá istá ako v recepte — z jedného zoznamu,
+    // nech sa nestane, že sa niekde dá vybrať niečo, čo inde chýba.
+    const vyber = document.getElementById('surUnit');
+    if (vyber && vyber.options.length !== JEDNOTKY.length) {
+      const bola = vyber.value;
+      vyber.innerHTML = JEDNOTKY.map((j) => `<option value="${j}">${esc(j)}</option>`).join('');
+      if (bola) vyber.value = bola;
+    }
     el.innerHTML = '<p class="muted">Načítavam suroviny…</p>';
     try {
       const data = await apiFetch('/api/admin/receptar');
@@ -1709,10 +1722,10 @@
                   value="${esc(p.note || '')}" placeholder="poznámka k surovine"
                   style="margin-top:4px;font-size:.85rem;max-width:420px"></td>
               <td style="width:170px">
-                <input type="number" min="0" step="0.1" style="width:110px"
+                <input type="number" min="0" step="0.1" style="width:96px"
                   data-polozka="${p.id}" data-povodne="${cislo(p.amount)}"
                   value="${cislo(p.amount)}" placeholder="podľa chuti">
-                ${esc(su ? su.unit : '')}
+                ${su ? vyberJednotky(su) : ''}
               </td>
               <td class="akcie" style="width:1%">
                 <button class="btn ghost sm" title="posunúť vyššie"
@@ -2045,6 +2058,53 @@
       });
       await loadRecepty(receptId);
     } catch (err) { alert(err.message); }
+  }
+
+  // Jednotka nie je vlastnosť receptu, ale suroviny — vážiť sa dá
+  // v gramoch alebo odmerať v mililitroch, ale vždy rovnako všade.
+  // V recepte ju vidí najskôr, tak nech sa dá prepnúť rovno tam; že to
+  // platí aj inde, povie potvrdenie pred uložením.
+  function vyberJednotky(su) {
+    const moznosti = JEDNOTKY.map((j) =>
+      `<option value="${j}"${su.unit === j ? ' selected' : ''}>${esc(j)}</option>`).join('');
+    return `<select style="width:62px" data-jednotka="${su.id}"
+      title="Jednotka suroviny ${esc(su.name)} — platí všade, kde sa používa"
+      onchange="Admin.zmenJednotku('${su.id}', this)">${moznosti}</select>`;
+  }
+
+  async function zmenJednotku(surovinaId, el) {
+    const su = (RECEPTAR.suroviny || []).find((x) => x.id === surovinaId);
+    if (!su) return;
+    const stara = su.unit;
+    const nova = el.value;
+    if (stara === nova) return;
+
+    // Nech vidí, do čoho jej to zasiahne — tá istá surovina býva
+    // vo viacerých receptoch a nikto ich nemá v hlave naraz.
+    const kde = podlaAbecedy((RECEPTAR.recepty || []).filter((r) =>
+      (RECEPTAR.polozky || []).some((pol) =>
+        pol.recipe_id === r.id && pol.ingredient_id === surovinaId)), (r) => r.name);
+    const zoznam = kde.length ? kde.map((r) => '• ' + r.name).join('\n') : '• (zatiaľ v žiadnom)';
+    // Čísla sa neprepočítavajú: 120 ml smotany je aj 120 g, ale 120 ml
+    // oleja je 110 g. Prepočet by tu hádal hustotu, tak to radšej povie.
+    const balenie = su.pack_size
+      ? `\n\nBalenie ${cisloSk(su.pack_size)} ${stara} sa odteraz bude čítať ako `
+        + `${cisloSk(su.pack_size)} ${nova}. Gramáže sa neprepočítavajú — `
+        + 'keď medzi nimi nie je pomer 1:1, prepíš ich ručne.'
+      : '';
+    const otazka = `Jednotka patrí surovine „${su.name}", nie tomuto receptu. `
+      + `Zmenou z ${stara} na ${nova} sa prepíše vo všetkých receptoch, kde je:\n\n`
+      + zoznam + balenie + '\n\nPokračovať?';
+    if (!confirm(otazka)) { el.value = stara; return; }
+
+    try {
+      await apiFetch(`/api/admin/receptar?co=surovina&id=${encodeURIComponent(surovinaId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unit: nova }),
+      });
+      await loadRecepty();
+    } catch (err) { el.value = stara; alert(err.message); }
   }
 
   async function zmazPolozku(id, nazov, receptId) {
@@ -2585,7 +2645,7 @@
     deleteDay, editProduct, vyberVyrobok, resetProductForm, saveProduct,
     saveSettings,
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,
-    renderRecepty, ulozRecept, pridajPolozku, posunPolozku, zmazPolozku, priradPrichut, zrusPriradenie,
+    renderRecepty, ulozRecept, pridajPolozku, posunPolozku, zmazPolozku, zmenJednotku, priradPrichut, zrusPriradenie,
     pridajSkupinu, ulozNazvySkupin, posunSkupinu, zmazSkupinu, ulozRoluSkupiny, posunVRozpise,
     prichutZmenena, prepocitajVrstvy, zmenaVrstiev,
     novyReceptForm, novyReceptJednotka, ulozNovyRecept, doKalkulacky, zmazRecept,
