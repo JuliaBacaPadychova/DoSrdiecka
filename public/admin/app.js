@@ -1721,11 +1721,13 @@
                 <br><input data-polozka-pozn="${p.id}" data-povodne="${esc(p.note || '')}"
                   value="${esc(p.note || '')}" placeholder="poznámka k surovine"
                   style="margin-top:4px;font-size:.85rem;max-width:420px"></td>
-              <td style="width:170px">
-                <input type="number" min="0" step="0.1" style="width:96px"
-                  data-polozka="${p.id}" data-povodne="${cislo(p.amount)}"
-                  value="${cislo(p.amount)}" placeholder="podľa chuti">
-                ${su ? vyberJednotky(su) : ''}
+              <td style="width:200px">
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap">
+                  <input type="number" min="0" step="0.1" style="width:100px;flex:0 0 auto"
+                    data-polozka="${p.id}" data-povodne="${cislo(p.amount)}"
+                    value="${cislo(p.amount)}" placeholder="podľa chuti">
+                  ${su ? vyberJednotky(su) : ''}
+                </div>
               </td>
               <td class="akcie" style="width:1%">
                 <button class="btn ghost sm" title="posunúť vyššie"
@@ -2067,7 +2069,8 @@
   function vyberJednotky(su) {
     const moznosti = JEDNOTKY.map((j) =>
       `<option value="${j}"${su.unit === j ? ' selected' : ''}>${esc(j)}</option>`).join('');
-    return `<select style="width:62px" data-jednotka="${su.id}"
+    // Šírka musí uniesť „ml" aj so šípkou výberu, inak sa oreže na „m".
+    return `<select style="width:74px;flex:0 0 auto" data-jednotka="${su.id}"
       title="Jednotka suroviny ${esc(su.name)} — platí všade, kde sa používa"
       onchange="Admin.zmenJednotku('${su.id}', this)">${moznosti}</select>`;
   }
