@@ -1710,8 +1710,10 @@
                 data-povodne="${esc(r.diameter_cm === null || r.diameter_cm === undefined ? '' : cislo(r.diameter_cm))}"
                 value="${esc(r.diameter_cm === null || r.diameter_cm === undefined ? '' : cislo(r.diameter_cm))}"
                 placeholder="prázdne = nie je torta">
-              <span class="fieldhint">Na aký priemer je recept napísaný. Pri inom priemere sa
-                gramáže násobia plochou — z 12 na 18 cm je to 2,25×.</span>
+              <span class="fieldhint">Na aký priemer <b>torty</b> je recept napísaný. Pri inom
+                priemere sa gramáže násobia plochou — z 12 na 18 cm je to 2,25×.
+                Pri vklade (disk, mousse) sem patrí priemer torty, do ktorej ide,
+                nie priemer disku — ten býva o 2 cm menší a píše sa do „Kusov čoho".</span>
             </div>
             <div><label for="vrstvy-${r.id}">Na koľko vrstiev</label>
               <input type="number" min="0" step="1" id="vrstvy-${r.id}" data-vrstvy="${r.id}"
