@@ -59,6 +59,17 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
    obe kopírujú gramáže zo živého receptu, nie z odpisu, nech sa
    nerozídu, keď sa originál upraví.
 
+   **Obter sa plochou neprepočítava.** Biela obterová ganáž má osem
+   veľkostí (12–30 cm) a každá je vlastný recept s číslami z listu
+   „Ganáž z bielej čokolády", lebo tie čísla plochu nesledujú — sú o 3
+   až 11 % nižšie a nerastú rovnomerne. Je to tým, že obter je povrch:
+   vrch rastie s druhou mocninou priemeru, ale bok len lineárne. Prepočet
+   plochou by pri Ø 28 cm dal 1034 g čokolády namiesto 940 g.
+   Zakladá ich `migracia-biela-obterova-ganaz.sql`. Med v liste nie je —
+   je prevzatý z *Brownie obterovej ganáže* (22 g na 185 g čokolády, cca
+   12 %) a zapísaný ako **voliteľná** surovina, lebo biela čokoláda je
+   sladšia než horká a množstvo je odhad, nie overená hodnota.
+
    Pravidlo „o 2 cm menší" nie je pomer, takže sa nedá nahradiť jedným
    koeficientom: 14 cm disk je oproti 16 cm disku (14/16)² = 0,766, ale
    16 cm torta je oproti 18 cm torte (16/18)² = 0,790. Gramáže vkladu
