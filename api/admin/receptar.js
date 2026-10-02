@@ -25,7 +25,8 @@ const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 const TYPY = {
   surovina: {
     tabulka: "ingredients",
-    polia: ["name", "unit", "pack_size", "pack_price", "price_date",
+    polia: ["name", "unit", "grams_per_ml", "grams_per_ks", "pack_size",
+            "pack_price", "price_date",
             "price_source", "negligible", "kind", "allergens", "note", "active"],
     texty: ["price_source", "note", "allergens"],
   },
@@ -37,7 +38,8 @@ const TYPY = {
   },
   polozka: {
     tabulka: "recipe_items",
-    polia: ["recipe_id", "ingredient_id", "amount", "optional", "note", "sort_order"],
+    polia: ["recipe_id", "ingredient_id", "amount", "unit", "optional", "note",
+            "sort_order"],
     texty: ["note"],
   },
   vazba: {
