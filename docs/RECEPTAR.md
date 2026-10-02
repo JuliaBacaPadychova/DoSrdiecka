@@ -38,6 +38,33 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
    a 3 korpusy 2,25 × 0,75 = 1,6875. Každá zložka sa počíta zvlášť, lebo
    korpusov a krémov býva rôzny počet.
 
+   **Vklad nie je taký veľký ako torta.** Disk sa kladie do torty tak, aby
+   ho obložil krém, takže je aspoň o 2 cm menší: do 18 cm torty ide 16 cm
+   mousse, do 16 cm torty 14 cm. Preto má každá veľkosť vlastný recept —
+   nie je to tá istá vec prepočítaná, je to iný disk.
+
+   `recipes.diameter_cm` je pri vklade priemer **torty**, do ktorej ide,
+   nie priemer disku; priemer disku je v názve a v `yield_label`
+   („disk Ø 14 cm"). Pôvodne to tak nebolo a vklady mali v poli priemer
+   samotného disku, takže sa prepočítavali aj tam, kde prepočet nemal
+   prečo nastať: malinový mousse na Ø 18 cm torte sa násobil
+   (18/16)² = 1,27, hoci ten disk JE ten správny pre 18 cm tortu
+   a koeficient má byť 1. Napravuje to `migracia-vklady-priemer-torty.sql`,
+   ktorá chytá recepty podľa `yield_label`, nie podľa názvu.
+
+   Každá veľkosť vkladu je preto vlastný recept: *Malinový mousse* aj
+   *Malinový želé disk* existujú ako Ø 10 / 14 / 16 / 18 cm (disk)
+   s priemerom torty 12 / 16 / 18 / 20 cm. Zakladá ich
+   `migracia-mousse-priemery.sql` a `migracia-zele-disky-priemery.sql`;
+   obe kopírujú gramáže zo živého receptu, nie z odpisu, nech sa
+   nerozídu, keď sa originál upraví.
+
+   Pravidlo „o 2 cm menší" nie je pomer, takže sa nedá nahradiť jedným
+   koeficientom: 14 cm disk je oproti 16 cm disku (14/16)² = 0,766, ale
+   16 cm torta je oproti 18 cm torte (16/18)² = 0,790. Gramáže vkladu
+   preto vychádzajú z plochy **disku**, a priradiť treba ten recept,
+   ktorý je na danú tortu napísaný — na to tie samostatné recepty sú.
+
    V *Čo mám miešať* sa počet vrstiev zadáva **raz pre celú tortu** —
    políčka *Korpusov* a *Náplní*. Čím je ktorá zložka, drží skupina
    receptu (`recipe_groups.layer_role`): *Korpusy* (alebo *Cestá*, keď
