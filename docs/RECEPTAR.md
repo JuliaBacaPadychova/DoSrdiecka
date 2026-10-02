@@ -52,6 +52,13 @@ recepty, nákupný zoznam sa dá zobrať priamo z objednávok na daný deň.
    a koeficient má byť 1. Napravuje to `migracia-vklady-priemer-torty.sql`,
    ktorá chytá recepty podľa `yield_label`, nie podľa názvu.
 
+   Každá veľkosť vkladu je preto vlastný recept: *Malinový mousse* aj
+   *Malinový želé disk* existujú ako Ø 10 / 14 / 16 / 18 cm (disk)
+   s priemerom torty 12 / 16 / 18 / 20 cm. Zakladá ich
+   `migracia-mousse-priemery.sql` a `migracia-zele-disky-priemery.sql`;
+   obe kopírujú gramáže zo živého receptu, nie z odpisu, nech sa
+   nerozídu, keď sa originál upraví.
+
    Pravidlo „o 2 cm menší" nie je pomer, takže sa nedá nahradiť jedným
    koeficientom: 14 cm disk je oproti 16 cm disku (14/16)² = 0,766, ale
    16 cm torta je oproti 18 cm torte (16/18)² = 0,790. Gramáže vkladu
