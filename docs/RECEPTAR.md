@@ -114,19 +114,45 @@ Každá surovina má vlastnú jednotku (`g` / `ml` / `ks`). V exceli mal
 stĺpec názov „v gramoch", ale pri želatíne v ňom boli plátky — preto
 `Želatína plátková` je v kusoch (1 plátok Silver 180 bloom = 5 g).
 
-Jednotka patrí **surovine, nie receptu**, lebo `pack_size` je v nej tiež
-a cena sa počíta `amount / pack_size × pack_price`. Keby si jeden recept
-smel písať smotanu v gramoch a druhý v mililitroch, cena by v jednom
-z nich tíško sedela o hustotu vedľa. Prepočty medzi jednotkami sa
-zámerne **nerobia**: 120 ml smotany je aj 120 g, ale 120 ml oleja je
-110 g, a hádať hustotu je horšie než sa nepýtať.
+Jednotku si nesie **riadok receptu** (`recipe_items.unit`), nie len
+surovina. Smotana sa kupuje v 500 ml krabici, ale do malinového mousse
+sa odváži 120 g — a v inom recepte je tá istá smotana odmeraná
+v mililitroch. Prázdne `unit` znamená „ako surovina", čo je bežný
+prípad, takže recept, ktorý nič neprepína, si nenesie nič navyše.
 
-Meniť sa dá na oboch miestach — v *Surovinách* aj priamo v riadku
-suroviny v *Úprave receptov*, kde to majiteľka vidí najskôr. Prepínač
-v recepte mení tú istú surovinu, preto pred uložením vypíše, v ktorých
-receptoch sa to prejaví a ako sa odteraz bude čítať balenie. Ponuka
-jednotiek je v `JEDNOTKY` na jednom mieste, nech sa oba výbery
-nerozídu.
+Jednotka suroviny (`ingredients.unit`) ostáva tým, **v čom sa kupuje** —
+je v nej `pack_size` a z nej sa počíta cena `amount / pack_size ×
+pack_price`. Keď recept píše v inej, treba prevod, a ten sa nedá
+uhádnuť: 120 ml smotany je 120 g, ale 120 ml oleja je 110 g a 120 ml
+medu 170 g. Preto má surovina dve nepovinné políčka:
+
+| Políčko | Čo je to | Príklad |
+|---|---|---|
+| `grams_per_ml` | koľko g váži 1 ml | smotana 1, olej 0,91, med 1,42 |
+| `grams_per_ks` | koľko g váži 1 kus | plátok želatíny 5 g |
+
+Gram je sám sebou, takže prevod potrebuje len surovina, ktorú naozaj
+píšeš v dvoch jednotkách. Prepočet ide vždy cez gramy, čiže funguje aj
+`ks → ml`. Nákupný zoznam sa prepočíta späť na jednotku suroviny — v
+obchode sa smotana predáva v mililitroch, nech už recept píše čokoľvek;
+*Čo mám miešať* naopak ukazuje jednotku receptu, lebo v nej sa váži.
+
+Kým prevod chýba, surovina sa správa ako surovina bez ceny: stav
+`CHYBA_PREVOD`, do súčtu nevstúpi a vypíše sa medzi nedopočítanými.
+Platí to aj vtedy, keď sa časť riadkov previesť dala — inak by súčet
+vyzeral hotovo a bol by nižší, než má byť. Tichý odhad hustoty by spravil
+cenu, ktorá vyzerá ako skutočnosť a nie je.
+
+Prepínač je priamo v riadku receptu. Keď prevod chýba, opýta sa naň
+rovno tam a uloží ho k surovine — inak by to majiteľku poslalo hľadať
+políčko do inej záložky. Odmietnuť sa dá: jednotka sa uloží aj tak a pri
+riadku sa vypíše, že cena sa zatiaľ nedopočíta. Doplniť sa to dá aj
+v *Surovinách*. Ponuka jednotiek je v `JEDNOTKY` na jednom mieste, nech
+sa oba výbery nerozídu.
+
+Prečo to pôvodne bolo per surovina: jednotka sa menila na jednom mieste
+a menila všetky recepty naraz, čo je presne to, čo si majiteľka
+neželala — „každý recept je iný predsa".
 
 ## Z jednej dávky vyjde pri každej príchuti iný počet
 

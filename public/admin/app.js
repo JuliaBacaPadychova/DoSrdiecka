@@ -795,6 +795,10 @@
     document.getElementById('surId').value = s.id;
     document.getElementById('surName').value = s.name;
     document.getElementById('surUnit').value = s.unit;
+    document.getElementById('surGramNaMl').value =
+      s.grams_per_ml === null || s.grams_per_ml === undefined ? '' : s.grams_per_ml;
+    document.getElementById('surGramNaKs').value =
+      s.grams_per_ks === null || s.grams_per_ks === undefined ? '' : s.grams_per_ks;
     document.getElementById('surPackSize').value = cislo(s.pack_size);
     document.getElementById('surPackPrice').value = cislo(s.pack_price);
     document.getElementById('surPriceDate').value = s.price_date || '';
@@ -809,7 +813,8 @@
   }
 
   function resetSurovinaForm(rozbalit) {
-    ['surId', 'surName', 'surPackSize', 'surPackPrice', 'surPriceDate', 'surObchod', 'surNote']
+    ['surId', 'surName', 'surPackSize', 'surPackPrice', 'surPriceDate', 'surObchod', 'surNote',
+      'surGramNaMl', 'surGramNaKs']
       .forEach((id) => { document.getElementById(id).value = ''; });
     document.getElementById('surUnit').value = 'g';
     document.getElementById('surKind').value = 'surovina';
@@ -827,6 +832,8 @@
     const telo = {
       name: document.getElementById('surName').value.trim(),
       unit: document.getElementById('surUnit').value,
+      grams_per_ml: document.getElementById('surGramNaMl').value,
+      grams_per_ks: document.getElementById('surGramNaKs').value,
       pack_size: document.getElementById('surPackSize').value,
       pack_price: document.getElementById('surPackPrice').value,
       price_date: document.getElementById('surPriceDate').value,
@@ -1726,8 +1733,9 @@
                   <input type="number" min="0" step="0.1" style="width:100px;flex:0 0 auto"
                     data-polozka="${p.id}" data-povodne="${cislo(p.amount)}"
                     value="${cislo(p.amount)}" placeholder="podľa chuti">
-                  ${su ? vyberJednotky(su) : ''}
+                  ${su ? vyberJednotky(p, su) : ''}
                 </div>
+                ${su ? chybaPrevodu(p, su) : ''}
               </td>
               <td class="akcie" style="width:1%">
                 <button class="btn ghost sm" title="posunúť vyššie"
@@ -2062,50 +2070,104 @@
     } catch (err) { alert(err.message); }
   }
 
-  // Jednotka nie je vlastnosť receptu, ale suroviny — vážiť sa dá
-  // v gramoch alebo odmerať v mililitroch, ale vždy rovnako všade.
-  // V recepte ju vidí najskôr, tak nech sa dá prepnúť rovno tam; že to
-  // platí aj inde, povie potvrdenie pred uložením.
-  function vyberJednotky(su) {
-    const moznosti = JEDNOTKY.map((j) =>
-      `<option value="${j}"${su.unit === j ? ' selected' : ''}>${esc(j)}</option>`).join('');
-    // Šírka musí uniesť „ml" aj so šípkou výberu, inak sa oreže na „m".
-    return `<select style="width:74px;flex:0 0 auto" data-jednotka="${su.id}"
-      title="Jednotka suroviny ${esc(su.name)} — platí všade, kde sa používa"
-      onchange="Admin.zmenJednotku('${su.id}', this)">${moznosti}</select>`;
+  // Jednotku si nesie RIADOK RECEPTU, nie surovina: smotana sa kupuje
+  // v 500 ml krabici, ale do mousse sa odváži 120 g — a v inom recepte
+  // je odmeraná v mililitroch. Prázdne `unit` = platí jednotka suroviny,
+  // takže si recept, ktorý nič neprepína, nenesie nič navyše.
+  function jednotkaPolozky(p, su) {
+    return p.unit || su.unit;
   }
 
-  async function zmenJednotku(surovinaId, el) {
-    const su = (RECEPTAR.suroviny || []).find((x) => x.id === surovinaId);
-    if (!su) return;
-    const stara = su.unit;
+  // Koľko gramov váži jedna jednotka. Gram je sám sebou, zvyšok vie
+  // povedať len surovina — a nie vždy, preto null.
+  function gramovNaJednotku(su, jednotka) {
+    if (jednotka === 'g') return 1;
+    const v = jednotka === 'ml' ? su.grams_per_ml
+      : jednotka === 'ks' ? su.grams_per_ks : null;
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  // Ktoré prevody treba poznať, aby sa dala spočítať cena: balenie je
+  // v jednotke suroviny, recept píše vo svojej. Gram prevod nepotrebuje.
+  function chybajucePrevody(su, jednotka) {
+    // Keď recept píše v tom, v čom sa surovina kupuje, prevod netreba —
+    // ani keby bol vyplnený, nemal by sa čím násobiť.
+    if (jednotka === su.unit) return [];
+    return [jednotka, su.unit]
+      .filter((j, i, pole) => pole.indexOf(j) === i)
+      .filter((j) => gramovNaJednotku(su, j) === null);
+  }
+
+  function vyberJednotky(p, su) {
+    const teraz = jednotkaPolozky(p, su);
+    const moznosti = JEDNOTKY.map((j) =>
+      `<option value="${j}"${teraz === j ? ' selected' : ''}>${esc(j)}</option>`).join('');
+    // Šírka musí uniesť „ml" aj so šípkou výberu, inak sa oreže na „m".
+    return `<select style="width:74px;flex:0 0 auto" data-jednotka="${p.id}"
+      title="V čom je ${esc(su.name)} napísaná v TOMTO recepte (surovina sa kupuje v ${esc(su.unit)})"
+      onchange="Admin.zmenJednotku('${p.id}', this)">${moznosti}</select>`;
+  }
+
+  // Kým prevod chýba, surovina do ceny nevstúpi — nech to vidí hneď
+  // v recepte, nie až ako chýbajúcu položku v kalkulácii.
+  function chybaPrevodu(p, su) {
+    const chyba = chybajucePrevody(su, jednotkaPolozky(p, su));
+    if (!chyba.length) return '';
+    return `<span class="muted chyba" style="font-size:.78rem;display:block;margin-top:4px">
+      recept píše v ${esc(jednotkaPolozky(p, su))}, surovina sa kupuje v ${esc(su.unit)} —
+      doplň pri surovine, koľko g váži 1 ${esc(chyba.join(' a 1 '))}, inak sa cena nedopočíta</span>`;
+  }
+
+  // Keď prevod chýba, pýta sa naň rovno tu — inak by ju to poslalo
+  // hľadať políčko do inej záložky, čo je presne tá otrava, ktorej sa
+  // táto zmena mala zbaviť.
+  function spytajSaNaPrevod(su, jednotka) {
+    const napoveda = jednotka === 'ml'
+      ? 'Pri smotane, mlieku a vode je to 1, pri oleji 0,91, pri mede 1,42.'
+      : 'Napríklad plátok želatíny Silver 180 bloom váži 5 g.';
+    const odpoved = prompt(`Koľko gramov váži 1 ${jednotka} suroviny „${su.name}"?\n\n`
+      + napoveda + '\n\nBez toho sa cena tejto suroviny nedopočíta. '
+      + 'Dá sa to doplniť aj neskôr v Surovinách.', jednotka === 'ml' ? '1' : '');
+    if (odpoved === null) return null;
+    const n = Number(String(odpoved).replace(',', '.').trim());
+    if (!Number.isFinite(n) || n <= 0) { alert('Napíš kladné číslo, napríklad 1 alebo 0,91.'); return null; }
+    return n;
+  }
+
+  async function zmenJednotku(polozkaId, el) {
+    const pol = (RECEPTAR.polozky || []).find((x) => x.id === polozkaId);
+    const su = pol && (RECEPTAR.suroviny || []).find((x) => x.id === pol.ingredient_id);
+    if (!pol || !su) return;
+    const stara = jednotkaPolozky(pol, su);
     const nova = el.value;
     if (stara === nova) return;
 
-    // Nech vidí, do čoho jej to zasiahne — tá istá surovina býva
-    // vo viacerých receptoch a nikto ich nemá v hlave naraz.
-    const kde = podlaAbecedy((RECEPTAR.recepty || []).filter((r) =>
-      (RECEPTAR.polozky || []).some((pol) =>
-        pol.recipe_id === r.id && pol.ingredient_id === surovinaId)), (r) => r.name);
-    const zoznam = kde.length ? kde.map((r) => '• ' + r.name).join('\n') : '• (zatiaľ v žiadnom)';
-    // Čísla sa neprepočítavajú: 120 ml smotany je aj 120 g, ale 120 ml
-    // oleja je 110 g. Prepočet by tu hádal hustotu, tak to radšej povie.
-    const balenie = su.pack_size
-      ? `\n\nBalenie ${cisloSk(su.pack_size)} ${stara} sa odteraz bude čítať ako `
-        + `${cisloSk(su.pack_size)} ${nova}. Gramáže sa neprepočítavajú — `
-        + 'keď medzi nimi nie je pomer 1:1, prepíš ich ručne.'
-      : '';
-    const otazka = `Jednotka patrí surovine „${su.name}", nie tomuto receptu. `
-      + `Zmenou z ${stara} na ${nova} sa prepíše vo všetkých receptoch, kde je:\n\n`
-      + zoznam + balenie + '\n\nPokračovať?';
-    if (!confirm(otazka)) { el.value = stara; return; }
+    // Prevody sa pýtajú rovno, nech nevznikne recept, ktorý vyzerá
+    // uložený, ale v kalkulácii z neho vypadne surovina.
+    const prevody = {};
+    for (const j of chybajucePrevody(su, nova)) {
+      const hodnota = spytajSaNaPrevod(su, j);
+      if (hodnota === null) continue;
+      prevody[j === 'ml' ? 'grams_per_ml' : 'grams_per_ks'] = hodnota;
+    }
 
     try {
-      await apiFetch(`/api/admin/receptar?co=surovina&id=${encodeURIComponent(surovinaId)}`, {
+      await apiFetch(`/api/admin/receptar?co=polozka&id=${encodeURIComponent(polozkaId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ unit: nova }),
+        // Jednotka suroviny sa neukladá ako odchýlka — prázdne znamená
+        // „platí surovina" a samo sa drží jej, keď sa raz zmení.
+        body: JSON.stringify({ unit: nova === su.unit ? '' : nova }),
       });
+      if (Object.keys(prevody).length) {
+        await apiFetch(`/api/admin/receptar?co=surovina&id=${encodeURIComponent(su.id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(prevody),
+        });
+      }
       await loadRecepty();
     } catch (err) { el.value = stara; alert(err.message); }
   }

@@ -174,6 +174,15 @@
           <select id="surUnit"><option value="g">g</option><option value="ml">ml</option><option value="ks">ks</option></select>
         </div>
         <div><label for="surPackSize">Gramáž balenia</label><input id="surPackSize" type="number" min="0" step="0.001"></div>
+        <div><label for="surGramNaMl">1 ml váži (g)</label>
+          <input id="surGramNaMl" type="number" min="0" step="0.0001" placeholder="nepovinné">
+          <span class="fieldhint">Treba len vtedy, keď je surovina v niektorom recepte
+            napísaná v inej jednotke, než sa kupuje. Smotana ~1, olej 0,91, med 1,42.</span>
+        </div>
+        <div><label for="surGramNaKs">1 ks váži (g)</label>
+          <input id="surGramNaKs" type="number" min="0" step="0.0001" placeholder="nepovinné">
+          <span class="fieldhint">To isté pre kusy — plátok želatíny Silver 180 bloom je 5 g.</span>
+        </div>
         <div><label for="surPackPrice">Cena balenia (€)</label><input id="surPackPrice" type="number" min="0" step="0.001"></div>
         <div><label for="surPriceDate">Nakúpené dňa</label><input id="surPriceDate" type="date">
           <span class="fieldhint">Keď necháš prázdne a meníš cenu, doplní sa dnešok.</span></div>
