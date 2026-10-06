@@ -126,46 +126,121 @@
   }
 
   // ---------- ručne zapísaná objednávka ----------
-  function renderOrderItems() {
-    const el = document.getElementById('oItems');
-    if (!el) return;
-    if (!PRODUCTS_CACHE.length) {
-      el.innerHTML = '<p class="muted">V ponuke zatiaľ nie sú žiadne výrobky.</p>';
-      return;
-    }
+  // Výrobkov je už toľko, že zoznam všetkých s políčkom na počet sa
+  // nedal prehliadnuť a počet sa zadával na druhej strane obrazovky.
+  // Teraz sa výrobok vyberie z rolovacieho zoznamu, počet je hneď vedľa
+  // a dole ostanú len tie, ktoré si naozaj vybrala.
+  let VYBRANE = [];
+
+  function aktivneZoradene() {
     const poradie = ['chlebik', 'zakusky', 'torty'];
-    const zoradene = [...PRODUCTS_CACHE].sort((a, b) =>
+    return [...PRODUCTS_CACHE].filter((p) => p.active).sort((a, b) =>
       poradie.indexOf(a.category_id) - poradie.indexOf(b.category_id)
       || a.name.localeCompare(b.name, 'sk')
       || String(a.sub || '').localeCompare(String(b.sub || ''), 'sk'));
+  }
 
-    let html = '';
+  const popisVyrobku = (p) => p.name + (p.sub ? ` — ${p.sub}` : '');
+
+  function renderOrderItems() {
+    naplnVyber();
+    vykresliVybrane();
+  }
+
+  // Rolovací zoznam. Kategórie sú vlastné skupiny, nech sa v ňom hľadá
+  // rovnako ako v ponuke na webe.
+  function naplnVyber() {
+    const sel = document.getElementById('oVyber');
+    if (!sel) return;
+    if (!PRODUCTS_CACHE.length) {
+      sel.innerHTML = '<option value="">V ponuke zatiaľ nie sú žiadne výrobky.</option>';
+      return;
+    }
+    let html = '<option value="">— vyber výrobok —</option>';
     let kategoria = null;
-    zoradene.filter((p) => p.active).forEach((p) => {
+    aktivneZoradene().forEach((p) => {
       if (p.category_id !== kategoria) {
+        if (kategoria !== null) html += '</optgroup>';
         kategoria = p.category_id;
-        html += `<div class="okat">${CATS_BY_ID[kategoria] || kategoria}</div>`;
+        html += `<optgroup label="${esc(CATS_BY_ID[kategoria] || kategoria)}">`;
       }
-      html += `<div class="orow">
-          <div class="nazov">${p.name}${p.sub ? `<small>${p.sub}</small>` : ''}</div>
-          <input type="number" min="0" step="1" placeholder="0"
-            data-produkt="${p.id}" aria-label="Počet kusov — ${p.name} ${p.sub || ''}">
-        </div>`;
+      html += `<option value="${p.id}">${esc(popisVyrobku(p))}</option>`;
     });
-    el.innerHTML = html;
+    if (kategoria !== null) html += '</optgroup>';
+    sel.innerHTML = html;
+  }
+
+  function pridajDoObjednavky() {
+    const sel = document.getElementById('oVyber');
+    const kusyEl = document.getElementById('oKusy');
+    const errEl = document.getElementById('orderErr');
+    const zastav = (sprava) => {
+      errEl.textContent = sprava; errEl.style.display = 'block';
+    };
+    if (!sel.value) return zastav('Vyber výrobok z ponuky.');
+    const kusy = parseInt(kusyEl.value, 10);
+    if (!Number.isInteger(kusy) || kusy < 1) return zastav('Zadaj počet kusov.');
+    errEl.style.display = 'none';
+
+    // Ten istý výrobok druhý raz počet pripočíta, nezaloží druhý riadok.
+    const uz = VYBRANE.find((x) => x.product_id === sel.value);
+    if (uz) uz.qty += kusy;
+    else VYBRANE.push({ product_id: sel.value, qty: kusy });
+
+    sel.value = '';
+    kusyEl.value = '1';
+    vykresliVybrane();
+    sel.focus();
+  }
+
+  function zmenPocetVObjednavke(id, hodnota) {
+    const kusy = parseInt(hodnota, 10);
+    const polozka = VYBRANE.find((x) => x.product_id === id);
+    if (!polozka) return;
+    if (!Number.isInteger(kusy) || kusy < 1) { odoberZObjednavky(id); return; }
+    polozka.qty = kusy;
+  }
+
+  function odoberZObjednavky(id) {
+    VYBRANE = VYBRANE.filter((x) => x.product_id !== id);
+    vykresliVybrane();
+  }
+
+  function vykresliVybrane() {
+    const el = document.getElementById('oItems');
+    if (!el) return;
+    if (!VYBRANE.length) {
+      el.innerHTML = '<p class="muted">Zatiaľ nič nevybrané.</p>';
+      return;
+    }
+    el.innerHTML = VYBRANE.map((v) => {
+      const p = PRODUCTS_CACHE.find((x) => x.id === v.product_id);
+      if (!p) return '';
+      return `<div class="orow">
+          <div class="nazov">${esc(p.name)}${p.sub ? `<small>${esc(p.sub)}</small>` : ''}</div>
+          <input type="number" min="1" step="1" value="${v.qty}"
+            data-produkt="${p.id}" aria-label="Počet kusov — ${esc(popisVyrobku(p))}"
+            onchange="Admin.zmenPocetVObjednavke('${p.id}', this.value)">
+          <button class="btn ghost sm" onclick="Admin.odoberZObjednavky('${p.id}')"
+            aria-label="Odobrať ${esc(popisVyrobku(p))}">Odobrať</button>
+        </div>`;
+    }).join('');
   }
 
   function zozbierajPolozky() {
-    return [...document.querySelectorAll('#oItems input[data-produkt]')]
-      .map((i) => ({ product_id: i.dataset.produkt, qty: parseInt(i.value, 10) || 0 }))
-      .filter((x) => x.qty > 0);
+    return VYBRANE.filter((x) => x.qty > 0).map((x) => ({ ...x }));
   }
 
   function resetOrderForm() {
     ['oDay', 'oName', 'oPhone', 'oEmail', 'oNote'].forEach((id) => {
       document.getElementById(id).value = '';
     });
-    document.querySelectorAll('#oItems input[data-produkt]').forEach((i) => { i.value = ''; });
+    VYBRANE = [];
+    const sel = document.getElementById('oVyber');
+    if (sel) sel.value = '';
+    const kusy = document.getElementById('oKusy');
+    if (kusy) kusy.value = '1';
+    vykresliVybrane();
     document.getElementById('orderErr').style.display = 'none';
     document.getElementById('orderOk').style.display = 'none';
   }
@@ -186,7 +261,7 @@
     const zastav = (sprava) => { errEl.textContent = sprava; errEl.style.display = 'block'; };
     if (!body.day) return zastav('Vyber termín.');
     if (!body.name) return zastav('Vyplň meno zákazníčky.');
-    if (!body.items.length) return zastav('Zadaj počet aspoň pri jednom výrobku.');
+    if (!body.items.length) return zastav('Vyber aspoň jeden výrobok.');
 
     try {
       const odpoved = await apiFetch('/api/admin/orders', {
@@ -224,10 +299,11 @@
           <td>${o.customer_name}<br><span class="muted">${o.phone || '—'}${
             o.email ? `<br>${o.email}` : ''}</span>${
             o.note ? `<br><span class="muted">Pozn.: ${o.note}</span>` : ''}</td>
-          <td>${(o.order_items || []).map((it) => `${it.qty}× ${it.name_snapshot}`).join('<br>')}</td>
+          <td>${(o.order_items || []).map((it) => `${it.qty}× ${it.name_snapshot}${
+            it.sub_snapshot ? ` <span class="muted">${it.sub_snapshot}</span>` : ''}`).join('<br>')}</td>
           <td>${(o.order_items || []).some((it) => it.category_id === 'torty') ? 'od ' : ''}${o.total_estimate} €</td>
           <td><span class="badge ${o.status}">${o.status}</span></td>
-          <td>
+          <td class="stavbunka">
             <select onchange="Admin.updateOrderStatus('${o.id}', this.value)">
               <option value="nova" ${o.status === 'nova' ? 'selected' : ''}>nová</option>
               <option value="vybavena" ${o.status === 'vybavena' ? 'selected' : ''}>vybavená</option>
@@ -2709,6 +2785,7 @@
   window.Admin = {
     login, logout, showTab,
     updateOrderStatus, presunObjednavku, saveOrder, resetOrderForm, editDay, saveDay, savePassword,
+    pridajDoObjednavky, odoberZObjednavky, zmenPocetVObjednavke,
     deleteDay, editProduct, vyberVyrobok, resetProductForm, saveProduct,
     saveSettings,
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,

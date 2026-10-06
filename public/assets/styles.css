@@ -127,10 +127,20 @@ footer a.mail:hover{color:var(--terra);border-bottom-color:var(--terra)}
 /* Výber výrobkov pri ručnom zapísaní objednávky. */
 .oitems{margin-top:14px}
 .oitems .okat{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--peach-deep);font-weight:600;margin:14px 0 6px}
-.oitems .orow{display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.oitems .orow{display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px dashed var(--line);max-width:660px}
 .oitems .orow .nazov{flex:1;min-width:0;font-size:.9rem}
 .oitems .orow .nazov small{display:block;color:var(--ink-soft);font-size:.78rem}
 .oitems .orow input{width:88px;flex:none}
+/* Výber výrobku: rolovací zoznam, počet hneď vedľa neho a tlačidlo.
+   Predtým bol vypísaný celý sortiment a počet sa zadával na opačnom
+   konci riadku, teda na druhej strane obrazovky. */
+.opick{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+/* Strop šírky je tu naschvál: na širokej obrazovke by sa výber roztiahol
+   cez pol metra a počet kusov by skončil na druhom konci. */
+.opick .pole{flex:1;min-width:220px;max-width:460px}
+.opick .pole.kusy{flex:none;width:130px;min-width:0}
+.opick .btn{flex:none}
+@media(max-width:560px){.opick .pole,.opick .pole.kusy{flex:1 1 100%;width:auto}}
 /* Objednávky rozdelené podľa stavu. Vybavené a zrušené sú tlmené —
    dôležité je to, čo ešte čaká na upečenie. */
 .ordgrp{margin-top:26px}
@@ -316,6 +326,10 @@ footer a{color:var(--peach-deep)}
 /* číslo objednávky v potvrdení a v správe */
 .success .ordno{margin-top:8px;font-size:1.05rem;font-weight:700;color:var(--terra)}
 .admin-table .ordno{font-weight:700;color:var(--terra);white-space:nowrap}
+/* Stĺpec so stavom objednávky. Bez spodnej hranice ho dlhý zákazníčkin
+   e-mail v susednom stĺpci stlačil tak, že z „vybavená" ostalo „vybc". */
+.admin-table .stavbunka{white-space:nowrap}
+.admin-table .stavbunka select{min-width:128px}
 
 /* --- široká obrazovka --- */
 /* Na šírke správy by dvojstĺpcový formulár rozťahoval políčka na pol metra.

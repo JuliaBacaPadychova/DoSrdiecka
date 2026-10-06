@@ -61,7 +61,16 @@
         <div class="full"><label for="oNote">Poznámka</label><textarea id="oNote" rows="2"
           placeholder="Alergie, želania, dohodnutý čas…"></textarea></div>
       </div>
-      <div id="oItems" class="oitems"><p class="muted">Načítavam ponuku…</p></div>
+      <div class="oitems">
+        <div class="opick">
+          <div class="pole"><label for="oVyber">Výrobok</label>
+            <select id="oVyber"><option value="">Načítavam ponuku…</option></select></div>
+          <div class="pole kusy"><label for="oKusy">Počet kusov</label>
+            <input id="oKusy" type="number" min="1" step="1" value="1"></div>
+          <button class="btn ghost" onclick="Admin.pridajDoObjednavky()">Pridať</button>
+        </div>
+        <div id="oItems"><p class="muted">Zatiaľ nič nevybrané.</p></div>
+      </div>
       <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button class="btn" onclick="Admin.saveOrder()">Zapísať objednávku</button>
         <button class="btn ghost" onclick="Admin.resetOrderForm()">Vyprázdniť</button>
