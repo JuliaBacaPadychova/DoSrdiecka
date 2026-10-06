@@ -329,6 +329,13 @@ footer a{color:var(--peach-deep)}
 /* Stĺpec so stavom objednávky. Bez spodnej hranice ho dlhý zákazníčkin
    e-mail v susednom stĺpci stlačil tak, že z „vybavená" ostalo „vybc". */
 .admin-table .stavbunka{white-space:nowrap}
+/* Deň načítaný vo formulári vyššie. Klik na „Upraviť" inak nemusí byť
+   na obrazovke vôbec vidieť. */
+.admin-table tr.upravuje{background:var(--ok-bg)}
+.admin-table tr.upravuje td:first-child{font-weight:700;color:var(--terra)}
+@keyframes blikni{from{box-shadow:0 0 0 3px var(--peach)}to{box-shadow:var(--shadow)}}
+.admin-card.blikne{animation:blikni .9s ease-out}
+@media(prefers-reduced-motion:reduce){.admin-card.blikne{animation:none}}
 .admin-table .stavbunka select{min-width:128px}
 
 /* --- široká obrazovka --- */

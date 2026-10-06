@@ -275,7 +275,7 @@ children.push(table(
   [4300, 4700],
   ["Chcem", "Kam idem"],
   [
-    [["Otvoriť nový deň na objednávky alebo zmeniť limit"], [["Správa → Dni a limity", true]]],
+    [["Otvoriť nový deň na objednávky alebo zmeniť limit"], [["Správa → Dni a limity", true], ["Pri existujúcom dni daj Upraviť — deň sa načíta do formulára hore, nadpis povie ktorý a riadok v zozname sa zvýrazní. Zrušiť úpravu ťa vráti k zakladaniu nového dňa.", false, true]]],
     [["Zrušiť termín, na ktorý už piecť nebudeš"], [["Správa → Dni a limity → Zrušiť", true], ["Deň zmizne z kalendára úplne. Tlačidlo je len pri dni bez objednávok — deň s objednávkou sa dá už len zavrieť cez Upraviť → Stav.", false, true]]],
     [["Zmeniť cenu, popis, alergény alebo fotku výrobku"], [["Správa → Ponuka", true]]],
     [["Pridať k výrobku ďalšiu príchuť"], [["Správa → Ponuka → Nový výrobok s rovnakým názvom", true], ["Podnadpis je názov príchute — pri tortách veľkosť. Web ich spojí do jednej karty. Minimálny odber platí pri každej možnosti zvlášť.", false, true]]],

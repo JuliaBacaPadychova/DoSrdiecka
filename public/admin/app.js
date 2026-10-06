@@ -415,13 +415,19 @@
       : '';
   }
 
+  // Ktorý deň je práve načítaný vo formulári. Bez toho klik na "Upraviť"
+  // len ticho vyplnil políčka hore — a keď na nich náhodou boli rovnaké
+  // hodnoty, nezmenilo sa na obrazovke vôbec nič a vyzeralo to, že
+  // tlačidlo nefunguje.
+  let UPRAVOVANY_DEN = null;
+
   function renderDays(days) {
     const el = document.getElementById('daysList');
     if (!days.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne otvorené dni. Pridaj prvý deň vyššie.</p>'; return; }
     el.innerHTML = `<table class="admin-table"><thead><tr>
         <th>Dátum</th><th>Stav</th><th>Zákusky</th><th>Torty</th><th>Chlebíky</th><th>Zvyšná kapacita</th><th></th>
       </tr></thead><tbody>${days.map((d) => `
-        <tr>
+        <tr class="${d.day === UPRAVOVANY_DEN ? 'upravuje' : ''}">
           <td>${d.day}</td>
           <td>${d.is_open ? 'Otvorené' : 'Zatvorené'}</td>
           <td>${d.cap_zakusky}</td>
@@ -461,7 +467,47 @@
     document.getElementById('dayCapZ').value = capZ;
     document.getElementById('dayCapT').value = capT;
     document.getElementById('dayCapCh').value = capCh;
+    UPRAVOVANY_DEN = day;
+    oznacUpravovany();
     document.getElementById('tab-days').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Nadpis formulára, tlačidlo na zrušenie úpravy, zvýraznený riadok
+  // v zozname a krátke bliknutie karty. Dokopy to povie, že klik niečo
+  // spravil, aj keď sa hodnoty v políčkach nezmenili.
+  function oznacUpravovany() {
+    const nadpis = document.getElementById('dayFormTitle');
+    const zrusit = document.getElementById('dayFormReset');
+    const karta = nadpis && nadpis.closest('.admin-card');
+    if (nadpis) {
+      nadpis.textContent = UPRAVOVANY_DEN
+        ? `Upraviť deň ${UPRAVOVANY_DEN}` : 'Pridať / upraviť deň';
+    }
+    if (zrusit) zrusit.style.display = UPRAVOVANY_DEN ? '' : 'none';
+    if (karta && UPRAVOVANY_DEN) {
+      karta.classList.remove('blikne');
+      // Prečítanie rozmeru prehliadač donúti triedu naozaj odobrať,
+      // inak by sa pri druhom kliknutí animácia nespustila znova.
+      void karta.offsetWidth;
+      karta.classList.add('blikne');
+    }
+    document.querySelectorAll('#daysList tr').forEach((tr) => {
+      const datum = tr.querySelector('td');
+      tr.classList.toggle('upravuje',
+        !!UPRAVOVANY_DEN && !!datum && datum.textContent.trim() === UPRAVOVANY_DEN);
+    });
+  }
+
+  // Späť na zakladanie nového dňa.
+  function novyDen() {
+    UPRAVOVANY_DEN = null;
+    document.getElementById('dayDate').value = '';
+    document.getElementById('dayOpen').value = 'true';
+    document.getElementById('dayCapZ').value = '18';
+    document.getElementById('dayCapT').value = '1';
+    document.getElementById('dayCapCh').value = '1';
+    document.getElementById('dayErr').style.display = 'none';
+    oznacUpravovany();
   }
 
   async function saveDay() {
@@ -2784,7 +2830,7 @@
 
   window.Admin = {
     login, logout, showTab,
-    updateOrderStatus, presunObjednavku, saveOrder, resetOrderForm, editDay, saveDay, savePassword,
+    updateOrderStatus, presunObjednavku, saveOrder, resetOrderForm, editDay, novyDen, saveDay, savePassword,
     pridajDoObjednavky, odoberZObjednavky, zmenPocetVObjednavke,
     deleteDay, editProduct, vyberVyrobok, resetProductForm, saveProduct,
     saveSettings,

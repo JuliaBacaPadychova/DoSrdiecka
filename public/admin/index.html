@@ -88,7 +88,11 @@
 
   <div class="admin-panel" id="tab-days">
     <div class="admin-card">
-      <h3>Pridať / upraviť deň</h3>
+      <div class="admin-row" style="margin-bottom:10px">
+        <h3 id="dayFormTitle" style="margin:0">Pridať / upraviť deň</h3>
+        <button class="btn ghost sm" id="dayFormReset" style="display:none"
+          onclick="Admin.novyDen()">Zrušiť úpravu</button>
+      </div>
       <div class="form">
         <div><label for="dayDate">Dátum</label><input id="dayDate" type="date"></div>
         <div><label for="dayOpen">Stav</label>
