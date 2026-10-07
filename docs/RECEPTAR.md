@@ -336,6 +336,19 @@ V správe webu pribudli tri záložky:
 
   Recept priradený k príchuti sa zmazať nedá — najprv sa musí odobrať
   z príchutí, inak by príchuť prišla o časť zloženia bez varovania.
+  **Celé pečenie naraz** je ten istý výpočet poslaný viacerými príchuťami
+  naraz: `rozpisReceptov` zlučuje podľa receptu odjakživa, len sa doň
+  doteraz nedalo poslať viac než jednu príchuť. Odpalované cesto na choux
+  aj na veterníky je jedna miska, tak je v rozpise raz a dávky má
+  spočítané. Vstupom je buď jedna objednávka (tlačidlo *Do receptov* pri
+  nej), alebo celý termín (`?den=`, to isté, čo počíta nákupný zoznam dňa).
+
+  V spoločnom rozpise nie sú šípky ani poznámka a nepíše sa „pri tejto
+  príchuti": poradie (`product_recipes.sort_order`) aj poznámka
+  (`recipe_presets.note`) patria jednej príchuti a z dávky vyjde pri
+  každej iný počet. Poradie sa preto odvodí z toho najskoršieho, ktoré
+  recept pri niektorej zo zúčastnených príchutí má.
+
 - **Kalkulačka** — nákupné zoznamy. Zoznam je samostatná vec: má termín,
   názov a súpis „príchuť + počet kusov", dá sa uložiť, upraviť aj zmazať
   a uložených môže byť viac. **Objednávkami nie je obmedzený** — suroviny
