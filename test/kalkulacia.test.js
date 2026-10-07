@@ -542,3 +542,55 @@ test("nedopočítané suroviny sa vypíšu raz, zoradené", () => {
   assert.deepEqual(p.nedopocitane, ["Pektín NH", "Soľ", "Vanilka"],
     "každá raz, aj keď chýba v oboch zoznamoch, a po slovensky zoradené");
 });
+
+// --- jedna objednávka, viac príchutí, jedna miska cesta ---
+//
+// V objednávke býva 10 choux aj 10 veterníkov. Odpalované cesto je pre
+// obe to isté a mieša sa raz — v rozpise musí byť raz, s dávkami
+// spočítanými dokopy. Toto je to, čo excel nevedel: hárok na choux a
+// hárok na veterníky o sebe nevedeli.
+test("ten istý recept pri dvoch príchutiach sa zlúči do jedného riadku", () => {
+  const spolu = rozpisReceptov(
+    [{ product_id: "choux", kusy: 10 }, { product_id: "veternik", kusy: 12 }],
+    DATA_VETERNIK
+  );
+
+  assert.equal(spolu.length, 1, "cesto je jedno, nie dve položky");
+  const cesto = spolu[0];
+  // 10 choux = pol dávky (z dávky je 20), 12 veterníkov = celá dávka.
+  assert.equal(cesto.davky, 1.5);
+  assert.equal(cesto.polozky[0].mnozstvo, 172.5, "115 g × 1,5 dávky");
+  assert.equal(cesto.kusy, 22, "spolu 22 kusov pečiva z toho cesta");
+});
+
+test("zlúčený rozpis dá to isté, čo obe príchute zvlášť spolu", () => {
+  const choux = rozpisReceptov([{ product_id: "choux", kusy: 10 }], DATA_VETERNIK)[0];
+  const veternik = rozpisReceptov([{ product_id: "veternik", kusy: 12 }], DATA_VETERNIK)[0];
+  const spolu = rozpisReceptov(
+    [{ product_id: "choux", kusy: 10 }, { product_id: "veternik", kusy: 12 }],
+    DATA_VETERNIK
+  )[0];
+
+  assert.equal(spolu.davky, choux.davky + veternik.davky);
+  assert.equal(spolu.polozky[0].mnozstvo,
+    choux.polozky[0].mnozstvo + veternik.polozky[0].mnozstvo,
+    "gramáž sa nesmie stratiť ani zdvojiť");
+});
+
+test("recept, ktorý má len jedna z príchutí, ostane samostatne", () => {
+  const data = {
+    ...DATA_VETERNIK,
+    recipes: [...DATA_VETERNIK.recipes,
+      { id: "r-poleva", name: "Karamelová poleva", yield_qty: 10, yield_unit: "ks" }],
+    recipe_items: [...DATA_VETERNIK.recipe_items,
+      { id: "ri2", recipe_id: "r-poleva", ingredient_id: "i-muka", amount: 50 }],
+    product_recipes: [...DATA_VETERNIK.product_recipes,
+      { id: "v3", product_id: "veternik", recipe_id: "r-poleva", qty_per_piece: 1 }],
+  };
+  const spolu = rozpisReceptov(
+    [{ product_id: "choux", kusy: 10 }, { product_id: "veternik", kusy: 12 }], data);
+
+  assert.equal(spolu.length, 2);
+  const poleva = spolu.find((r) => r.recept.nazov === "Karamelová poleva");
+  assert.equal(poleva.kusy, 12, "poleva je len na veterníky, choux sa do nej nerátajú");
+});

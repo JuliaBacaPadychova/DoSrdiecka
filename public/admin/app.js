@@ -4,6 +4,8 @@
 
   let CATS_BY_ID = { chlebik: 'Chlebík', zakusky: 'Zákusky', torty: 'Torty' };
   let PRODUCTS_CACHE = [];
+  // Objednávky posledného načítania — tlačidlo „Do receptov" z nich berie položky.
+  let ORDERS_CACHE = [];
 
   function getAccess() { return localStorage.getItem(LS_ACCESS); }
   function getRefresh() { return localStorage.getItem(LS_REFRESH); }
@@ -109,7 +111,8 @@
     el.innerHTML = '<p class="muted">Načítavam objednávky…</p>';
     try {
       const data = await apiFetch('/api/admin/orders');
-      renderOrders(data.orders || []);
+      ORDERS_CACHE = data.orders || [];
+      renderOrders(ORDERS_CACHE);
     } catch (err) {
       el.innerHTML = `<p class="err">${err.message}</p>`;
     }
@@ -309,6 +312,8 @@
               <option value="vybavena" ${o.status === 'vybavena' ? 'selected' : ''}>vybavená</option>
               <option value="zrusena" ${o.status === 'zrusena' ? 'selected' : ''}>zrušená</option>
             </select>
+            <button class="btn ghost sm" style="margin-top:6px"
+              onclick="Admin.rozpisZObjednavky('${o.id}')">Do receptov</button>
           </td>
         </tr>`;
   }
@@ -1518,6 +1523,7 @@
 
   async function zobrazRozpis(ulozenyId) {
     OTVORENY_ULOZENY = ulozenyId || null;
+    SPOLU = null;
     const el = document.getElementById('receptyRozpis');
     const product_id = document.getElementById('recPrichut').value;
     const kusy = parseInt(document.getElementById('recKusy').value, 10) || 0;
@@ -1640,17 +1646,28 @@
       <p class="muted" style="margin:-8px 0 14px;font-size:.85rem">Šípkami si nastavíš poradie,
         v akom to ideš robiť — platí pre túto príchuť a pamätá si ho aj uložený recept.
         <span id="rozpisPoradieStav" class="muted"></span></p>
-      ${zoradene.map((r, i) => `
+      ${zoradene.map((r, i) => blokReceptu(r, { i, zo: zoradene.length, sipky: true })).join('')}`;
+  }
+
+  // Jeden recept v rozpise. Pri jednej príchuti sa dá šípkami presúvať a
+  // vrstvy prepisovať; v rozpise za viac príchutí naraz ani jedno nedáva
+  // zmysel — poradie je pri každej príchuti vlastné a vrstvy by sa menili
+  // naraz dvom rôznym tortám.
+  function blokReceptu(r, moznosti) {
+    const { i, zo, sipky, spolu, prePrichute } = moznosti;
+    return `
         <div style="margin-bottom:24px">
           <div class="admin-row" style="align-items:center;gap:10px;margin:0 0 2px">
             <h3 style="margin:0">${esc(r.recept.nazov)}</h3>
-            <span class="akcie">
+            ${sipky ? `<span class="akcie">
               <button class="btn ghost sm" title="skôr" onclick="Admin.posunVRozpise('${r.recept.id}', -1)"${
                 i === 0 ? ' disabled' : ''}>↑</button>
               <button class="btn ghost sm" title="neskôr" onclick="Admin.posunVRozpise('${r.recept.id}', 1)"${
-                i === zoradene.length - 1 ? ' disabled' : ''}>↓</button>
-            </span>
+                i === zo - 1 ? ' disabled' : ''}>↓</button>
+            </span>` : ''}
           </div>
+          ${prePrichute ? `<p class="muted" style="margin:0 0 6px;font-size:.85rem">
+            ${prePrichute}</p>` : ''}
           ${r.na_tortu ? `
           <p class="muted" style="margin:0 0 8px;font-size:.85rem">
             Recept je napísaný na Ø ${cisloSk(r.recept.priemer)} cm${
@@ -1659,18 +1676,22 @@
             čiže <strong>${cisloSk(r.davky)}×</strong> dávku.
             ${r.recept.poznamka ? '<br>' + esc(r.recept.poznamka) : ''}
           </p>
-          ${r.na_tortu.vrstiev === null ? '' : `
+          ${r.na_tortu.vrstiev === null ? '' : (sipky ? `
           <p class="muted" style="margin:-4px 0 8px;font-size:.85rem">
             Vrstiev v torte:
             <input type="number" min="0" step="1" style="width:64px;padding:4px 8px"
               value="${esc(r.na_tortu.vrstiev)}"
               onchange="Admin.prepocitajVrstvy('${r.recept.id}', this.value)">
             <span style="margin-left:6px">len pre tento recept — hore sa to mení naraz</span>
-          </p>`}` : `
+          </p>` : `
+          <p class="muted" style="margin:-4px 0 8px;font-size:.85rem">
+            Vrstiev v torte: ${cisloSk(r.na_tortu.vrstiev)}</p>`)}` : `
           <p class="muted" style="margin:0 0 8px;font-size:.85rem">
             Recept je na ${cisloSk(r.recept.vytaznost)} ${esc(r.recept.jednotka_vytaznosti)}${
               r.recept.popis_vytaznosti ? ' ' + esc(r.recept.popis_vytaznosti) : ''}${
-              r.kusov_z_davky !== null && r.kusov_z_davky !== undefined
+              // V spoločnom rozpise by „pri tejto príchuti" klamalo: príchutí
+              // je viac a z dávky vyjde pri každej iný počet.
+              !spolu && r.kusov_z_davky !== null && r.kusov_z_davky !== undefined
                 && Number(r.kusov_z_davky) !== Number(r.recept.vytaznost)
               ? ` (pri tejto príchuti z dávky vyjde ${cisloSk(r.kusov_z_davky)} kusov)` : ''} —
             teraz z neho potrebuješ <strong>${cisloSk(r.davky)}×</strong> dávku,
@@ -1690,7 +1711,170 @@
             <summary class="muted" style="cursor:pointer">Postup</summary>
             <p style="white-space:pre-wrap;margin:8px 0 0">${esc(r.recept.postup)}</p>
           </details>` : ''}
-        </div>`).join('')}`;
+        </div>`;
+  }
+
+  // ---------- celé pečenie: viac príchutí v jednom rozpise ----------
+  //
+  // Objednávka býva zmiešaná — 10 choux a 10 veterníkov. Odpalované cesto
+  // je pre obe to isté a mieša sa raz, tak ho treba aj vidieť raz,
+  // s dávkami spočítanými dokopy. Výpočet to vie odjakživa (rozpisReceptov
+  // zlučuje podľa receptu), len sa doň doteraz nedalo poslať viac než
+  // jednu príchuť.
+
+  let SPOLU = null;   // { polozky, popis } kým je vypísaný spoločný rozpis
+
+  // Recept môže byť v dvoch príchutiach a pri každej s iným poradím.
+  // Berie sa to skoršie: čo ide prvé v jednej, nemá čakať na druhú.
+  function zoradRozpisSpolu(rozpis, polozky) {
+    const receptPodlaId = new Map(((RECEPTAR && RECEPTAR.recepty) || []).map((r) => [r.id, r]));
+    const kluc = (r) => {
+      const poradia = polozky
+        .map((p) => Number((vazbaRozpisu(r.recept.id, p.product_id) || {}).sort_order) || 0)
+        .filter((n) => n > 0);
+      const recept = receptPodlaId.get(r.recept.id);
+      return {
+        rucne: poradia.length ? Math.min(...poradia) : 0,
+        skupina: recept ? poradieSkupiny(recept) : 0,
+      };
+    };
+    return [...rozpis].sort((a, b) => {
+      const ka = kluc(a);
+      const kb = kluc(b);
+      if (ka.rucne && kb.rucne) return ka.rucne - kb.rucne;
+      if (ka.rucne !== kb.rucne) return ka.rucne ? -1 : 1;
+      return (ka.skupina - kb.skupina)
+        || a.recept.nazov.localeCompare(b.recept.nazov, 'sk');
+    });
+  }
+
+  // Ku ktorým príchutiam recept v tomto pečení patrí. Bez toho sa z riadku
+  // „2× dávka" nedá prečítať, že je to cesto na choux AJ na veterníky.
+  function prePrichuteReceptu(recipeId, polozky) {
+    const kde = polozky
+      .filter((p) => vazbaRozpisu(recipeId, p.product_id))
+      .map((p) => `${esc(nazovPrichute(p.product_id))} (${p.kusy} ks)`);
+    return kde.length > 1 ? 'na: ' + kde.join(' + ') : '';
+  }
+
+  async function rozpisSpolu(polozky, popis) {
+    showTab('recepty');
+    const el = document.getElementById('receptyRozpis');
+    el.innerHTML = '<p class="muted">Počítam…</p>';
+    // Spoločný rozpis nepatrí žiadnemu uloženému receptu ani jednej
+    // príchuti — stav po jednej príchuti treba zahodiť, nech sa poznámka
+    // ani šípky nepokúsia zapísať niekam, kam nepatria.
+    OTVORENY_ULOZENY = null;
+    ROZPIS_STAV = null;
+    if (!RECEPTAR) {
+      try { await loadRecepty(); } catch { /* chybu vypíše rozpis nižšie */ }
+    }
+    try {
+      const data = await apiFetch('/api/admin/receptar?co=kalkulacia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ polozky }),
+      });
+      renderRozpisSpolu(data.rozpis || [], polozky, popis);
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (err) {
+      el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
+    }
+  }
+
+  function renderRozpisSpolu(rozpis, polozky, popis) {
+    const el = document.getElementById('receptyRozpis');
+    SPOLU = { polozky, popis };
+    if (!rozpis.length) {
+      el.innerHTML = `<p class="muted">${esc(popis)} — ani jedna príchuť nemá priradené recepty.</p>`;
+      return;
+    }
+    const zoradene = zoradRozpisSpolu(rozpis, polozky);
+    const kusySpolu = polozky.reduce((n, p) => n + Number(p.kusy || 0), 0);
+
+    el.innerHTML = `
+      <div class="admin-row" style="margin-bottom:4px">
+        <h3 style="margin:0">${esc(popis)} — ${kusySpolu} ks</h3>
+        <button class="btn ghost sm" onclick="Admin.doKalkulackySpolu()">Poslať do kalkulačky</button>
+      </div>
+      <p class="muted" style="margin:0 0 16px;font-size:.88rem">
+        ${polozky.map((p) => `${p.kusy}× ${esc(nazovPrichute(p.product_id))}`).join(' · ')}<br>
+        Recept, ktorý patrí k viacerým príchutiam, je tu <strong>raz</strong> a dávky má
+        spočítané — odpalované cesto na choux aj na veterníky je jedna miska.
+        Šípky ani poznámka tu nie sú: poradie aj poznámka patria jednej príchuti,
+        tie si nastavíš v „Čo mám miešať".</p>
+      ${zoradene.map((r) => blokReceptu(r, {
+        sipky: false,
+        spolu: true,
+        prePrichute: prePrichuteReceptu(r.recept.id, polozky),
+      })).join('')}`;
+  }
+
+  async function doKalkulackySpolu() {
+    if (!SPOLU) return;
+    showTab('kalkulacka');
+    await pripravKalkulacku();
+    zahodPredvoleneRiadky();
+    SPOLU.polozky.forEach((p) => {
+      const uz = [...document.querySelectorAll('#zozPolozky .form')]
+        .find((r) => r.querySelector('.kalProdukt').value === p.product_id);
+      if (uz) uz.querySelector('.kalKusy').value = p.kusy;
+      else pridajKalRiadok(p.product_id, p.kusy);
+    });
+    document.getElementById('zozStav').textContent =
+      `Prevzaté z „${SPOLU.popis}" (${SPOLU.polozky.length} príchutí). Vyber termín a ulož.`;
+  }
+
+  // Jedna objednávka celá. Tá istá príchuť viackrát v objednávke sa sčíta,
+  // nech sa nerozpadne na dva riadky.
+  async function rozpisZObjednavky(orderId) {
+    const o = ORDERS_CACHE.find((x) => x.id === orderId);
+    if (!o) return;
+    const podlaVyrobku = new Map();
+    const bezReceptu = [];
+    (o.order_items || []).forEach((p) => {
+      if (!p.product_id) { bezReceptu.push(p.name_snapshot); return; }
+      podlaVyrobku.set(p.product_id, (podlaVyrobku.get(p.product_id) || 0) + Number(p.qty || 0));
+    });
+    const polozky = [...podlaVyrobku].map(([product_id, kusy]) => ({ product_id, kusy }));
+    if (!polozky.length) {
+      showTab('recepty');
+      document.getElementById('receptyRozpis').innerHTML =
+        '<p class="err">V objednávke nie je nič, k čomu by sa dal nájsť recept.</p>';
+      return;
+    }
+    await rozpisSpolu(polozky,
+      `Objednávka ${o.order_no ? '#' + o.order_no : ''} — ${o.customer_name}`.trim());
+    if (bezReceptu.length) {
+      const el = document.getElementById('receptyRozpis');
+      el.insertAdjacentHTML('afterbegin',
+        `<p class="err">Bez receptu (nerátalo sa): ${esc([...new Set(bezReceptu)].join(', '))}</p>`);
+    }
+  }
+
+  // Celý pečúci deň: všetky objednávky na termín zlúčené do jedného rozpisu.
+  async function rozpisDna() {
+    const den = document.getElementById('recDen').value;
+    const el = document.getElementById('receptyRozpis');
+    if (!den) {
+      showTab('recepty');
+      el.innerHTML = '<p class="err">Vyber termín.</p>';
+      return;
+    }
+    try {
+      const data = await apiFetch(`/api/admin/receptar?den=${encodeURIComponent(den)}`);
+      if (!data.polozky.length) {
+        el.innerHTML = `<p class="muted">Na ${esc(den)} nie je nič objednané.</p>`;
+        return;
+      }
+      await rozpisSpolu(data.polozky, `Pečenie na ${den} — ${data.pocet_objednavok} objednávok`);
+      if (data.bez_receptu.length) {
+        el.insertAdjacentHTML('afterbegin',
+          `<p class="err">Bez receptu (nerátalo sa): ${esc(data.bez_receptu.join(', '))}</p>`);
+      }
+    } catch (err) {
+      el.innerHTML = `<p class="err">${esc(err.message)}</p>`;
+    }
   }
 
   function poznamkaUlozeneho() {
@@ -2829,6 +3013,7 @@
   }
 
   window.Admin = {
+    rozpisZObjednavky, rozpisDna, doKalkulackySpolu,
     login, logout, showTab,
     updateOrderStatus, presunObjednavku, saveOrder, resetOrderForm, editDay, novyDen, saveDay, savePassword,
     pridajDoObjednavky, odoberZObjednavky, zmenPocetVObjednavke,

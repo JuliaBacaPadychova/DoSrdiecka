@@ -232,6 +232,19 @@
       <p id="ulozeneStav" class="muted" style="display:none;margin:10px 0 0"></p>
     </div>
     <div class="admin-card">
+      <h3>Celé pečenie naraz</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Keď sa na jeden deň pečie viac
+        príchutí, odpalované cesto je pre choux aj veterníky to isté — mieša sa raz. Tu sa
+        vypíše raz, s dávkami spočítanými dokopy. To isté spraví tlačidlo
+        <strong>Do receptov</strong> pri objednávke.</p>
+      <div class="form">
+        <div><label for="recDen">Termín</label><input id="recDen" type="date"></div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn" onclick="Admin.rozpisDna()">Zobraziť celé pečenie</button>
+        </div>
+      </div>
+    </div>
+    <div class="admin-card">
       <h3>Čo mám miešať</h3>
       <p class="muted" style="margin:0 0 12px;font-size:.88rem">Vyber príchuť a koľko kusov
         ideš robiť. Vypíšu sa všetky recepty, ktoré k nej patria, s gramážou prepočítanou
