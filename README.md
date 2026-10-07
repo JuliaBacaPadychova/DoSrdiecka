@@ -28,6 +28,7 @@ api/               serverless funkcie (Vercel Node runtime)
 lib/               zdieľaná logika (Supabase REST klient, e-mail cez SMTP, auth)
 supabase/schema.sql databázová schéma + počiatočné dáta (spustiť raz v Supabase)
 test/              automatizované testy (node --test)
+tools/             preklikanie správy v prehliadači (mimo npm test, viď tools/README.md)
 ```
 
 ## Business logika
@@ -47,6 +48,11 @@ test/              automatizované testy (node --test)
 npm test        # automatizované testy (mailer + kapacitná logika v RPC)
 npm run dev      # lokálny server na http://localhost:3000 (potrebuje .env.local)
 ```
+
+Správa webu sa dá aj preklikať v skutočnom prehliadači — `tools/README.md`
+hovorí ako. Nie je to súčasť `npm test` a Playwright zámerne nie je
+v `package.json`: projekt beží na nule balíčkov a do nasadenia sa nič
+navyše dostať nemá.
 
 `npm run dev` potrebuje reálne (alebo testovacie) Supabase premenné v
 `.env.local` — pozri `.env.example`. Bez nich frontend nabehne, ale
