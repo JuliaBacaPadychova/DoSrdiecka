@@ -146,14 +146,38 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
 
   console.log('\nCELÝ DEŇ:');
   await page.click('button[data-tab="recepty"]');
-  await page.fill('#recDen', '2027-04-10');
+  await page.waitForTimeout(400);
+  const moznosti = await page.$$eval('#recDen option', (o) => o.map((x) => x.textContent.trim()));
+  console.log('  v ponuke: ' + moznosti.join(' | '));
+  ok('termín sa nevyberá z kalendára, ale z objednávok',
+    await page.evaluate(() => document.getElementById('recDen').tagName === 'SELECT'));
+  ok('ponúka presne ten deň, na ktorý je objednávka',
+    moznosti.length === 1 && /^2027-04-10 — 1 objednávku, 22 ks$/.test(moznosti[0]));
+  ok('a je rovno vybratý', (await page.inputValue('#recDen')) === '2027-04-10');
   await page.click('button:has-text("Zobraziť celé pečenie")');
   await page.waitForTimeout(900);
   const den = (await page.textContent('#receptyRozpis')).replace(/\s+/g, ' ');
   ok('rozpis na deň pomenuje termín', /Pečenie na 2027-04-10 — 1 objednávok/.test(den));
   ok('a dáva to isté (1,5× dávka)', /potrebuješ 1,5× dávku/.test(den));
 
+  console.log('\nZRUŠENÁ OBJEDNÁVKA Z PONUKY ZMIZNE:');
+  await page.click('button[data-tab="orders"]');
+  await page.waitForSelector('#ordersList select', { timeout: 5000 });
+  await page.selectOption('#ordersList select', 'zrusena');
+  await page.waitForTimeout(900);
+  await page.click('button[data-tab="recepty"]');
+  await page.waitForTimeout(500);
+  const poZruseni = await page.$$eval('#recDen option', (o) => o.map((x) => x.textContent.trim()));
+  ok('po zrušení ostane ponuka prázdna (' + poZruseni.join(', ') + ')',
+    poZruseni.length === 1 && /žiadne objednávky/.test(poZruseni[0]));
+  await page.click('button[data-tab="orders"]');
+  await page.waitForSelector('#ordersList select', { timeout: 5000 });
+  await page.selectOption('#ordersList select', 'nova');
+  await page.waitForTimeout(900);
+
   console.log('\nJEDNA PRÍCHUŤ OSTALA AKO BOLA:');
+  await page.click('button[data-tab="recepty"]');
+  await page.waitForTimeout(400);
   await page.selectOption('#recPrichut', { label: 'Veterník — Karamelový' });
   await page.fill('#recKusy', '12');
   await page.click('button:has-text("Zobraziť recepty")');

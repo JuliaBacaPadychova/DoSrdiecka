@@ -113,6 +113,8 @@
       const data = await apiFetch('/api/admin/orders');
       ORDERS_CACHE = data.orders || [];
       renderOrders(ORDERS_CACHE);
+      // Zrušená objednávka má z ponuky termínov zmiznúť.
+      naplnDniPecenia();
     } catch (err) {
       el.innerHTML = `<p class="err">${err.message}</p>`;
     }
@@ -1012,6 +1014,15 @@
         const p = await apiFetch('/api/admin/products');
         PRODUCTS_CACHE = p.products || [];
       }
+      // Ponuka termínov na celé pečenie stojí na objednávkach. Keď sa
+      // záložka otvorí ako prvá, ešte načítané nie sú.
+      if (!ORDERS_CACHE.length) {
+        try {
+          const o = await apiFetch('/api/admin/orders');
+          ORDERS_CACHE = o.orders || [];
+        } catch { /* ponuka ostane prázdna, zvyšok záložky funguje */ }
+      }
+      naplnDniPecenia();
       naplnPrichute();
       renderUlozene();
       renderSkupiny();
@@ -1853,12 +1864,47 @@
   }
 
   // Celý pečúci deň: všetky objednávky na termín zlúčené do jedného rozpisu.
+  // Termíny, na ktoré naozaj niečo je. Vyberať z kalendára nemá zmysel:
+  // dní je nekonečne veľa, objednávok pár. Zrušené sa nerátajú — rovnako
+  // ako ich neráta ?den=, z ktorého sa rozpis počíta.
+  function dniSObjednavkami() {
+    const podlaDna = new Map();
+    ORDERS_CACHE.filter((o) => o.status !== 'zrusena').forEach((o) => {
+      const den = String(o.day).slice(0, 10);
+      const z = podlaDna.get(den) || { den, objednavok: 0, kusov: 0 };
+      z.objednavok += 1;
+      z.kusov += (o.order_items || []).reduce((n, p) => n + Number(p.qty || 0), 0);
+      podlaDna.set(den, z);
+    });
+
+    // Najbližší termín hore: ten sa pečie ako prvý. Minulé idú za ne,
+    // od najnovšieho — sú to už len záznamy, ale občas sa do nich pozerá.
+    const dnes = new Date().toISOString().slice(0, 10);
+    const buduce = [...podlaDna.values()].filter((d) => d.den >= dnes)
+      .sort((a, b) => a.den.localeCompare(b.den));
+    const minule = [...podlaDna.values()].filter((d) => d.den < dnes)
+      .sort((a, b) => b.den.localeCompare(a.den));
+    return buduce.concat(minule);
+  }
+
+  function naplnDniPecenia() {
+    const el = document.getElementById('recDen');
+    if (!el) return;
+    const doteraz = el.value;
+    const dni = dniSObjednavkami();
+    el.innerHTML = dni.length
+      ? dni.map((d) => `<option value="${d.den}">${d.den} — ${objednavokText(d.objednavok)}, ${d.kusov} ks</option>`).join('')
+      : '<option value="">— zatiaľ žiadne objednávky —</option>';
+    // Po prekreslení sa drží to, čo bolo vybrané; inak najbližší termín.
+    if (doteraz && dni.some((d) => d.den === doteraz)) el.value = doteraz;
+  }
+
   async function rozpisDna() {
     const den = document.getElementById('recDen').value;
     const el = document.getElementById('receptyRozpis');
     if (!den) {
       showTab('recepty');
-      el.innerHTML = '<p class="err">Vyber termín.</p>';
+      el.innerHTML = '<p class="err">Zatiaľ nie je na čo — žiadne objednávky.</p>';
       return;
     }
     try {
