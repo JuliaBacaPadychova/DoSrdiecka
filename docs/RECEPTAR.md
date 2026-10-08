@@ -342,6 +342,10 @@ V správe webu pribudli tri záložky:
   aj na veterníky je jedna miska, tak je v rozpise raz a dávky má
   spočítané. Vstupom je buď jedna objednávka (tlačidlo *Do receptov* pri
   nej), alebo celý termín (`?den=`, to isté, čo počíta nákupný zoznam dňa).
+  Termín sa nevyberá z kalendára, ale zo zoznamu dní, na ktoré objednávka
+  naozaj je — s počtom objednávok a kusov, najbližší hore a rovno vybratý.
+  Dní je nekonečne veľa, objednávok pár. Zrušené sa doň nerátajú, rovnako
+  ako ich neráta `?den=`.
 
   V spoločnom rozpise nie sú šípky ani poznámka a nepíše sa „pri tejto
   príchuti": poradie (`product_recipes.sort_order`) aj poznámka
