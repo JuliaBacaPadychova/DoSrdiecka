@@ -388,8 +388,11 @@ V správe webu pribudli tri záložky:
   prečítať nedá — a prázdne nie je nula: do spotreby sa taký nákup neráta
   a v súhrne sa povie, koľko ich je.
 
-  Pri mazaní zoznamu sa správa spýta, či si sumu ponechať, a predvyplní
-  vypočítanú — prepísať sa dá na tú z bločku. Keď sa zápis nepodarí
+  Pri mazaní zoznamu sa správa spýta, koľko nákup stál, a predvyplní
+  vypočítanú sumu — prepísať sa dá na tú z bločku. **Spýta sa vždy**, aj
+  keď sa vypočítať nedá: časť surovín nemá cenu ani balenie, takže výpočet
+  vyjde 0, ale z bločku to majiteľka vie. Mlčky otázku preskočiť znamená,
+  že o číslo príde a nedozvie sa prečo. Keď sa zápis nepodarí
   (napríklad migrácia ešte nebehala), zoznam sa aj tak zmaže a povie sa
   to: zastaviť mazanie kvôli tomu by bolo horšie.
 
