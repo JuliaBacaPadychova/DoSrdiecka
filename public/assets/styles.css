@@ -278,6 +278,12 @@ footer a{color:var(--peach-deep)}
 .admin-tabs button.on{background:var(--peach-deep);color:#fff}
 .admin-panel{display:none}
 .admin-panel.on{display:block}
+/* Tabuľky v správe bývajú širšie než karta: objednávky majú osem
+   stĺpcov, Dni a limity šesť. Posledný sa nezmestil a pretekal von, takže
+   vodorovný posuvník dostala celá stránka a tabuľka sa aj tak nedala
+   dočítať. Takto sa posúva obsah karty a stránka stojí.
+   Platilo to doteraz len pod 700 px, lenže preteká aj na notebooku. */
+.admin-card{overflow-x:auto}
 .admin-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:16px;box-shadow:var(--shadow)}
 .admin-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between}
 .admin-table{width:100%;border-collapse:collapse;font-size:.9rem}
@@ -337,17 +343,18 @@ footer a{color:var(--peach-deep)}
 .admin-card.blikne{animation:blikni .9s ease-out}
 @media(prefers-reduced-motion:reduce){.admin-card.blikne{animation:none}}
 .admin-table .stavbunka select{min-width:128px}
+/* Objednávky majú osem stĺpcov a na notebooku sa posledný nezmestil —
+   „Do receptov" pretekalo mimo karty a stránka dostala vodorovný
+   posuvník. Tlačidlo preto stojí POD výberom stavu, nie vedľa neho:
+   bunka je o 110 px užšia a nič sa nestratilo. (Samotný display:block
+   je tu potrebný kvôli white-space:nowrap na bunke — inline-block
+   tlačidlo by sa naň aj tak postavilo vedľa.) */
+.admin-table .stavbunka .btn{display:block;margin-top:6px}
 
 /* --- široká obrazovka --- */
 /* Na šírke správy by dvojstĺpcový formulár rozťahoval políčka na pol metra.
    Namiesto pevných dvoch stĺpcov sa ich zmestí toľko, koľko sa zmestí —
    pri 260 px na políčko. .tri a .styri majú vlastné pomery, tie neruším. */
-/* Tabuľky v správe sú na telefóne širšie ako obrazovka a posúvali celú
-   stránku do strán. Nech sa posúva len tá jedna karta s tabuľkou. */
-@media(max-width:700px){
-  .admin-card{overflow-x:auto}
-}
-
 @media(min-width:1100px){
   .admin-wrap .form:not(.tri):not(.styri){grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
   /* Políčka, ktoré by sa inak natiahli cez celú šírku a písalo by sa do
