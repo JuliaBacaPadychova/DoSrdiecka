@@ -2804,7 +2804,8 @@
   async function zmazZoznam() {
     if (!AKTUALNY_ZOZNAM) { document.getElementById('zozStav').textContent = 'Tento zoznam ešte nie je uložený.'; return; }
     const z = (RECEPTAR.zoznamy || []).find((x) => x.id === AKTUALNY_ZOZNAM);
-    if (!confirm(`Naozaj zmazať nákupný zoznam „${z ? popisZoznamu(z) : ''}"?`)) return;
+    if (!confirm(`Zmazať nákupný zoznam „${z ? popisZoznamu(z) : ''}"?\n\n`
+      + 'Potom sa spýtam, koľko ten nákup stál — tá suma ostane v Peniazoch.')) return;
     try {
       // Zoznam je plán a maže sa. Koľko peňazí odišlo je fakt a ostať má —
       // tak sa to spýta TERAZ, kým sa dá suma ešte dopočítať. Potom už
@@ -2821,38 +2822,50 @@
   // Prázdne pole = nezapisovať; zoznam sa zmaže tak či tak.
   async function ponukniZapisNakupu(z) {
     if (!z || !Array.isArray(z.items) || !z.items.length) return;
-    let vypocet = null;
+
+    // Suma sa len PREDVYPLNÍ. Keď sa dopočítať nedá — suroviny bez ceny
+    // alebo balenia, výpadok servera — pýtame sa aj tak s prázdnym
+    // políčkom: z bločku to majiteľka vie, aj keď systém nie. Mlčky
+    // preskočiť otázku znamená, že o číslo príde a nedozvie sa prečo.
+    let zoznam = null;
     try {
-      vypocet = await apiFetch('/api/admin/receptar?co=kalkulacia', {
+      const vypocet = await apiFetch('/api/admin/receptar?co=kalkulacia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ polozky: z.items }),
       });
-    } catch { return; }   // nedá sa dopočítať — radšej sa nepýtať vôbec
-    const zoznam = vypocet && vypocet.zoznam;
-    if (!zoznam || !zoznam.nakup) return;
+      zoznam = vypocet && vypocet.zoznam;
+    } catch { /* pýtame sa aj tak, len bez predvyplnenia */ }
 
+    const vypocitane = zoznam && zoznam.nakup ? zoznam.nakup : null;
+    const den = z.day || new Date().toISOString().slice(0, 10);
     const odpoved = prompt(
-      'Koľko si za tento nákup naozaj zaplatila?\n\n'
-      + 'Zoznam sa zmaže, ale suma ostane v Peniazoch. Prepíš ju podľa bločku,\n'
-      + 'alebo nechaj prázdne, ak zapisovať netreba.',
-      String(zoznam.nakup).replace('.', ','));
+      `Koľko si za tento nákup naozaj zaplatila?\n\n`
+      + `Zapíše sa k ${den} a ostane v Peniazoch, aj keď sa zoznam zmaže.\n`
+      + (vypocitane
+        ? 'Predvyplnená je vypočítaná suma — prepíš ju podľa bločku.\n'
+        : 'Vypočítať sa nedala (suroviny bez ceny alebo balenia), tak ju napíš z bločku.\n')
+      + 'Prázdne = nezapisovať.',
+      vypocitane ? String(vypocitane).replace('.', ',') : '');
     if (odpoved === null) return;
     const suma = Number(String(odpoved).replace(',', '.').trim());
     if (!String(odpoved).trim() || !Number.isFinite(suma) || suma < 0) return;
 
     // Spotreba sa zamrazí z dnešných cien — spätne by sa počítala
     // z budúcich a marcový nákup by sa menil. Keď si sumu prepísala,
-    // posunie sa v rovnakom pomere, nech k sebe sedia.
-    const pomer = zoznam.nakup ? suma / zoznam.nakup : 1;
+    // posunie sa v rovnakom pomere, nech k sebe sedia. Keď sa nedalo
+    // dopočítať nič, ostane prázdna — nie nula.
+    const pomer = vypocitane ? suma / vypocitane : 1;
+    const spotreba = zoznam && zoznam.spotreba
+      ? Math.round(zoznam.spotreba * pomer * 100) / 100 : null;
     try {
       await apiFetch('/api/admin/receptar?co=nakup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          day: z.day || new Date().toISOString().slice(0, 10),
+          day: den,
           amount: suma,
-          consumption: zoznam.spotreba ? Math.round(zoznam.spotreba * pomer * 100) / 100 : null,
+          consumption: spotreba,
           note: popisZoznamu(z),
         }),
       });

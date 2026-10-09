@@ -899,6 +899,50 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   console.log('  zoznam nákupov: ' + vypis.trim().slice(0, 120));
   ok('a nákup je vidieť v zozname nákupov', /2027-06-12/.test(vypis) && /103,2/.test(vypis));
 
+  console.log('\nSPÝTA SA AJ VTEDY, KEĎ SUMU NEVIE VYPOČÍTAŤ:');
+  // Časť surovín nemá vyplnené balenie ani cenu, takže vypočítaný nákup
+  // vyjde 0. Pôvodne sa vtedy otázka MLČKY preskočila: zoznam zmizol aj
+  // s číslom a nedalo sa zistiť prečo. Sumu z bločku pritom majiteľka vie,
+  // aj keď ju systém spočítať nevie.
+  const povodneCeny = db.ingredients.map((i) => [i.pack_price, i.pack_size]);
+  db.ingredients.forEach((i) => { i.pack_price = null; i.pack_size = null; });
+
+  await page.click('button[data-tab="kalkulacka"]');
+  await page.waitForTimeout(600);
+  await page.click('button:has-text("Nový zoznam")');
+  await page.waitForTimeout(300);
+  await page.fill('#zozDen', '2027-07-03');
+  await page.fill('#zozNazov', 'bez cien');
+  await page.selectOption('#zozPolozky .kalProdukt', { label: 'Choux — Pistáciovo kávový' });
+  await page.fill('#zozPolozky .kalKusy', '6');
+  await page.click('button:has-text("Uložiť zoznam")');
+  await page.waitForFunction(() => /Uložené/.test(document.getElementById('zozStav').textContent),
+    { timeout: 5000 });
+
+  let ponukaSumy = null;
+  page.removeAllListeners('dialog');
+  page.on('dialog', (d) => {
+    if (d.type() === 'prompt') ponukaSumy = d.defaultValue();
+    d.accept(d.type() === 'prompt' ? '48,30' : undefined);
+  });
+  await page.click('button:has-text("Zmazať tento zoznam")');
+  await page.waitForTimeout(1500);
+
+  ok('otázka na sumu príde, aj keď sa vypočítať nedala', ponukaSumy !== null);
+  ok('a políčko je prázdne, nie nula (' + JSON.stringify(ponukaSumy) + ')', ponukaSumy === '');
+  const bezCien = db.purchases.find((n) => /bez cien/.test(n.note || ''));
+  ok('suma z bločku sa aj tak zapíše (' + (bezCien && bezCien.amount) + ' €)',
+    !!bezCien && Number(bezCien.amount) === 48.3);
+  ok('spotreba ostane prázdna, keď sa nedá dopočítať', bezCien && bezCien.consumption === null);
+
+  db.ingredients.forEach((i, idx) => { [i.pack_price, i.pack_size] = povodneCeny[idx]; });
+  page.removeAllListeners('dialog');
+  page.on('dialog', (d) => d.accept(d.type() === 'prompt' ? suma : undefined));
+  await page.click('button[data-tab="peniaze"]');
+  await page.waitForTimeout(400);
+  await page.click('#tab-peniaze button:has-text("Zobraziť")');
+  await page.waitForSelector('#penSuhrn table', { timeout: 5000 });
+
   console.log('\nNÁKUP SA DÁ ZAPÍSAŤ AJ BEZ ZOZNAMU:');
   await page.fill('#nakDen', '2027-06-20');
   await page.fill('#nakSuma', '12.50');
