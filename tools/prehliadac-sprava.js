@@ -787,6 +787,36 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   await page.waitForTimeout(300);
   const farba = await page.$eval('#receptyList label', (l) => getComputedStyle(l).color + ' / ' + getComputedStyle(l).fontWeight);
   ok('popisky sú tmavé a tučné (' + farba + ')', /51, 48, 43/.test(farba) && /700/.test(farba));
+
+  console.log('\nNIČ NEPRETEKÁ MIMO STRÁNKU:');
+  // Tabuľky v správe bývajú širšie než karta — objednávky majú osem
+  // stĺpcov. Keď prebytok nepohltí karta, vodorovný posuvník dostane celá
+  // stránka a posledný stĺpec sa odreže. Je to chyba, ktorú testy na
+  // výpočty nikdy nechytia, tak sa meria tu, na šírkach bežných laptopov.
+  for (const sirka of [1024, 1280, 1366]) {
+    await page.setViewportSize({ width: sirka, height: 820 });
+    const zle = [];
+    for (const tab of ['orders', 'days', 'products', 'suroviny', 'recepty', 'kalkulacka', 'peniaze', 'settings']) {
+      await page.click(`button[data-tab="${tab}"]`);
+      await page.waitForTimeout(350);
+      const cez = await page.evaluate(() =>
+        document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      if (cez > 2) zle.push(`${tab} o ${cez} px`);
+    }
+    ok(`pri ${sirka} px stránka nemá vodorovný posuvník` + (zle.length ? ' (' + zle.join(', ') + ')' : ''),
+      zle.length === 0);
+  }
+
+  // A tlačidlo v poslednom stĺpci musí byť celé vidieť, nie odrezané.
+  await page.setViewportSize({ width: 1366, height: 820 });
+  await page.click('button[data-tab="orders"]');
+  await page.waitForSelector('#ordersList button:has-text("Do receptov")', { timeout: 5000 });
+  const vonku = await page.evaluate(() => {
+    const b = document.querySelector('#ordersList button');
+    const karta = b.closest('.admin-card').getBoundingClientRect();
+    return Math.round(b.getBoundingClientRect().right - karta.right);
+  });
+  ok('„Do receptov" je celé v karte (' + vonku + ' px za okrajom)', vonku <= 0);
   await page.screenshot({ path: path.join(VYSTUP, 'recepty-uprava.png'), fullPage: false });
   console.log('obrázky:', VYSTUP);
   console.log('chyby v prehliadači:', chyby.length ? chyby : 'žiadne');

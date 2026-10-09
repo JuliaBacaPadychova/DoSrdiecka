@@ -314,7 +314,7 @@
               <option value="vybavena" ${o.status === 'vybavena' ? 'selected' : ''}>vybavená</option>
               <option value="zrusena" ${o.status === 'zrusena' ? 'selected' : ''}>zrušená</option>
             </select>
-            <button class="btn ghost sm" style="margin-top:6px"
+            <button class="btn ghost sm"
               onclick="Admin.rozpisZObjednavky('${o.id}')">Do receptov</button>
           </td>
         </tr>`;
