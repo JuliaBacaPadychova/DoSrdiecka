@@ -63,6 +63,13 @@ const TYPY = {
     polia: ["name", "product_id", "pieces", "note"],
     texty: ["name", "note"],
   },
+  // Skutočný nákup. Zámerne NIE je stĺpcom na nákupnom zozname: zoznam je
+  // plán a maže sa, nákup je fakt a ostáva.
+  nakup: {
+    tabulka: "purchases",
+    polia: ["day", "amount", "consumption", "note"],
+    texty: ["note"],
+  },
 };
 
 // Prázdne políčko z formulára znamená "nevyplnené", nie nulu. Pri
@@ -108,8 +115,21 @@ function skontrolujPocet(fields) {
 // Výrobky sú tu kvôli prepočtu tort: priemer torty nesie výrobok
 // (Brownie torta Ø 20 cm), nie recept. Bez nich by sa objednávka na
 // tortu prepočítala, akoby bola dvanásťcentimetrová.
+// Suma nákupu musí byť číslo a nie záporné. „Z toho sa minie" smie byť
+// prázdne — pri ručne zapísanom nákupe sa z bločku prečítať nedá — ale
+// prázdne nie je nula: nula by znamenala, že sa neminulo nič.
+function skontrolujSumy(fields) {
+  for (const pole of ["amount", "consumption"]) {
+    if (fields[pole] === undefined || fields[pole] === null) continue;
+    const n = Number(fields[pole]);
+    if (!Number.isFinite(n) || n < 0) return `invalid_${pole}`;
+    fields[pole] = Math.round(n * 100) / 100;
+  }
+  return null;
+}
+
 async function nacitatReceptar() {
-  const [suroviny, recepty, polozky, vazby, zoznamy, ulozene, skupiny, vyrobky] = await Promise.all([
+  const [suroviny, recepty, polozky, vazby, zoznamy, ulozene, skupiny, vyrobky, nakupy] = await Promise.all([
     rest("ingredients?select=*&order=name.asc"),
     rest("recipes?select=*&order=name.asc"),
     rest("recipe_items?select=*&order=sort_order.asc"),
@@ -118,8 +138,9 @@ async function nacitatReceptar() {
     bezTabulky("recipe_presets?select=*&order=name.asc"),
     bezTabulky("recipe_groups?select=*&order=sort_order.asc,name.asc"),
     rest("products?select=id,name,sub,category_id,diameter_cm&order=sort_order.asc"),
+    bezTabulky("purchases?select=*&order=day.desc,created_at.desc"),
   ]);
-  return { suroviny, recepty, polozky, vazby, zoznamy, ulozene, skupiny, vyrobky };
+  return { suroviny, recepty, polozky, vazby, zoznamy, ulozene, skupiny, vyrobky, nakupy };
 }
 
 // Tvar, v akom počíta lib/kalkulacia.js.
@@ -191,11 +212,14 @@ module.exports = withErrors(
         // nižšie sa to aj vypíše, aby to nebolo tiché.
         const zoznamy = (receptar.zoznamy || []).filter(
           (z) => z.day && z.day >= od && z.day <= doDna);
+        const nakupyObdobia = (receptar.nakupy || []).filter(
+          (n) => n.day >= od && n.day <= doDna);
         return sendJson(res, 200, {
           od, do: doDna,
           objednavky,
           bez_terminu: (receptar.zoznamy || []).filter((z) => !z.day).length,
-          ...prehladPenazi(objednavky, zoznamy, preVypocet(receptar)),
+          nakupy: nakupyObdobia,
+          ...prehladPenazi(objednavky, zoznamy, preVypocet(receptar), nakupyObdobia),
         });
       }
 
@@ -248,6 +272,13 @@ module.exports = withErrors(
         const chyba = skontrolujPocet(fields);
         if (chyba) return sendJson(res, 400, { error: chyba });
       }
+      if (co === "nakup") {
+        if (!DATUM.test(String(fields.day || ""))) {
+          return sendJson(res, 400, { error: "invalid_day" });
+        }
+        const chyba = skontrolujSumy(fields);
+        if (chyba) return sendJson(res, 400, { error: chyba });
+      }
       const created = await rest(typ.tabulka, {
         method: "POST",
         body: fields,
@@ -275,6 +306,13 @@ module.exports = withErrors(
       }
       if (co === "ulozene") {
         const chyba = skontrolujPocet(fields);
+        if (chyba) return sendJson(res, 400, { error: chyba });
+      }
+      if (co === "nakup") {
+        if (fields.day !== undefined && !DATUM.test(String(fields.day || ""))) {
+          return sendJson(res, 400, { error: "invalid_day" });
+        }
+        const chyba = skontrolujSumy(fields);
         if (chyba) return sendJson(res, 400, { error: chyba });
       }
       // Zmena ceny bez dátumu je cena bez platnosti — doplní sa dnešok.

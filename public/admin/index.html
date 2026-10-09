@@ -402,6 +402,25 @@
       <div id="penObjednavky"><p class="muted">—</p></div>
       <p id="penStav" class="muted" style="display:none;margin:10px 0 0"></p>
     </div>
+    <div class="admin-card">
+      <h3>Nákupy</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:.88rem">Koľko naozaj odišlo v obchode.
+        Je to samostatný záznam — nákupný zoznam je pracovný a môžeš ho pokojne zmazať, toto
+        číslo ostane. Keď zoznam mažeš, správa sa spýta, či si sumu ponechať.</p>
+      <div class="form styri">
+        <div><label for="nakDen">Dátum</label><input id="nakDen" type="date"></div>
+        <div><label for="nakSuma">Zaplatené</label><input id="nakSuma" type="number" min="0" step="0.01" placeholder="€"></div>
+        <div><label for="nakSpotreba">Z toho sa minie</label>
+          <input id="nakSpotreba" type="number" min="0" step="0.01" placeholder="nepovinné">
+          <span class="fieldhint">Zvyšok balenia ostáva ako zásoba. Keď to nevieš, nechaj prázdne.</span></div>
+        <div><label for="nakPozn">Poznámka</label><input id="nakPozn" placeholder="napr. sobota — Kaufland"></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn" onclick="Admin.pridajNakup()">Zapísať nákup</button>
+        <span class="muted" id="nakStav" style="font-size:.85rem"></span>
+      </div>
+      <div id="nakupyList" style="margin-top:14px"></div>
+    </div>
   </div>
 
   <div class="admin-panel" id="tab-settings">
