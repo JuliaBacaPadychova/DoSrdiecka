@@ -1,6 +1,10 @@
 (function () {
   const LS_ACCESS = 'dosrdiecka_access_token';
   const LS_REFRESH = 'dosrdiecka_refresh_token';
+  // Na ktorej záložke bola majiteľka naposledy. Po obnovení stránky ju
+  // vrátiť na Objednávky znamená, že si rozrobenú prácu musí znova
+  // vyklikať — pri úprave receptu je to dvadsať klikov.
+  const LS_ZALOZKA = 'dosrdiecka_zalozka';
 
   let CATS_BY_ID = { chlebik: 'Chlebík', zakusky: 'Zákusky', torty: 'Torty' };
   let PRODUCTS_CACHE = [];
@@ -63,7 +67,15 @@
   function showDashboard() {
     document.getElementById('loginView').style.display = 'none';
     document.getElementById('dashboardView').style.display = 'block';
-    loadOrders();
+
+    // Záložka, na ktorej sa naposledy pracovalo. Keby medzitým zmizla
+    // (premenovaná, zrušená), padá sa späť na objednávky.
+    let zalozka = 'orders';
+    try {
+      const ulozena = localStorage.getItem(LS_ZALOZKA);
+      if (ulozena && document.getElementById('tab-' + ulozena)) zalozka = ulozena;
+    } catch { /* súkromné okno, nevadí */ }
+    showTab(zalozka);
   }
 
   async function login() {
@@ -93,6 +105,7 @@
   }
 
   function showTab(name) {
+    try { localStorage.setItem(LS_ZALOZKA, name); } catch { /* súkromné okno, nevadí */ }
     document.querySelectorAll('.admin-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
     document.querySelectorAll('.admin-panel').forEach((p) => p.classList.toggle('on', p.id === 'tab-' + name));
     if (name === 'orders') loadOrders();
@@ -303,7 +316,7 @@
             onchange="Admin.presunObjednavku('${o.id}', this.value, '${o.day}')"></td>
           <td>${o.customer_name}<br><span class="muted">${o.phone || '—'}${
             o.email ? `<br>${o.email}` : ''}</span>${
-            o.note ? `<br><span class="muted">Pozn.: ${o.note}</span>` : ''}</td>
+            o.note ? `<br><span class="muted objpozn">Pozn.: ${o.note}</span>` : ''}</td>
           <td>${(o.order_items || []).map((it) => `${it.qty}× ${it.name_snapshot}${
             it.sub_snapshot ? ` <span class="muted">${it.sub_snapshot}</span>` : ''}`).join('<br>')}</td>
           <td>${(o.order_items || []).some((it) => it.category_id === 'torty') ? 'od ' : ''}${o.total_estimate} €</td>

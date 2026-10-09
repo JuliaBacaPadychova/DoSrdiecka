@@ -335,6 +335,11 @@ footer a{color:var(--peach-deep)}
 /* Stĺpec so stavom objednávky. Bez spodnej hranice ho dlhý zákazníčkin
    e-mail v susednom stĺpci stlačil tak, že z „vybavená" ostalo „vybc". */
 .admin-table .stavbunka{white-space:nowrap}
+/* Dlhá poznámka od zákazníčky roztiahla stĺpec Zákazník na pol tabuľky
+   a zvyšok stlačila — „Položky" potom lámalo každý výrobok na tri riadky.
+   Poznámka sa preto zalomí skôr: stĺpec ostane úzky a vpravo je miesto.
+   Musí to byť blok, inline span by šírku ignoroval. */
+.admin-table .objpozn{display:block;max-width:40ch}
 /* Deň načítaný vo formulári vyššie. Klik na „Upraviť" inak nemusí byť
    na obrazovke vôbec vidieť. */
 .admin-table tr.upravuje{background:var(--ok-bg)}

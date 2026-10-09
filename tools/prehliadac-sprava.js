@@ -817,6 +817,58 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
     return Math.round(b.getBoundingClientRect().right - karta.right);
   });
   ok('„Do receptov" je celé v karte (' + vonku + ' px za okrajom)', vonku <= 0);
+
+  console.log('\nDLHÁ POZNÁMKA NESTLAČÍ PRAVÚ STRANU:');
+  // Poznámka od zákazníčky býva aj na pár viet. Keď sa nezalomí, roztiahne
+  // stĺpec Zákazník cez pol tabuľky a „Položky" potom lámu každý výrobok
+  // na tri riadky.
+  await page.evaluate(async () => {
+    const r = await fetch('/api/admin/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json',
+                 Authorization: 'Bearer ' + localStorage.getItem('dosrdiecka_access_token') },
+      body: JSON.stringify({ day: '2027-05-08', name: 'Ľubomíra Števuliaková', phone: '+421949172298',
+        note: 'ziadne intolerancie, moze byt akakolvek prichut choux ak by si robila inu prichut pre '
+          + 'niekoho mozes to dat naraz :) ak by si nemala ziadne ine objednavky nemusis len kvoli mne '
+          + 'robit ale boli bomboveeee',
+        items: [{ product_id: 'p-choux', qty: 6 }] }),
+    });
+    return r.status;
+  });
+  await page.click('button[data-tab="days"]');
+  await page.click('button[data-tab="orders"]');
+  await page.waitForTimeout(700);
+  const pozn = await page.evaluate(() => {
+    const span = [...document.querySelectorAll('#ordersList .objpozn')][0];
+    if (!span) return null;
+    const td = span.closest('td');
+    return {
+      blok: getComputedStyle(span).display,
+      sirka: Math.round(span.getBoundingClientRect().width),
+      stlpec: Math.round(td.getBoundingClientRect().width),
+    };
+  });
+  ok('poznámka je samostatný blok, nie inline text', pozn && pozn.blok === 'block');
+  ok('a je zalomená na rozumnú šírku (' + (pozn && pozn.sirka) + ' px)',
+    pozn && pozn.sirka > 0 && pozn.sirka <= 400);
+  ok('stĺpec Zákazník tým neroztiahne tabuľku (' + (pozn && pozn.stlpec) + ' px)',
+    pozn && pozn.stlpec <= 440);
+
+  console.log('\nOBNOVENIE STRÁNKY NEVYHODÍ ZO ZÁLOŽKY:');
+  await page.click('button[data-tab="recepty"]');
+  await page.waitForTimeout(400);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.admin-tabs', { timeout: 5000 });
+  await page.waitForTimeout(500);
+  ok('po obnovení ostane otvorená tá istá záložka', await page.evaluate(() =>
+    document.getElementById('tab-recepty').classList.contains('on')));
+  await page.click('button[data-tab="peniaze"]');
+  await page.waitForTimeout(300);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.admin-tabs', { timeout: 5000 });
+  await page.waitForTimeout(500);
+  ok('platí to pre ktorúkoľvek, nielen pre jednu', await page.evaluate(() =>
+    document.getElementById('tab-peniaze').classList.contains('on')));
   await page.screenshot({ path: path.join(VYSTUP, 'recepty-uprava.png'), fullPage: false });
   console.log('obrázky:', VYSTUP);
   console.log('chyby v prehliadači:', chyby.length ? chyby : 'žiadne');
