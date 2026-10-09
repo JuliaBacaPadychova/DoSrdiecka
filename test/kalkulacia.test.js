@@ -528,10 +528,11 @@ test("nákup sa počíta po zoznamoch, nie zlúčene", () => {
   ], DATA);
 
   assert.equal(zvlast.zoznamy.length, 2);
-  assert.ok(zvlast.nakup > spolu.nakup,
-    `dva samostatné nákupy (${zvlast.nakup}) musia stáť viac než jeden spoločný (${spolu.nakup})`);
+  assert.ok(zvlast.planovany_nakup > spolu.planovany_nakup,
+    `dva samostatné nákupy (${zvlast.planovany_nakup}) musia stáť viac`
+    + ` než jeden spoločný (${spolu.planovany_nakup})`);
   // Spotreba je naopak tá istá — minie sa rovnako veľa surovín.
-  assert.equal(zvlast.spotreba, spolu.spotreba);
+  assert.equal(zvlast.planovana_spotreba, spolu.planovana_spotreba);
 });
 
 test("nedopočítané suroviny sa vypíšu raz, zoradené", () => {
@@ -593,4 +594,49 @@ test("recept, ktorý má len jedna z príchutí, ostane samostatne", () => {
   assert.equal(spolu.length, 2);
   const poleva = spolu.find((r) => r.recept.nazov === "Karamelová poleva");
   assert.equal(poleva.kusy, 12, "poleva je len na veterníky, choux sa do nej nerátajú");
+});
+
+// --- nákup je samostatný záznam, nie údaj na nákupnom zozname ---
+//
+// Zoznam je plán a maže sa, keď je po pečení. Koľko peňazí odišlo je fakt
+// a ostáva. Preto sú to dva vstupy a dve čísla, ktoré sa nesčítavajú.
+
+const NAKUPY = [
+  { id: "n1", day: "2026-10-01", amount: 96.4, consumption: 71.2, note: "sobota" },
+  { id: "n2", day: "2026-10-05", amount: 12, consumption: null, note: "maslo navyše" },
+];
+
+test("minuté peniaze prežijú zmazanie nákupného zoznamu", () => {
+  const sozoznamom = prehladPenazi([], [
+    { id: "z", day: "2026-10-01", items: [{ product_id: "pistaciovy", kusy: 10 }] },
+  ], DATA, NAKUPY);
+  const bezZoznamu = prehladPenazi([], [], DATA, NAKUPY);
+
+  assert.equal(sozoznamom.minute, 108.4);
+  assert.equal(bezZoznamu.minute, 108.4, "zmazaný zoznam nemá na minuté peniaze vplyv");
+  assert.ok(sozoznamom.planovany_nakup > 0, "kým zoznam žije, je vidieť aj plán");
+  assert.equal(bezZoznamu.planovany_nakup, 0);
+});
+
+test("plán a skutočnosť sa nesčítavajú", () => {
+  const p = prehladPenazi([], [
+    { id: "z", day: "2026-10-01", items: [{ product_id: "pistaciovy", kusy: 10 }] },
+  ], DATA, NAKUPY);
+  assert.notEqual(p.minute, p.planovany_nakup + 108.4, "plánované sa do minutého nepripočíta");
+  assert.equal(p.minute, 108.4);
+});
+
+test("nákup bez údaja o spotrebe sa do spotreby neráta a povie sa to", () => {
+  const p = prehladPenazi([], [], DATA, NAKUPY);
+  assert.equal(p.spotreba, 71.2, "len ten, kde sa to vie");
+  assert.equal(p.bez_spotreby, 1);
+  assert.equal(p.nakupov, 2);
+});
+
+test("bez zapísaných nákupov je minuté nula, nie prázdno", () => {
+  const p = prehladPenazi([], [], DATA, []);
+  assert.equal(p.minute, 0);
+  assert.equal(p.nakupov, 0);
+  assert.equal(p.spotreba, 0);
+  assert.equal(p.bez_spotreby, 0);
 });

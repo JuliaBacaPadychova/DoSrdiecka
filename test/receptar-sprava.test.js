@@ -74,7 +74,7 @@ test("čítanie vráti suroviny aj recepty naraz", async (t) => {
     const o = await zavolaj("GET", "/api/admin/receptar");
     assert.equal(o.code, 200);
     assert.deepEqual(Object.keys(o.body).sort(),
-      ["polozky", "recepty", "skupiny", "suroviny", "ulozene", "vazby", "vyrobky", "zoznamy"]);
+      ["nakupy", "polozky", "recepty", "skupiny", "suroviny", "ulozene", "vazby", "vyrobky", "zoznamy"]);
     assert.equal(o.body.suroviny[0].name, "Mascarpone");
   });
 });
@@ -431,5 +431,56 @@ test("poznámka k uloženému receptu sa uloží a chodí s ním", async (t) => 
     assert.equal(uprava.code, 200);
     assert.equal(db.recipe_presets[0].note, "", "vymazaná poznámka je prázdny text");
     assert.equal(db.recipe_presets[0].pieces, 20, "poznámka nemení výber");
+  });
+});
+
+// --- nákupy ---
+
+test("nákup sa zapíše, chodí s receptárom a dá sa zmazať", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    const o = await zavolaj("POST", "/api/admin/receptar?co=nakup", {
+      day: "2026-10-01", amount: 96.4, consumption: 71.2, note: "sobota — Kaufland",
+    });
+    assert.equal(o.code, 200);
+    assert.equal(db.purchases[0].amount, 96.4);
+    assert.equal(db.purchases[0].consumption, 71.2);
+
+    const vsetko = await zavolaj("GET", "/api/admin/receptar");
+    assert.equal(vsetko.body.nakupy.length, 1);
+
+    await zavolaj("DELETE", `/api/admin/receptar?co=nakup&id=${o.body.zaznam.id}`);
+    assert.equal(db.purchases.length, 0);
+  });
+});
+
+test("nákup bez dátumu ani so zápornou sumou neprejde", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    assert.equal((await zavolaj("POST", "/api/admin/receptar?co=nakup", { amount: 10 })).code, 400);
+    assert.equal((await zavolaj("POST", "/api/admin/receptar?co=nakup",
+      { day: "vlani", amount: 10 })).code, 400);
+    assert.equal((await zavolaj("POST", "/api/admin/receptar?co=nakup",
+      { day: "2026-10-01", amount: -5 })).code, 400);
+    assert.equal(db.purchases.length, 0);
+  });
+});
+
+test("prázdna spotreba je prázdna, nie nula", async (t) => {
+  await sReceptarom(t, async ({ db, zavolaj }) => {
+    await zavolaj("POST", "/api/admin/receptar?co=nakup",
+      { day: "2026-10-01", amount: 12, consumption: null, note: "maslo" });
+    assert.equal(db.purchases[0].consumption, null,
+      "z bločku sa spotreba prečítať nedá — nula by tvrdila, že sa neminulo nič");
+  });
+});
+
+test("do obdobia v Peniazoch spadnú len nákupy z neho", async (t) => {
+  await sReceptarom(t, async ({ zavolaj }) => {
+    await zavolaj("POST", "/api/admin/receptar?co=nakup", { day: "2026-10-05", amount: 20 });
+    await zavolaj("POST", "/api/admin/receptar?co=nakup", { day: "2026-11-05", amount: 99 });
+
+    const o = await zavolaj("GET", "/api/admin/receptar?od=2026-10-01&do=2026-10-31");
+    assert.equal(o.body.nakupov, 1);
+    assert.equal(o.body.minute, 20, "novembrový nákup sa do októbra neráta");
+    assert.equal(o.body.nakupy.length, 1);
   });
 });

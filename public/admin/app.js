@@ -2806,10 +2806,62 @@
     const z = (RECEPTAR.zoznamy || []).find((x) => x.id === AKTUALNY_ZOZNAM);
     if (!confirm(`Naozaj zmazať nákupný zoznam „${z ? popisZoznamu(z) : ''}"?`)) return;
     try {
+      // Zoznam je plán a maže sa. Koľko peňazí odišlo je fakt a ostať má —
+      // tak sa to spýta TERAZ, kým sa dá suma ešte dopočítať. Potom už
+      // nebude z čoho.
+      await ponukniZapisNakupu(z);
       await apiFetch(`/api/admin/receptar?co=zoznam&id=${encodeURIComponent(AKTUALNY_ZOZNAM)}`, { method: 'DELETE' });
       RECEPTAR = await apiFetch('/api/admin/receptar');
       novyZoznam();
     } catch (err) { alert(err.message); }
+  }
+
+  // Pred zmazaním zoznamu: ponúkne zapísať, koľko ten nákup stál.
+  // Predvyplní sa vypočítaná suma, prepísať sa dá na tú z bločku.
+  // Prázdne pole = nezapisovať; zoznam sa zmaže tak či tak.
+  async function ponukniZapisNakupu(z) {
+    if (!z || !Array.isArray(z.items) || !z.items.length) return;
+    let vypocet = null;
+    try {
+      vypocet = await apiFetch('/api/admin/receptar?co=kalkulacia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ polozky: z.items }),
+      });
+    } catch { return; }   // nedá sa dopočítať — radšej sa nepýtať vôbec
+    const zoznam = vypocet && vypocet.zoznam;
+    if (!zoznam || !zoznam.nakup) return;
+
+    const odpoved = prompt(
+      'Koľko si za tento nákup naozaj zaplatila?\n\n'
+      + 'Zoznam sa zmaže, ale suma ostane v Peniazoch. Prepíš ju podľa bločku,\n'
+      + 'alebo nechaj prázdne, ak zapisovať netreba.',
+      String(zoznam.nakup).replace('.', ','));
+    if (odpoved === null) return;
+    const suma = Number(String(odpoved).replace(',', '.').trim());
+    if (!String(odpoved).trim() || !Number.isFinite(suma) || suma < 0) return;
+
+    // Spotreba sa zamrazí z dnešných cien — spätne by sa počítala
+    // z budúcich a marcový nákup by sa menil. Keď si sumu prepísala,
+    // posunie sa v rovnakom pomere, nech k sebe sedia.
+    const pomer = zoznam.nakup ? suma / zoznam.nakup : 1;
+    try {
+      await apiFetch('/api/admin/receptar?co=nakup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          day: z.day || new Date().toISOString().slice(0, 10),
+          amount: suma,
+          consumption: zoznam.spotreba ? Math.round(zoznam.spotreba * pomer * 100) / 100 : null,
+          note: popisZoznamu(z),
+        }),
+      });
+    } catch (err) {
+      // Mazanie zoznamu sa kvôli nezapísanému nákupu zastaviť nesmie —
+      // majiteľka ho chce zmazať a to je jej rozhodnutie. Ale ticho to
+      // prejsť nemá: prišla by o číslo a nevedela by prečo.
+      alert(err.status === 404 ? CHYBA_NAKUPOV : `Nákup sa nepodarilo zapísať: ${err.message}`);
+    }
   }
 
   async function kalkulaciaRucna() {
@@ -2974,6 +3026,7 @@
         `/api/admin/receptar?od=${encodeURIComponent(od)}&do=${encodeURIComponent(doDna)}`);
       renderSuhrn(data);
       renderPlatby(data.objednavky || []);
+      renderNakupy(data.nakupy || []);
     } catch (err) {
       suhrn.innerHTML = `<p class="err">${esc(err.message)}</p>`;
     }
@@ -2994,19 +3047,23 @@
             <td style="text-align:right">${ciastka(d.nezaplatene_suma)}</td>
             <td class="muted">${d.nezaplatene.map((o) =>
               esc(o.zakaznik) + (o.cislo ? ' #' + o.cislo : '')).join(', ')}</td></tr>
-        <tr><td>Nákup <span class="muted">(${d.zoznamy.length} ${
-              d.zoznamy.length === 1 ? 'zoznam' : 'zoznamov'})</span></td>
-            <td style="text-align:right">${ciastka(d.nakup)}</td>
-            <td class="muted">celé balenia, čo zaplatíš v obchode</td></tr>
+        <tr><td>Nákup <span class="muted">(${nakupovText(d.nakupov)})</span></td>
+            <td style="text-align:right">${ciastka(d.minute)}</td>
+            <td class="muted">čo naozaj odišlo z peňaženky</td></tr>
         <tr><td>Z toho sa naozaj minie</td>
             <td style="text-align:right">${ciastka(d.spotreba)}</td>
-            <td class="muted">zvyšok balenia ostáva ako zásoba</td></tr>
+            <td class="muted">zvyšok balenia ostáva ako zásoba${
+              d.bez_spotreby ? ` · ${nakupovText(d.bez_spotreby)} bez tohto údaju sa sem neráta` : ''}</td></tr>
         <tr><td><strong>Prijaté mínus spotreba</strong></td>
             <td style="text-align:right"><strong>${ciastka(eurZaokruhli(d.prijate - d.spotreba))}</strong></td>
             <td class="muted">bez réžie a bez práce</td></tr>
+        ${d.zoznamy.length ? `<tr><td>Plánovaný nákup <span class="muted">(${d.zoznamy.length} ${
+              d.zoznamy.length === 1 ? 'zoznam' : 'zoznamov'})</span></td>
+            <td style="text-align:right" class="muted">${ciastka(d.planovany_nakup)}</td>
+            <td class="muted">čo ťa ešte čaká — nespočítava sa s nákupom hore</td></tr>` : ''}
       </tbody></table>
-      ${d.nedopocitane.length ? `<p class="muted" style="margin:10px 0 0;font-size:.85rem">
-        Nákup je spodná hranica — bez balenia alebo ceny sú:
+      ${d.zoznamy.length && d.nedopocitane.length ? `<p class="muted" style="margin:10px 0 0;font-size:.85rem">
+        Plánovaný nákup je spodná hranica — bez balenia alebo ceny sú:
         ${d.nedopocitane.map(esc).join(', ')}.</p>` : ''}
       ${d.bez_terminu ? `<p class="muted" style="margin:6px 0 0;font-size:.85rem">
         ${d.bez_terminu} nákupný zoznam bez termínu sa do žiadneho obdobia neráta.</p>` : ''}`;
@@ -3041,6 +3098,87 @@
         </tr>`;
       }).join('')}</tbody></table>`;
   }
+
+  // ---------- nákupy ----------
+  // Skutočne minuté peniaze. Nezávisia od nákupného zoznamu: ten je plán
+  // a maže sa, keď je po pečení.
+
+  function nakupovText(n) {
+    if (n === 1) return '1 nákup';
+    if (n < 5) return `${n} nákupy`;
+    return `${n} nákupov`;
+  }
+
+  function nakupStav(text, chyba) {
+    const el = document.getElementById('nakStav');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = chyba ? 'err' : 'muted';
+  }
+
+  function renderNakupy(nakupy) {
+    const el = document.getElementById('nakupyList');
+    if (!el) return;
+    if (!nakupy.length) {
+      el.innerHTML = '<p class="muted">V tomto období zatiaľ žiadny zapísaný nákup.</p>';
+      return;
+    }
+    el.innerHTML = `<table class="admin-table"><thead><tr>
+        <th>Dátum</th><th>Zaplatené</th><th>Z toho sa minie</th><th>Poznámka</th><th></th>
+      </tr></thead><tbody>${nakupy.map((n) => `
+        <tr>
+          <td>${esc(n.day)}</td>
+          <td><strong>${ciastka(Number(n.amount))}</strong></td>
+          <td class="muted">${n.consumption === null || n.consumption === undefined
+            ? '—' : ciastka(Number(n.consumption))}</td>
+          <td class="muted">${esc(n.note || '')}</td>
+          <td class="akcie"><button class="btn ghost sm zmazat"
+            onclick="Admin.zmazNakup('${n.id}')">Zmazať</button></td>
+        </tr>`).join('')}</tbody></table>`;
+  }
+
+  async function pridajNakup() {
+    const day = document.getElementById('nakDen').value;
+    const suma = document.getElementById('nakSuma').value;
+    if (!day) { nakupStav('Vyber dátum nákupu.', true); return; }
+    if (suma === '' || Number(suma) < 0) { nakupStav('Zapíš, koľko si zaplatila.', true); return; }
+    const spotreba = document.getElementById('nakSpotreba').value;
+    try {
+      await apiFetch('/api/admin/receptar?co=nakup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          day,
+          amount: suma,
+          // Prázdne je prázdne, nie nula: nula by znamenala, že sa
+          // neminulo nič, a „prijaté mínus spotreba" by vyšlo lepšie.
+          consumption: spotreba === '' ? null : spotreba,
+          note: document.getElementById('nakPozn').value.trim(),
+        }),
+      });
+      ['nakSuma', 'nakSpotreba', 'nakPozn'].forEach((id) => { document.getElementById(id).value = ''; });
+      // Až po prepočte: inak hláška tvrdí „zapísané", kým čísla hore ešte
+      // ukazujú „Počítam…" a nedá sa poznať, či sa to naozaj premietlo.
+      await zobrazPeniaze();
+      nakupStav('Zapísané.');
+    } catch (err) {
+      nakupStav(err.status === 404 ? CHYBA_NAKUPOV : err.message, true);
+    }
+  }
+
+  async function zmazNakup(id) {
+    if (!confirm('Naozaj zmazať tento zápis o nákupe?')) return;
+    try {
+      await apiFetch(`/api/admin/receptar?co=nakup&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await zobrazPeniaze();
+      nakupStav('Zmazané.');
+    } catch (err) {
+      nakupStav(err.message, true);
+    }
+  }
+
+  const CHYBA_NAKUPOV = 'Zápis nákupov ešte nie je zapnutý — v Supabase treba raz spustiť '
+    + 'supabase/migracia-nakupy.sql.';
 
   async function ulozPlatby() {
     const zmeny = new Map();
@@ -3086,7 +3224,7 @@
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
     ulozVyber, otvorUlozeny, premenujUlozeny, zmazUlozeny, ulozPoznamkuRozpisu,
     novyZoznam, vyberZoznam, ulozZoznam, zmazZoznam, objednavkyDoZoznamu,
-    zobrazPeniaze, penazeMesiac, ulozPlatby,
+    zobrazPeniaze, penazeMesiac, ulozPlatby, pridajNakup, zmazNakup,
   };
 
   if (getAccess()) showDashboard(); else showLogin();

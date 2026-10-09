@@ -375,10 +375,26 @@ V správe webu pribudli tri záložky:
   predvolená, každá nová objednávka by vyzerala ako zadarmo rozdaná a zo
   zoznamu nezaplatených by ticho vypadla.
 
-  Nákup za obdobie sa berie z uložených nákupných zoznamov s termínom
-  v rozsahu a **oceňuje sa po zoznamoch, nie zlúčene**: dva nákupy v dvoch
-  týždňoch sú dve balenia masla, nie jedno zaokrúhlené nahor. Zoznam bez
-  termínu nemá kam spadnúť — do súčtu nevstúpi a vypíše sa to.
+  Nákup za obdobie sa berie z tabuľky `purchases` — **nie z nákupných
+  zoznamov**. Zoznam je pracovný dokument: plán, čo kúpiť, ktorý sa po
+  pečení maže. Koľko peňazí odišlo je fakt a ostáva. Zavesiť fakt na
+  životnosť plánu bola chyba návrhu a toto ju opravuje.
+
+  Nákup má dve sumy, lebo sú to dve rôzne čísla: `amount` je čo odišlo
+  z peňaženky (celé balenia, bloček) a `consumption` z toho, čo sa reálne
+  minie — zvyšok balenia ostáva ako zásoba. `consumption` sa zamrazí pri
+  zápise; spätne by sa počítalo dnešnými cenami a marcový nákup by sa
+  menil. Pri ručne zapísanom nákupe ostane prázdne, lebo z bločku sa
+  prečítať nedá — a prázdne nie je nula: do spotreby sa taký nákup neráta
+  a v súhrne sa povie, koľko ich je.
+
+  Pri mazaní zoznamu sa správa spýta, či si sumu ponechať, a predvyplní
+  vypočítanú — prepísať sa dá na tú z bločku. Keď sa zápis nepodarí
+  (napríklad migrácia ešte nebehala), zoznam sa aj tak zmaže a povie sa
+  to: zastaviť mazanie kvôli tomu by bolo horšie.
+
+  Popri tom sa vypisuje **plánovaný nákup** z ešte žijúcich zoznamov
+  v období. S minutým sa nesčítava — je to plán, nie výdavok.
 
   Dve obmedzenia, o ktorých majiteľka vie: nákup je odhad dnešnými cenami
   (zoznam si pamätá príchute a počty, nie ceny), a započíta sa len to, na

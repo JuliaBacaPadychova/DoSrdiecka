@@ -854,6 +854,66 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   ok('stĺpec Zákazník tým neroztiahne tabuľku (' + (pozn && pozn.stlpec) + ' px)',
     pozn && pozn.stlpec <= 440);
 
+  console.log('\nMINUTÉ PENIAZE PREŽIJÚ ZMAZANIE ZOZNAMU:');
+  // Nákupný zoznam je plán a maže sa. Koľko odišlo z peňaženky je fakt
+  // a ostať má — inak sa Peniaze spätne menia podľa toho, čo si majiteľka
+  // medzitým upratala.
+  page.removeAllListeners('dialog');
+  let suma = '';
+  page.on('dialog', (d) => d.accept(d.type() === 'prompt' ? suma : undefined));
+
+  await page.click('button[data-tab="kalkulacka"]');
+  await page.waitForTimeout(600);
+  await page.click('button:has-text("Nový zoznam")');
+  await page.waitForTimeout(300);
+  await page.fill('#zozDen', '2027-06-12');
+  await page.fill('#zozNazov', 'sobota na zmazanie');
+  await page.selectOption('#zozPolozky .kalProdukt', { label: 'Choux — Pistáciovo kávový' });
+  await page.fill('#zozPolozky .kalKusy', '12');
+  await page.click('button:has-text("Uložiť zoznam")');
+  await page.waitForFunction(() => /Uložené/.test(document.getElementById('zozStav').textContent),
+    { timeout: 5000 });
+  ok('zoznam na pokus je uložený', db.shopping_plans.some((z) => z.name === 'sobota na zmazanie'));
+
+  suma = '103,20';   // prepísané podľa bločku
+  await page.click('button:has-text("Zmazať tento zoznam")');
+  await page.waitForTimeout(1200);
+  ok('zoznam je zmazaný', !db.shopping_plans.some((z) => z.name === 'sobota na zmazanie'));
+  const nakupZoZoznamu = db.purchases[db.purchases.length - 1];
+  ok('ale suma z bločku ostala zapísaná (' + (nakupZoZoznamu && nakupZoZoznamu.amount) + ' €)',
+    !!nakupZoZoznamu && Number(nakupZoZoznamu.amount) === 103.2);
+  ok('aj s dátumom zo zoznamu', nakupZoZoznamu && nakupZoZoznamu.day === '2027-06-12');
+  ok('a so zamrazenou spotrebou, nie prázdnou',
+    nakupZoZoznamu && nakupZoZoznamu.consumption !== null && Number(nakupZoZoznamu.consumption) > 0);
+
+  await page.click('button[data-tab="peniaze"]');
+  await page.waitForTimeout(400);
+  await page.fill('#penOd', '2027-06-01');
+  await page.fill('#penDo', '2027-06-30');
+  await page.click('#tab-peniaze button:has-text("Zobraziť")');
+  await page.waitForSelector('#penSuhrn table', { timeout: 5000 });
+  const peniaze = (await page.textContent('#penSuhrn')).replace(/\s+/g, ' ');
+  ok('Peniaze to započítajú, hoci zoznam už neexistuje', /Nákup \(1 nákup\) 103,2 €/.test(peniaze));
+  ok('plánovaný nákup tam po zmazaní zoznamu nie je', !/Plánovaný nákup/.test(peniaze));
+  const vypis = (await page.textContent('#nakupyList')).replace(/\s+/g, ' ');
+  console.log('  zoznam nákupov: ' + vypis.trim().slice(0, 120));
+  ok('a nákup je vidieť v zozname nákupov', /2027-06-12/.test(vypis) && /103,2/.test(vypis));
+
+  console.log('\nNÁKUP SA DÁ ZAPÍSAŤ AJ BEZ ZOZNAMU:');
+  await page.fill('#nakDen', '2027-06-20');
+  await page.fill('#nakSuma', '12.50');
+  await page.fill('#nakPozn', 'maslo navyše');
+  await page.click('button:has-text("Zapísať nákup")');
+  await page.waitForFunction(() => /Zapísané/.test(document.getElementById('nakStav').textContent)
+    && !/Počítam/.test(document.getElementById('penSuhrn').textContent), { timeout: 5000 });
+  const rucny = db.purchases.find((n) => n.note === 'maslo navyše');
+  ok('ručne zapísaný nákup sa uložil', !!rucny && Number(rucny.amount) === 12.5);
+  ok('bez spotreby ostane prázdna, nie nula', rucny && rucny.consumption === null);
+  const poRucnom = (await page.textContent('#penSuhrn')).replace(/\s+/g, ' ');
+  ok('súhrn sa prepočítal (115,7 €)', /Nákup \(2 nákupy\) 115,7 €/.test(poRucnom));
+  ok('a povie, že jeden nákup nemá údaj o spotrebe',
+    /1 nákup bez tohto údaju sa sem neráta/.test(poRucnom));
+
   console.log('\nOBNOVENIE STRÁNKY NEVYHODÍ ZO ZÁLOŽKY:');
   await page.click('button[data-tab="recepty"]');
   await page.waitForTimeout(400);
