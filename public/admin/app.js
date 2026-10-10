@@ -417,7 +417,7 @@
 
   function objednavokText(n) {
     if (n === 1) return '1 objednávku';
-    if (n < 5) return `${n} objednávky`;
+    if (n >= 2 && n < 5) return `${n} objednávky`;
     return `${n} objednávok`;
   }
 
@@ -3047,6 +3047,30 @@
 
   const ciastka = (v) => (v === null || v === undefined ? '—' : cisloSk(v) + ' €');
 
+  function zoznamovText(n) {
+    if (n === 1) return '1 zoznam';
+    if (n >= 2 && n < 5) return `${n} zoznamy`;
+    return `${n} zoznamov`;
+  }
+
+  // Marža sa počíta zo SKUTOČNE minutého, keď je čo — zapísaný nákup má
+  // spotrebu zamrazenú z cien v deň nákupu. Keď zapísaná nie je, berie sa
+  // plán z nákupných zoznamov; a keď nie je ani ten, nie je z čoho a
+  // „prijaté mínus spotreba" je celé prijaté. Vždy sa povie, z čoho to je,
+  // nech sa nestane, že číslo vyzerá lepšie, než je.
+  function spotrebaMarze(d) {
+    return d.spotreba > 0 ? d.spotreba : d.planovana_spotreba;
+  }
+
+  function zdrojSpotreby(d) {
+    if (d.spotreba > 0) {
+      return 'zo zapísaných nákupov'
+        + (d.bez_spotreby ? ` (${nakupovText(d.bez_spotreby)} bez tohto údaju sa neráta)` : '');
+    }
+    if (d.planovana_spotreba > 0) return 'z nákupného zoznamu, zapísaný nákup ešte nie je';
+    return 'spotreba zatiaľ nie je z čoho spočítať';
+  }
+
   function renderSuhrn(d) {
     const rozdiel = d.rozdiel > 0 ? `+${cisloSk(d.rozdiel)} €` : `${cisloSk(d.rozdiel)} €`;
     document.getElementById('penSuhrn').innerHTML = `
@@ -3060,23 +3084,21 @@
             <td style="text-align:right">${ciastka(d.nezaplatene_suma)}</td>
             <td class="muted">${d.nezaplatene.map((o) =>
               esc(o.zakaznik) + (o.cislo ? ' #' + o.cislo : '')).join(', ')}</td></tr>
-        <tr><td>Nákup <span class="muted">(${nakupovText(d.nakupov)})</span></td>
-            <td style="text-align:right">${ciastka(d.minute)}</td>
-            <td class="muted">čo naozaj odišlo z peňaženky</td></tr>
+        <tr><td>Nákup <span class="muted">(${zoznamovText(d.zoznamy.length)})</span></td>
+            <td style="text-align:right">${ciastka(d.planovany_nakup)}</td>
+            <td class="muted">celé balenia podľa nákupného zoznamu</td></tr>
         <tr><td>Z toho sa naozaj minie</td>
-            <td style="text-align:right">${ciastka(d.spotreba)}</td>
-            <td class="muted">zvyšok balenia ostáva ako zásoba${
-              d.bez_spotreby ? ` · ${nakupovText(d.bez_spotreby)} bez tohto údaju sa sem neráta` : ''}</td></tr>
+            <td style="text-align:right">${ciastka(d.planovana_spotreba)}</td>
+            <td class="muted">zvyšok balenia ostáva ako zásoba</td></tr>
+        <tr><td>Reálny nákup <span class="muted">(${nakupovText(d.nakupov)})</span></td>
+            <td style="text-align:right"><strong>${ciastka(d.minute)}</strong></td>
+            <td class="muted">čo naozaj odišlo z peňaženky — zapisuje sa nižšie</td></tr>
         <tr><td><strong>Prijaté mínus spotreba</strong></td>
-            <td style="text-align:right"><strong>${ciastka(eurZaokruhli(d.prijate - d.spotreba))}</strong></td>
-            <td class="muted">bez réžie a bez práce</td></tr>
-        ${d.zoznamy.length ? `<tr><td>Plánovaný nákup <span class="muted">(${d.zoznamy.length} ${
-              d.zoznamy.length === 1 ? 'zoznam' : 'zoznamov'})</span></td>
-            <td style="text-align:right" class="muted">${ciastka(d.planovany_nakup)}</td>
-            <td class="muted">čo ťa ešte čaká — nespočítava sa s nákupom hore</td></tr>` : ''}
+            <td style="text-align:right"><strong>${ciastka(eurZaokruhli(d.prijate - spotrebaMarze(d)))}</strong></td>
+            <td class="muted">bez réžie a bez práce · ${zdrojSpotreby(d)}</td></tr>
       </tbody></table>
       ${d.zoznamy.length && d.nedopocitane.length ? `<p class="muted" style="margin:10px 0 0;font-size:.85rem">
-        Plánovaný nákup je spodná hranica — bez balenia alebo ceny sú:
+        Nákup je spodná hranica — bez balenia alebo ceny sú:
         ${d.nedopocitane.map(esc).join(', ')}.</p>` : ''}
       ${d.bez_terminu ? `<p class="muted" style="margin:6px 0 0;font-size:.85rem">
         ${d.bez_terminu} nákupný zoznam bez termínu sa do žiadneho obdobia neráta.</p>` : ''}`;
@@ -3118,7 +3140,8 @@
 
   function nakupovText(n) {
     if (n === 1) return '1 nákup';
-    if (n < 5) return `${n} nákupy`;
+    // Nula sa skloňuje ako päť, nie ako dva: „0 nákupov", nie „0 nákupy".
+    if (n >= 2 && n < 5) return `${n} nákupy`;
     return `${n} nákupov`;
   }
 

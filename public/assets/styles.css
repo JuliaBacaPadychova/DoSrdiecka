@@ -245,6 +245,13 @@ footer a.mail:hover{color:var(--terra);border-bottom-color:var(--terra)}
 .skupina-nadpis .pocet{font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-soft)}
 /* Popisky polí boli v tlmenej farbe a strácali sa pri pohľade po formulári. Tmavšia farba a o kúsok väčšie písmo ich vrátia do zorného poľa, bez toho, aby prekričali samotné hodnoty. */
 label{display:block;font-size:.86rem;font-weight:700;color:var(--ink);letter-spacing:.01em;margin-bottom:6px}
+/* Číselné polia sú na písanie, nie na klikanie šípkami. Šípka pri step
+   0,001 raz ticho spravila z „20 ks" hodnotu „20,002 ks" a prepočítala
+   tým cenu za kus. Na verejnom webe žiadne číselné pole nie je, takže sa
+   to týka len správy. */
+input[type="number"]{-moz-appearance:textfield;appearance:textfield}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 input,textarea,select{width:100%;font-family:var(--sans);font-size:.95rem;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 13px}
 input:focus,textarea:focus,select:focus{border-color:var(--peach)} textarea{resize:vertical;min-height:74px}
 @media(max-width:560px){.form{grid-template-columns:1fr}}

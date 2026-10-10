@@ -893,7 +893,7 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   await page.click('#tab-peniaze button:has-text("Zobraziť")');
   await page.waitForSelector('#penSuhrn table', { timeout: 5000 });
   const peniaze = (await page.textContent('#penSuhrn')).replace(/\s+/g, ' ');
-  ok('Peniaze to započítajú, hoci zoznam už neexistuje', /Nákup \(1 nákup\) 103,2 €/.test(peniaze));
+  ok('Peniaze to započítajú, hoci zoznam už neexistuje', /Reálny nákup \(1 nákup\) 103,2 €/.test(peniaze));
   ok('plánovaný nákup tam po zmazaní zoznamu nie je', !/Plánovaný nákup/.test(peniaze));
   const vypis = (await page.textContent('#nakupyList')).replace(/\s+/g, ' ');
   console.log('  zoznam nákupov: ' + vypis.trim().slice(0, 120));
@@ -954,9 +954,51 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   ok('ručne zapísaný nákup sa uložil', !!rucny && Number(rucny.amount) === 12.5);
   ok('bez spotreby ostane prázdna, nie nula', rucny && rucny.consumption === null);
   const poRucnom = (await page.textContent('#penSuhrn')).replace(/\s+/g, ' ');
-  ok('súhrn sa prepočítal (115,7 €)', /Nákup \(2 nákupy\) 115,7 €/.test(poRucnom));
+  ok('súhrn sa prepočítal (115,7 €)', /Reálny nákup \(2 nákupy\) 115,7 €/.test(poRucnom));
   ok('a povie, že jeden nákup nemá údaj o spotrebe',
-    /1 nákup bez tohto údaju sa sem neráta/.test(poRucnom));
+    /1 nákup bez tohto údaju sa neráta/.test(poRucnom));
+
+  console.log('\nPENIAZE: NÁKUP, SPOTREBA, REÁLNY NÁKUP:');
+  await page.click('button[data-tab="peniaze"]');
+  await page.waitForSelector('#penSuhrn table', { timeout: 5000 });
+  const riadkySuhrnu = await page.$$eval('#penSuhrn tbody tr',
+    (rs) => rs.map((r) => r.children[0].textContent.replace(/\s+/g, ' ').trim()));
+  const kde = (re) => riadkySuhrnu.findIndex((r) => re.test(r));
+  ok('poradie je Nákup → Z toho sa naozaj minie → Reálny nákup ('
+    + riadkySuhrnu.slice(kde(/^Nákup/)).join(' / ') + ')',
+    kde(/^Nákup/) >= 0 && kde(/^Z toho/) === kde(/^Nákup/) + 1
+    && kde(/^Reálny nákup/) === kde(/^Z toho/) + 1);
+  ok('„Plánovaný nákup" samostatne už nie je', kde(/^Plánovaný/) === -1);
+  const penText = (await page.textContent('#penSuhrn')).replace(/\s+/g, ' ');
+  ok('pri marži sa povie, z čoho je spotreba počítaná',
+    /bez réžie a bez práce · (zo zapísaných nákupov|z nákupného zoznamu|spotreba zatiaľ)/.test(penText));
+  ok('nula sa skloňuje ako päť, nie ako dva', !/\b0 (nákupy|zoznamy|objednávky)\b/.test(penText));
+
+  console.log('\nPOLÍČKA SÚ NA PÍSANIE, NIE NA KLIKANIE ŠÍPKAMI:');
+  // Šípka pri step 0,001 raz ticho spravila z „20 ks" hodnotu „20,002 ks"
+  // a prepočítala tým cenu za kus. Číselné polia sú odvtedy bez nich.
+  const soSipkami = [];
+  for (const tab of ['orders', 'days', 'products', 'suroviny', 'recepty', 'kalkulacka', 'peniaze']) {
+    await page.click(`button[data-tab="${tab}"]`);
+    await page.waitForTimeout(350);
+    const zle = await page.evaluate((t) => [...document.querySelectorAll(
+      '#tab-' + t + ' input[type="number"]')]
+      .filter((el) => getComputedStyle(el).appearance !== 'textfield')
+      .map((el) => el.id || el.className || 'bez id').slice(0, 3), tab);
+    if (zle.length) soSipkami.push(`${tab}: ${zle.join(', ')}`);
+  }
+  ok('žiadne číselné pole v správe nemá šípky' + (soSipkami.length ? ' (' + soSipkami.join(' | ') + ')' : ''),
+    soSipkami.length === 0);
+
+  console.log('\nPOLÍČKA V NÁKUPOCH STOJA V JEDNEJ LÍNII:');
+  // Nápoveda pod jedným políčkom dvíhala celú bunku nad ostatné.
+  await page.click('button[data-tab="peniaze"]');
+  await page.waitForTimeout(400);
+  const vrchy = await page.evaluate(() => ['nakDen', 'nakSuma', 'nakSpotreba', 'nakPozn']
+    .map((id) => Math.round(document.getElementById(id).getBoundingClientRect().top)));
+  const rozptyl = Math.max(...vrchy) - Math.min(...vrchy);
+  // Pole s dátumom je od prehliadača o pár pixelov vyššie, to nevadí.
+  ok('rozptyl je pár pixelov, nie celý riadok (' + rozptyl + ' px)', rozptyl <= 3);
 
   console.log('\nOBNOVENIE STRÁNKY NEVYHODÍ ZO ZÁLOŽKY:');
   await page.click('button[data-tab="recepty"]');
