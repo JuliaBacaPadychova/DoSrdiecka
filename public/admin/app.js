@@ -1900,8 +1900,10 @@
     return buduce.concat(minule);
   }
 
-  function naplnDniPecenia() {
-    const el = document.getElementById('recDen');
+  // Vyberá sa z dní, na ktoré objednávka naozaj je — v Receptoch aj
+  // v pomôcke v Kalkulačke. Dní je nekonečne veľa, objednávok pár.
+  function naplnDniSObjednavkami(idPolicka) {
+    const el = document.getElementById(idPolicka);
     if (!el) return;
     const doteraz = el.value;
     const dni = dniSObjednavkami();
@@ -1910,6 +1912,11 @@
       : '<option value="">— zatiaľ žiadne objednávky —</option>';
     // Po prekreslení sa drží to, čo bolo vybrané; inak najbližší termín.
     if (doteraz && dni.some((d) => d.den === doteraz)) el.value = doteraz;
+  }
+
+  function naplnDniPecenia() {
+    naplnDniSObjednavkami('recDen');
+    naplnDniSObjednavkami('kalDay');
   }
 
   async function rozpisDna() {
@@ -2660,6 +2667,16 @@
   let AKTUALNY_ZOZNAM = null; // id uloženého zoznamu, alebo null pre nový
 
   async function pripravKalkulacku() {
+    // Výber termínov v pomôcke stojí na objednávkach. Keď sa Kalkulačka
+    // otvorí ako prvá, ešte načítané nie sú.
+    if (!ORDERS_CACHE.length) {
+      try {
+        const o = await apiFetch('/api/admin/orders');
+        ORDERS_CACHE = o.orders || [];
+      } catch { /* ponuka ostane prázdna, zvyšok záložky funguje */ }
+    }
+    naplnDniSObjednavkami('kalDay');
+
     if (!PRODUCTS_CACHE.length || !RECEPTAR) {
       try {
         const [p, r] = await Promise.all([
@@ -2844,12 +2861,16 @@
       + `Zapíše sa k ${den} a ostane v Peniazoch, aj keď sa zoznam zmaže.\n`
       + (vypocitane
         ? 'Predvyplnená je vypočítaná suma — prepíš ju podľa bločku.\n'
-        : 'Vypočítať sa nedala (suroviny bez ceny alebo balenia), tak ju napíš z bločku.\n')
-      + 'Prázdne = nezapisovať.',
+          + 'Prázdne = ponechá sa vypočítaná. Zrušiť = nezapisovať nič.\n'
+        : 'Vypočítať sa nedala (suroviny bez ceny alebo balenia), tak ju napíš z bločku.\n'
+          + 'Prázdne alebo Zrušiť = nezapisovať nič.\n'),
       vypocitane ? String(vypocitane).replace('.', ',') : '');
+    // Zrušiť znamená „nechaj to tak". Prázdne pole znamená „nemám bloček,
+    // ber vypočítanú sumu" — mať v Peniazoch odhad je lepšie než nulu.
     if (odpoved === null) return;
-    const suma = Number(String(odpoved).replace(',', '.').trim());
-    if (!String(odpoved).trim() || !Number.isFinite(suma) || suma < 0) return;
+    const napisane = String(odpoved).trim();
+    const suma = napisane ? Number(napisane.replace(',', '.')) : vypocitane;
+    if (suma === null || !Number.isFinite(suma) || suma < 0) return;
 
     // Spotreba sa zamrazí z dnešných cien — spätne by sa počítala
     // z budúcich a marcový nákup by sa menil. Keď si sumu prepísala,
@@ -2866,7 +2887,7 @@
           day: den,
           amount: suma,
           consumption: spotreba,
-          note: popisZoznamu(z),
+          note: popisZoznamu(z) + (napisane ? '' : ' — vypočítaná suma, nie z bločku'),
         }),
       });
     } catch (err) {

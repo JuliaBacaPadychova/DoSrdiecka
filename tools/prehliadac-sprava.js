@@ -209,7 +209,10 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
     const d = document.getElementById('kalDay');
     if (d) d.closest('details').open = true;
   });
-  await page.fill('#kalDay', '2026-10-18');
+  ok('pomôcka v Kalkulačke ponúka dni s objednávkami, nie kalendár',
+    await page.evaluate(() => document.getElementById('kalDay').tagName === 'SELECT'));
+  ok('kým objednávka žiadna nie je, povie to rovno',
+    /žiadne objednávky/.test(await page.textContent('#kalDay')));
   await page.click('button:has-text("Spočítať z objednávok")');
   await page.waitForTimeout(600);
   nadpis = await page.textContent('#zozOtvoreny');
@@ -899,6 +902,52 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   console.log('  zoznam nákupov: ' + vypis.trim().slice(0, 120));
   ok('a nákup je vidieť v zozname nákupov', /2027-06-12/.test(vypis) && /103,2/.test(vypis));
 
+  console.log('\nPRÁZDNA ODPOVEĎ PONECHÁ VYPOČÍTANÚ SUMU:');
+  // Keď bloček po ruke nie je, mať v Peniazoch odhad je lepšie než nulu.
+  await page.click('button[data-tab="kalkulacka"]');
+  await page.waitForTimeout(600);
+  await page.click('button:has-text("Nový zoznam")');
+  await page.waitForTimeout(300);
+  await page.fill('#zozDen', '2027-06-26');
+  await page.fill('#zozNazov', 'bez bločku');
+  await page.selectOption('#zozPolozky .kalProdukt', { label: 'Choux — Pistáciovo kávový' });
+  await page.fill('#zozPolozky .kalKusy', '12');
+  await page.click('button:has-text("Uložiť zoznam")');
+  await page.waitForFunction(() => /Uložené/.test(document.getElementById('zozStav').textContent),
+    { timeout: 5000 });
+
+  let predvolene = null;
+  page.removeAllListeners('dialog');
+  page.on('dialog', (d) => {
+    if (d.type() === 'prompt') predvolene = d.defaultValue();
+    d.accept(d.type() === 'prompt' ? '' : undefined);   // nechám prázdne
+  });
+  await page.click('button:has-text("Zmazať tento zoznam")');
+  await page.waitForTimeout(1500);
+  const odhad = db.purchases.find((n) => /bez bločku/.test(n.note || ''));
+  ok('prázdna odpoveď nákup zapíše, nie zahodí', !!odhad);
+  ok('a zapíše sa vypočítaná suma (' + (odhad && odhad.amount) + ' €)',
+    !!odhad && Number(odhad.amount) === Number(String(predvolene).replace(',', '.')));
+  ok('v poznámke je, že to nie je z bločku',
+    odhad && /vypočítaná suma, nie z bločku/.test(odhad.note));
+
+  // Zrušiť naďalej znamená „nezapisovať nič".
+  await page.click('button:has-text("Nový zoznam")');
+  await page.waitForTimeout(300);
+  await page.fill('#zozDen', '2027-06-27');
+  await page.fill('#zozNazov', 'zrusene');
+  await page.selectOption('#zozPolozky .kalProdukt', { label: 'Choux — Pistáciovo kávový' });
+  await page.fill('#zozPolozky .kalKusy', '6');
+  await page.click('button:has-text("Uložiť zoznam")');
+  await page.waitForFunction(() => /Uložené/.test(document.getElementById('zozStav').textContent),
+    { timeout: 5000 });
+  page.removeAllListeners('dialog');
+  page.on('dialog', (d) => { if (d.type() === 'prompt') d.dismiss(); else d.accept(); });
+  await page.click('button:has-text("Zmazať tento zoznam")');
+  await page.waitForTimeout(1500);
+  ok('Zrušiť nezapíše nič', !db.purchases.some((n) => /zrusene/.test(n.note || '')));
+  ok('ale zoznam sa aj tak zmaže', !db.shopping_plans.some((z) => z.name === 'zrusene'));
+
   console.log('\nSPÝTA SA AJ VTEDY, KEĎ SUMU NEVIE VYPOČÍTAŤ:');
   // Časť surovín nemá vyplnené balenie ani cenu, takže vypočítaný nákup
   // vyjde 0. Pôvodne sa vtedy otázka MLČKY preskočila: zoznam zmizol aj
@@ -954,9 +1003,27 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   ok('ručne zapísaný nákup sa uložil', !!rucny && Number(rucny.amount) === 12.5);
   ok('bez spotreby ostane prázdna, nie nula', rucny && rucny.consumption === null);
   const poRucnom = (await page.textContent('#penSuhrn')).replace(/\s+/g, ' ');
-  ok('súhrn sa prepočítal (115,7 €)', /Reálny nákup \(2 nákupy\) 115,7 €/.test(poRucnom));
+  // Súčet sa neporovnáva s pevným číslom — pribúdajú ďalšie nákupy
+  // a test by potom padal na vlastné dáta, nie na chybu.
+  const vJuni = db.purchases.filter((n) => n.day >= '2027-06-01' && n.day <= '2027-06-30');
+  const cakane = Math.round(vJuni.reduce((x, n) => x + Number(n.amount), 0) * 100) / 100;
+  ok(`súhrn sa prepočítal (${cakane} € z ${vJuni.length} nákupov)`,
+    new RegExp(`Reálny nákup \\(${vJuni.length} \\S+\\) ${String(cakane).replace('.', ',')} €`).test(poRucnom));
   ok('a povie, že jeden nákup nemá údaj o spotrebe',
     /1 nákup bez tohto údaju sa neráta/.test(poRucnom));
+
+  console.log('\nPOMÔCKA PONÚKA DNI, NA KTORÉ JE OBJEDNANÉ:');
+  await page.click('button[data-tab="kalkulacka"]');
+  await page.waitForTimeout(600);
+  const dniPomocky = await page.$$eval('#kalDay option', (o) => o.map((x) => x.textContent.trim()));
+  console.log('  v ponuke: ' + dniPomocky.join(' | '));
+  ok('ponúka termíny objednávok aj s počtami',
+    dniPomocky.length > 0 && dniPomocky.every((t) => /^\d{4}-\d{2}-\d{2} — \d+ objedn\S+, \d+ ks$/.test(t)));
+  await page.selectOption('#kalDay', { index: 0 });
+  await page.click('button:has-text("Spočítať z objednávok")');
+  await page.waitForTimeout(800);
+  ok('a dá sa z nich rovno počítať',
+    !/Vyber termín/.test(await page.textContent('#kalVysledok')));
 
   console.log('\nPENIAZE: NÁKUP, SPOTREBA, REÁLNY NÁKUP:');
   await page.click('button[data-tab="peniaze"]');
