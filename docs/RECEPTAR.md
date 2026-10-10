@@ -389,7 +389,10 @@ V správe webu pribudli tri záložky:
   a v súhrne sa povie, koľko ich je.
 
   Pri mazaní zoznamu sa správa spýta, koľko nákup stál, a predvyplní
-  vypočítanú sumu — prepísať sa dá na tú z bločku. **Spýta sa vždy**, aj
+  vypočítanú sumu — prepísať sa dá na tú z bločku. **Prázdne pole
+  ponechá vypočítanú**: keď bloček po ruke nie je, mať v Peniazoch odhad
+  je lepšie než nulu, a v poznámke nákupu sa to povie. Nezapísať nič sa
+  dá tlačidlom Zrušiť. **Spýta sa vždy**, aj
   keď sa vypočítať nedá: časť surovín nemá cenu ani balenie, takže výpočet
   vyjde 0, ale z bločku to majiteľka vie. Mlčky otázku preskočiť znamená,
   že o číslo príde a nedozvie sa prečo. Keď sa zápis nepodarí
