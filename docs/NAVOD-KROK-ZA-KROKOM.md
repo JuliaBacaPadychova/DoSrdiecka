@@ -26,6 +26,14 @@ z toho väčšina je čakanie na potvrdzovacie e-maily.
    obsah**, vlož ho do editora v Supabase a klikni **Run**.
    - Toto vytvorí všetky tabuľky, pravidlá aj základnú ponuku (presne
      podľa prototypu) a pripraví miesto na fotky.
+   - Keby Supabase vyhodil okno **„Potential issue detected — this query
+     creates a table without enabling Row Level Security"**, pozri sa
+     najprv do súboru, či v ňom naozaj je `create table`. Pri migráciách,
+     ktoré len vkladajú dáta, to je planý poplach: Supabase si vo vzore
+     `insert into <tabuľka> (…) select …` pomýli bežný vklad s príkazom
+     `select … into <tabuľka>`, ktorý by tabuľku naozaj vytvoril. Vtedy
+     je bezpečné kliknúť **Run and enable RLS** — na existujúcej tabuľke,
+     ktorá RLS už má, to nič nezmení.
 5. V ľavom menu choď na **Authentication** → **Users** → **Add user** →
    **Create new user**.
    - Zadaj **svoj e-mail** a **heslo, ktorým sa budeš prihlasovať do admin
