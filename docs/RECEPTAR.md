@@ -396,8 +396,15 @@ V správe webu pribudli tri záložky:
   (napríklad migrácia ešte nebehala), zoznam sa aj tak zmaže a povie sa
   to: zastaviť mazanie kvôli tomu by bolo horšie.
 
-  Popri tom sa vypisuje **plánovaný nákup** z ešte žijúcich zoznamov
-  v období. S minutým sa nesčítava — je to plán, nie výdavok.
+  V súhrne sú preto tri riadky za sebou: **Nákup** (čo má stáť podľa
+  nákupných zoznamov v období), **Z toho sa naozaj minie** (tá istá
+  predstava bez zásoby) a **Reálny nákup** (súčet zapísaných nákupov).
+  Prvé dve sú plán, tretie skutočnosť; nesčítavajú sa.
+
+  „Prijaté mínus spotreba" berie spotrebu zo zapísaných nákupov, keď
+  nejaká je — tá je zamrazená, teda pravdivá. Keď zapísaná nie je, berie
+  plán zo zoznamov. V oboch prípadoch sa pri riadku povie, z čoho to je:
+  bez toho by číslo vyzeralo lepšie, než je.
 
   Dve obmedzenia, o ktorých majiteľka vie: nákup je odhad dnešnými cenami
   (zoznam si pamätá príchute a počty, nie ceny), a započíta sa len to, na

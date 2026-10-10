@@ -406,13 +406,14 @@
       <h3>Nákupy</h3>
       <p class="muted" style="margin:0 0 12px;font-size:.88rem">Koľko naozaj odišlo v obchode.
         Je to samostatný záznam — nákupný zoznam je pracovný a môžeš ho pokojne zmazať, toto
-        číslo ostane. Keď zoznam mažeš, správa sa spýta, či si sumu ponechať.</p>
+        číslo ostane. Keď zoznam mažeš, správa sa spýta, či si sumu ponechať.
+        <strong>Z toho sa minie</strong> je nepovinné: zvyšok balenia ostáva ako zásoba, a keď
+        to nevieš, nechaj prázdne.</p>
       <div class="form styri">
         <div><label for="nakDen">Dátum</label><input id="nakDen" type="date"></div>
         <div><label for="nakSuma">Zaplatené</label><input id="nakSuma" type="number" min="0" step="0.01" placeholder="€"></div>
         <div><label for="nakSpotreba">Z toho sa minie</label>
-          <input id="nakSpotreba" type="number" min="0" step="0.01" placeholder="nepovinné">
-          <span class="fieldhint">Zvyšok balenia ostáva ako zásoba. Keď to nevieš, nechaj prázdne.</span></div>
+          <input id="nakSpotreba" type="number" min="0" step="0.01" placeholder="nepovinné"></div>
         <div><label for="nakPozn">Poznámka</label><input id="nakPozn" placeholder="napr. sobota — Kaufland"></div>
       </div>
       <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
