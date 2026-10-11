@@ -653,6 +653,7 @@
       p.diameter_cm === null || p.diameter_cm === undefined ? '' : cislo(p.diameter_cm);
     document.getElementById('pSort').value = p.sort_order;
     document.getElementById('pActive').value = String(p.active);
+    document.getElementById('pTeaser').value = String(!!p.teaser);
     document.getElementById('pImageUrl').value = p.image_url || '';
     document.getElementById('pImagePreview').innerHTML = p.image_url
       ? `<img src="${p.image_url}" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:10px">` : '';
@@ -674,6 +675,7 @@
     predvyplnPoradie();
     document.getElementById('pCategory').value = 'zakusky';
     document.getElementById('pActive').value = 'true';
+    document.getElementById('pTeaser').value = 'false';
     document.getElementById('pDiameter').value = '';
     document.getElementById('pImagePreview').innerHTML = '';
     document.getElementById('pImageFile').value = '';
@@ -729,6 +731,7 @@
         alt_text: document.getElementById('pAlt').value.trim(),
         allergens: document.getElementById('pAllerg').value.trim(),
         active: document.getElementById('pActive').value === 'true',
+        teaser: document.getElementById('pTeaser').value === 'true',
         image_url: document.getElementById('pImageUrl').value.trim(),
         sort_order: parseInt(document.getElementById('pSort').value, 10) || 0,
         // Prázdny priemer je "nie je to torta", nie nula.

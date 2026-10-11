@@ -16,6 +16,7 @@
   };
 
   let CATS = [];
+  let TEASERY = [];
   let PRODUCTS = [];
   let DAYS_BY_DATE = {}; // 'YYYY-MM-DD' -> {is_open, cap_zakusky, cap_torty, remaining_zakusky, remaining_torty}
   let NEXT_FREE = null;  // najbližší voľný termín, počíta ho server naprieč všetkými dňami
@@ -62,7 +63,13 @@
   async function loadMenu() {
     const data = await fetchJson('/api/menu');
     CATS = data.categories || [];
-    PRODUCTS = data.products || [];
+    // Teasery („chystá sa") sa zo zoznamu výrobkov vyhadzujú hneď tu.
+    // Košík, kapacita aj objednávka ďalej pracujú s PRODUCTS, takže sa
+    // k nim nedostanú — nie je to zakázané tlačidlo, v tej časti kódu
+    // jednoducho nie sú.
+    const vsetky = data.products || [];
+    PRODUCTS = vsetky.filter((p) => !p.teaser);
+    TEASERY = vsetky.filter((p) => p.teaser);
     PRODUCTS.forEach((p) => { if (state.qty[p.id] === undefined) state.qty[p.id] = 0; });
 
     if (data.settings) {
@@ -87,8 +94,13 @@
           skupina.forEach((p) => PRICHUTE.add(p.id));
           return kartaPrichuti(skupina);
         }).join('');
+      const teasery = TEASERY.filter((t) => t.category_id === c.id).map(kartaTeaser).join('');
+      // Kategória, v ktorej nič nie je, sa nevykresľuje — inak by po
+      // vypnutí posledného výrobku ostal na stránke prázdny nadpis.
+      if (!cards && !teasery) return '';
       return `<div class="catblock"><div class="cathead"><h3>${c.name}</h3><span class="cl"></span></div>
-        <p class="catnote">${c.note || ''}</p><div class="grid">${cards}</div></div>`;
+        ${c.note ? `<p class="catnote">${c.note}</p>` : ''}
+        <div class="grid">${cards}${teasery}</div></div>`;
     }).join('');
     renderMenuControls();
   }
@@ -118,6 +130,25 @@
       podlaNazvu[p.name].push(p);
     });
     return poradie.map((n) => podlaNazvu[n]);
+  }
+
+  // Karta výrobku, ktorý sa ešte nedá objednať. Nemá cenu, alergény ani
+  // tlačidlo — len fotku a názov. Kým fotka nie je, nakreslí sa namiesto
+  // nej jednoduchá plocha s nápisom „Čoskoro"; keď ju majiteľka doplní,
+  // nápis sa presunie do rohu fotky.
+  function kartaTeaser(p) {
+    const obrazok = p.image_url
+      ? `<img src="${p.image_url}" alt="${p.name}" loading="lazy">
+         <span class="soon-tag">Čoskoro</span>`
+      : `<div class="soon" aria-hidden="true">
+           <span class="soon-heart">&#9825;</span>
+           <span class="soon-text">Čoskoro</span>
+         </div>`;
+    return `
+        <article class="card teaser">
+          <div class="ph">${obrazok}</div>
+          <div class="body"><h4>${p.name}</h4></div>
+        </article>`;
   }
 
   function kartaJedneho(p) {

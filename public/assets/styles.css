@@ -81,6 +81,32 @@ footer a.mail:hover{color:var(--terra);border-bottom-color:var(--terra)}
 .card h4{font-family:var(--serif);font-size:1.26rem;text-transform:uppercase;letter-spacing:.03em;line-height:1.05;margin:0}
 .card .sub{font-family:var(--serif);font-style:italic;color:var(--peach-deep);font-size:.96rem;margin-top:-4px}
 .card .desc{font-size:.9rem} .card .alt{font-size:.82rem;color:var(--ink-soft)}
+
+/* Karta „chystá sa". Kým nie je fotka, kreslí sa namiesto nej plocha
+   v rovnakých farbách ako zvyšok stránky — nie šedý štvorec s krížikom.
+   Karta je zámerne pokojnejšia než ostatné: nie je na čo klikať, takže
+   nemá pútať toľko pozornosti ako to, čo sa objednať dá. */
+.card.teaser{box-shadow:0 10px 28px -20px rgba(120,80,50,.3)}
+.card.teaser .ph{position:relative;display:grid;place-items:center;
+  background:linear-gradient(155deg,#F7EFE2 0%,var(--cream-2) 48%,#EFE2CE 100%)}
+.card.teaser .soon{display:flex;flex-direction:column;align-items:center;gap:7px;
+  color:var(--peach-deep)}
+.card.teaser .soon-heart{font-size:1.45rem;line-height:1;opacity:.7}
+.card.teaser .soon-text{font-family:var(--serif);font-style:italic;font-size:1.4rem;
+  letter-spacing:.07em;position:relative;padding-bottom:9px}
+/* Vlások pod slovom — tá istá linka, akú má nadpis kategórie. */
+.card.teaser .soon-text::after{content:'';position:absolute;left:18%;right:18%;bottom:0;
+  height:1px;background:linear-gradient(90deg,transparent,var(--peach),transparent)}
+.card.teaser h4{color:var(--ink)}
+/* Dvojslovný názov sa láme do dvoch riadkov, jednoslovný nie — bez
+   pevnej výšky by potom karty vedľa seba končili každá inde. Výška je
+   na dva riadky nadpisu plus odsadenie; jeden riadok sa v nej vycentruje. */
+.card.teaser .body{min-height:5.1rem;justify-content:center}
+/* Keď fotka pribudne, nápis sa presunie do rohu, nech fotku neprekrýva. */
+.card.teaser .soon-tag{position:absolute;left:12px;top:12px;
+  font-family:var(--serif);font-style:italic;font-size:.95rem;letter-spacing:.04em;
+  color:var(--peach-deep);background:rgba(255,252,246,.92);
+  border:1px solid var(--line);border-radius:999px;padding:4px 13px}
 .meta{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-top:auto;padding-top:8px;border-top:1px dashed var(--line)}
 .price{font-family:var(--serif);font-size:1.12rem}
 .price small{font-family:var(--sans);font-size:.72rem;color:var(--ink-soft);font-weight:600;letter-spacing:.03em}
