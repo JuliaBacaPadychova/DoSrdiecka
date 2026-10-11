@@ -285,6 +285,29 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   const nazovV = await page.textContent('#productFormTitle');
   ok('výber otvorí výrobok na úpravu', /Úprava|Choux/.test(nazovV) || (await page.inputValue('#pSub')) === 'Pistáciovo kávový');
 
+  // Náhľady ďalších fotiek: tlačidlá pod fotkou sa musia zmestiť pod ňu.
+  // Pri užšej dlaždici pretekali na susednú fotku a prekrývali ju.
+  await page.evaluate(() => Admin.vyberVyrobok('p-brownie'));
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    document.getElementById('pGallery').value = JSON.stringify(
+      ['/assets/img/choux.jpg', '/assets/img/chlebik.jpg', '/assets/img/brownie.jpg']);
+  });
+  await page.evaluate(() => Admin.galeriaPosun(0, 1));
+  await page.evaluate(() => Admin.galeriaPosun(0, 1));
+  await page.waitForSelector('.galeria-dlazdica', { timeout: 5000 });
+  const dlazdice = await page.$$eval('.galeria-dlazdica', (zoznam) => zoznam.map((d) => {
+    const dr = d.getBoundingClientRect();
+    const tr = d.querySelector('.galeria-tlacidla').getBoundingClientRect();
+    return { siroka: Math.round(dr.width), tlacidla: Math.round(tr.width),
+      preteka: tr.right > dr.right + 1, lavy: dr.left, pravy: dr.right };
+  }));
+  ok('tlačidlá pod náhľadom sa zmestia pod fotku ('
+    + dlazdice.map((d) => `${d.tlacidla}/${d.siroka}`).join(', ') + ')',
+    dlazdice.length === 3 && dlazdice.every((d) => !d.preteka));
+  ok('náhľady sa navzájom neprekrývajú',
+    dlazdice.every((d, i) => i === 0 || d.lavy >= dlazdice[i - 1].pravy - 1));
+
   await page.click('button[data-tab="recepty"]');
   await page.waitForSelector('#receptyList details', { timeout: 5000 });
   ok('v Receptoch je filter podľa príchute', !!(await page.$('#recFilterPrichut')));

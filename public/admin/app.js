@@ -729,13 +729,17 @@
       box.innerHTML = '<span class="muted" style="font-size:.86rem">Zatiaľ žiadne ďalšie fotky.</span>';
       return;
     }
-    box.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:12px">' + fotky.map((u, i) => `
-      <div style="width:104px">
-        <img src="${esc(u)}" alt="" style="width:104px;height:104px;object-fit:cover;border-radius:10px;display:block">
-        <div class="akcie" style="margin-top:5px;display:flex;gap:4px">
+    // Dlaždica musí byť dosť široká na tlačidlá pod fotkou. Pri 104 px
+    // sa „Odobrať" nezmestilo a tlačidlá pretekali na susednú fotku.
+    box.innerHTML = '<div class="galeria-mriezka">' + fotky.map((u, i) => `
+      <div class="galeria-dlazdica">
+        <img src="${esc(u)}" alt="">
+        <div class="galeria-tlacidla">
           <button class="btn ghost sm" type="button" title="posunúť dopredu"
+            aria-label="posunúť dopredu"
             onclick="Admin.galeriaPosun(${i}, -1)"${i === 0 ? ' disabled' : ''}>←</button>
           <button class="btn ghost sm" type="button" title="posunúť dozadu"
+            aria-label="posunúť dozadu"
             onclick="Admin.galeriaPosun(${i}, 1)"${i === fotky.length - 1 ? ' disabled' : ''}>→</button>
           <button class="btn ghost sm zmazat" type="button"
             onclick="Admin.galeriaOdober(${i})">Odobrať</button>
