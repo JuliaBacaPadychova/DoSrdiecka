@@ -60,6 +60,19 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
     rec('r-coulis','Malinové coulis','vklad',150,'g','Pyré zohrej s cukrom a pektínom.'),
   );
 
+  // Skupiny receptov. Poradie NIE JE abecedné — filter podľa skupiny ich
+  // má ponúkať tak, ako si ich majiteľka preusporiadala, nie inak.
+  // Malinové coulis zámerne skupinu nemá: musí sa dať nájsť cez
+  // „bez skupiny".
+  db.recipe_groups.push(
+    { id: 'g-cesta', name: 'Cestá', sort_order: 1, layer_role: null },
+    { id: 'g-kremy', name: 'Krémy', sort_order: 2, layer_role: 'naplna' },
+  );
+  db.recipes.find((r) => r.id === 'r-cesto').group_id = 'g-cesta';
+  db.recipes.find((r) => r.id === 'r-craq').group_id = 'g-cesta';
+  db.recipes.find((r) => r.id === 'r-pist').group_id = 'g-kremy';
+  db.recipes.find((r) => r.id === 'r-kava').group_id = 'g-kremy';
+
   let n = 0;
   const pol = (r, i, a, opt, note) => db.recipe_items.push({ id: 'ri-' + (++n), recipe_id: r, ingredient_id: i, amount: a, optional: !!opt, note: note || '', sort_order: n });
   pol('r-cesto','i-voda',95); pol('r-cesto','i-mlieko',95); pol('r-cesto','i-maslo',85);
@@ -290,6 +303,32 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
     && /Odpalované cesto/.test(jeden[0].t));
   ok('a rovno sa rozbalí', jeden[0].open === true);
   await page.selectOption('#recFilter', '');
+  await page.waitForTimeout(400);
+
+  // filter podľa skupiny
+  ok('v Receptoch je filter podľa skupiny', !!(await page.$('#recFilterSkupina')));
+  const skupinyVoVybere = await page.$$eval('#recFilterSkupina option', (o) => o.map((x) => x.textContent.trim()));
+  ok('ponúka skupiny v poradí, v akom sú nadpisy v zozname',
+    JSON.stringify(skupinyVoVybere) === JSON.stringify(['všetky skupiny', 'Cestá', 'Krémy', '— bez skupiny —']),
+    JSON.stringify(skupinyVoVybere));
+  await page.selectOption('#recFilterSkupina', { label: 'Cestá' });
+  await page.waitForTimeout(400);
+  const vCestach = await page.$$eval('#receptyList details summary strong', (d) => d.map((x) => x.textContent.trim()));
+  ok('vyberie práve recepty tej skupiny (' + vCestach.join(', ') + ')',
+    JSON.stringify(vCestach) === JSON.stringify(['Craquelin svetlý', 'Odpalované cesto']));
+  await page.selectOption('#recFilterSkupina', 'bez-skupiny');
+  await page.waitForTimeout(400);
+  const bezSkupiny = await page.$$eval('#receptyList details summary strong', (d) => d.map((x) => x.textContent.trim()));
+  ok('„bez skupiny" nájde recept, ktorý do žiadnej nepatrí (' + bezSkupiny.join(', ') + ')',
+    JSON.stringify(bezSkupiny) === JSON.stringify(['Malinové coulis']));
+  // Dva filtre naraz sa musia skladať, nie prebíjať.
+  await page.selectOption('#recFilterSkupina', { label: 'Krémy' });
+  await page.selectOption('#recFilter', { label: 'Odpalované cesto' });
+  await page.waitForTimeout(400);
+  ok('recept mimo vybranej skupiny sa nevypíše',
+    (await page.$$eval('#receptyList details', (d) => d.length)) === 0);
+  await page.selectOption('#recFilter', '');
+  await page.selectOption('#recFilterSkupina', '');
   await page.waitForTimeout(400);
 
   // "nepriradené" sa presunulo do pravého výberu
