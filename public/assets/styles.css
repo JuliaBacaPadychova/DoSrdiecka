@@ -82,6 +82,31 @@ footer a.mail:hover{color:var(--terra);border-bottom-color:var(--terra)}
 .card .sub{font-family:var(--serif);font-style:italic;color:var(--peach-deep);font-size:.96rem;margin-top:-4px}
 .card .desc{font-size:.9rem} .card .alt{font-size:.82rem;color:var(--ink-soft)}
 
+/* Viac fotiek k jednému výrobku. Všetky sú v stránke naraz a prepína sa
+   len to, ktorá je vidieť — prehadzovanie `src` by pri prvom kliknutí
+   bliklo. Výšku drží `aspect-ratio` na .ph, takže absolútne umiestnené
+   fotky nič nerozhodia. */
+.card .ph.gal{position:relative}
+.card .ph.gal img{position:absolute;inset:0;opacity:0;transition:opacity .28s ease}
+.card .ph.gal img.on{opacity:1}
+.gnav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;
+  width:34px;height:34px;padding:0;border-radius:50%;cursor:pointer;
+  border:1px solid var(--line);background:rgba(255,252,246,.88);color:var(--peach-deep);
+  font-family:var(--sans);font-size:1.45rem;line-height:1;
+  display:grid;place-items:center;
+  opacity:.92;transition:opacity .2s ease,background .2s ease,transform .18s ease}
+.gnav.prev{left:10px} .gnav.next{right:10px}
+/* Šípky sú vidieť stále, nielen po nabehnutí myšou: bez nich by
+   návštevník netušil, že sú tam ďalšie fotky. Myšou a klávesou
+   zosilnejú, nech je jasné, na čom stojí. */
+.gnav:hover,.gnav:focus-visible{opacity:1;background:#fff;transform:translateY(-50%) scale(1.06)}
+.gdots{position:absolute;left:0;right:0;bottom:9px;z-index:2;
+  display:flex;justify-content:center;gap:6px}
+.gdots span{width:6px;height:6px;border-radius:50%;
+  background:rgba(255,252,246,.7);box-shadow:0 0 0 1px rgba(120,80,50,.28);
+  transition:background .2s ease}
+.gdots span.on{background:var(--peach-deep);box-shadow:0 0 0 1px rgba(255,252,246,.6)}
+
 /* Karta „chystá sa". Kým nie je fotka, kreslí sa namiesto nej plocha
    v rovnakých farbách ako zvyšok stránky — nie šedý štvorec s krížikom.
    Karta je zámerne pokojnejšia než ostatné: nie je na čo klikať, takže

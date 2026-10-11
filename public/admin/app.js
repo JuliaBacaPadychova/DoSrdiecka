@@ -655,6 +655,7 @@
     document.getElementById('pActive').value = String(p.active);
     document.getElementById('pTeaser').value = String(!!p.teaser);
     document.getElementById('pImageUrl').value = p.image_url || '';
+    nastavGaleriu(Array.isArray(p.gallery) ? p.gallery : []);
     document.getElementById('pImagePreview').innerHTML = p.image_url
       ? `<img src="${p.image_url}" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:10px">` : '';
     // Formulár je zbalený — bez rozbalenia by kliknutie na Upraviť
@@ -679,6 +680,8 @@
     document.getElementById('pDiameter').value = '';
     document.getElementById('pImagePreview').innerHTML = '';
     document.getElementById('pImageFile').value = '';
+    document.getElementById('pGalleryFiles').value = '';
+    nastavGaleriu([]);
     const formular = document.getElementById('productForm');
     if (formular && rozbalit) { formular.open = true; window.scrollTo({ top: 0, behavior: 'smooth' }); }
   }
@@ -695,6 +698,75 @@
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  }
+
+  // Galéria je v jednom skrytom políčku ako zoznam adries. Náhľad sa
+  // z neho vždy prekreslí, takže je len jedno miesto, kde je pravda.
+  function galeria() {
+    try {
+      const v = JSON.parse(document.getElementById('pGallery').value || '[]');
+      return Array.isArray(v) ? v.filter((u) => typeof u === 'string' && u) : [];
+    } catch { return []; }
+  }
+
+  function nastavGaleriu(zoznam) {
+    document.getElementById('pGallery').value = JSON.stringify(zoznam || []);
+    const box = document.getElementById('pGalleryPreview');
+    if (!box) return;
+    const fotky = galeria();
+    if (!fotky.length) {
+      box.innerHTML = '<span class="muted" style="font-size:.86rem">Zatiaľ žiadne ďalšie fotky.</span>';
+      return;
+    }
+    box.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:12px">' + fotky.map((u, i) => `
+      <div style="width:104px">
+        <img src="${esc(u)}" alt="" style="width:104px;height:104px;object-fit:cover;border-radius:10px;display:block">
+        <div class="akcie" style="margin-top:5px;display:flex;gap:4px">
+          <button class="btn ghost sm" type="button" title="posunúť dopredu"
+            onclick="Admin.galeriaPosun(${i}, -1)"${i === 0 ? ' disabled' : ''}>←</button>
+          <button class="btn ghost sm" type="button" title="posunúť dozadu"
+            onclick="Admin.galeriaPosun(${i}, 1)"${i === fotky.length - 1 ? ' disabled' : ''}>→</button>
+          <button class="btn ghost sm zmazat" type="button"
+            onclick="Admin.galeriaOdober(${i})">Odobrať</button>
+        </div>
+      </div>`).join('') + '</div>';
+  }
+
+  function galeriaPosun(i, smer) {
+    const fotky = galeria();
+    const kam = i + smer;
+    if (kam < 0 || kam >= fotky.length) return;
+    [fotky[i], fotky[kam]] = [fotky[kam], fotky[i]];
+    nastavGaleriu(fotky);
+  }
+
+  // Odobratie z galérie fotku zo Supabase nemaže — tá istá fotka môže
+  // byť použitá inde a vrátiť sa po nej je lacnejšie než ju nahrávať
+  // znova.
+  function galeriaOdober(i) {
+    const fotky = galeria();
+    fotky.splice(i, 1);
+    nastavGaleriu(fotky);
+  }
+
+  // Vybraných môže byť viac naraz; nahrávajú sa po jednej, nech sa pri
+  // väčších fotkách neposiela niekoľko megabajtov v jednej chvíli.
+  async function handleGalleryUpload() {
+    const input = document.getElementById('pGalleryFiles');
+    const subory = Array.from(input.files || []);
+    if (!subory.length) return;
+    const fotky = galeria();
+    for (const file of subory) {
+      const contentBase64 = await fileToBase64(file);
+      const data = await apiFetch('/api/admin/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType: file.type, contentBase64 }),
+      });
+      fotky.push(data.url);
+      nastavGaleriu(fotky);
+    }
+    input.value = '';
   }
 
   async function handleImageUpload() {
@@ -718,6 +790,7 @@
     try {
       const fileInput = document.getElementById('pImageFile');
       if (fileInput.files[0]) await handleImageUpload();
+      await handleGalleryUpload();
 
       const id = document.getElementById('productId').value;
       const body = {
@@ -733,6 +806,7 @@
         active: document.getElementById('pActive').value === 'true',
         teaser: document.getElementById('pTeaser').value === 'true',
         image_url: document.getElementById('pImageUrl').value.trim(),
+        gallery: galeria(),
         sort_order: parseInt(document.getElementById('pSort').value, 10) || 0,
         // Prázdny priemer je "nie je to torta", nie nula.
         diameter_cm: document.getElementById('pDiameter').value.trim() || null,
@@ -3302,6 +3376,7 @@
     saveSettings,
     saveSurovina, resetSurovinaForm, editSurovina, vyberSurovinu,
     renderRecepty, ulozRecept, pridajPolozku, posunPolozku, zmazPolozku, zmenJednotku, priradPrichut, zrusPriradenie,
+    galeriaPosun, galeriaOdober,
     pridajSkupinu, ulozNazvySkupin, posunSkupinu, zmazSkupinu, ulozRoluSkupiny, posunVRozpise,
     prichutZmenena, prepocitajVrstvy, zmenaVrstiev,
     novyReceptForm, novyReceptJednotka, ulozNovyRecept, doKalkulacky, zmazRecept,

@@ -151,10 +151,19 @@
             objednať. Cena a alergény sa pri ňom nevypisujú.</span>
         </div>
         <div class="full">
-          <label for="pImageFile">Fotka</label>
+          <label for="pImageFile">Hlavná fotka</label>
           <input id="pImageFile" type="file" accept="image/png,image/jpeg,image/webp">
           <input type="hidden" id="pImageUrl">
           <div id="pImagePreview" style="margin-top:8px"></div>
+        </div>
+        <div class="full">
+          <label for="pGalleryFiles">Ďalšie fotky</label>
+          <input id="pGalleryFiles" type="file" multiple accept="image/png,image/jpeg,image/webp">
+          <input type="hidden" id="pGallery">
+          <span class="fieldhint">Zákazník ich prelistuje šípkami priamo v karte.
+            Hlavná je vždy prvá; tieto idú za ňou v poradí, v akom sú tu.
+            Dá sa vybrať aj viac naraz.</span>
+          <div id="pGalleryPreview" style="margin-top:10px"></div>
         </div>
       </div>
       <div style="margin-top:14px;display:flex;gap:10px">
