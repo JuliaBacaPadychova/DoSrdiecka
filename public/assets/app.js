@@ -549,7 +549,10 @@
     document.getElementById('capCh').textContent = Math.max(0, state.capCh - usedCh());
     let html = '';
     CATS.forEach((c) => {
-      const items = PRODUCTS.filter((p) => p.category_id === c.id);
+      // Rovnaké zoskupenie ako v ponuke: všetky príchute jedného výrobku
+      // za sebou. Bez toho sa veterníky a choux striedali podľa toho,
+      // v akom poradí pribúdali do databázy.
+      const items = zoskupPodlaNazvu(PRODUCTS.filter((p) => p.category_id === c.id)).flat();
       if (!items.length) return;
       html += `<div class="ocat">${c.name}</div>`;
       html += items.map((p) => {
@@ -612,7 +615,7 @@
 
   // ---------- step 3 ----------
   function renderSummary() {
-    const rows = PRODUCTS.filter((p) => state.qty[p.id] > 0).map((p) => {
+    const rows = zoskupPodlaNazvu(PRODUCTS.filter((p) => state.qty[p.id] > 0)).flat().map((p) => {
       const q = state.qty[p.id];
       return `<div class="sumline"><span>${p.name} — ${p.sub || ''} · ${q} ks</span><span>${
         jeTorta(p) ? 'od ' : ''}${q * p.price} €</span></div>`;

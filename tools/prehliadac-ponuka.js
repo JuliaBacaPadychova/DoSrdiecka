@@ -34,6 +34,22 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   torta.gallery = ['/assets/img/choux.jpg', '/assets/img/chlebik.jpg'];
   db.products.push({ ...torta, id: 'p-brownie-16', sub: 'Ø 16 cm', price: 55, sort_order: 2 });
 
+  // Zákusky tak, ako pribúdali do databázy — veterníky a choux
+  // prestriedané. Presne to vyzeralo v objednávke porozhadzované.
+  const choux = db.products.find((p) => p.id === 'p-choux');
+  const zakusok = (id, name, sub, poradie) => ({ ...choux, id, name, sub, sort_order: poradie, gallery: [] });
+  choux.sort_order = 3;
+  db.products.push(
+    zakusok('p-vet-kar', 'Veterník', 'Karamelový', 1),
+    zakusok('p-vet-mal', 'Veterník', 'Pistáciovo malinový', 2),
+    zakusok('p-choux-kav', 'Choux', 'Pistáciovo kávový', 4),
+    zakusok('p-vet-cok', 'Veterník', 'Čokoládovo vanilkový', 5),
+    zakusok('p-choux-kar', 'Choux', 'Karamelový', 6),
+  );
+
+  // Otvorený deň, nech sa dá prejsť do kroku Výrobky.
+  db.open_days.push({ day: '2027-04-10', is_open: true, cap_zakusky: 40, cap_torty: 1, cap_chlebik: 1 });
+
   // Kysnuté: chlebík a dva výrobky, ktoré sa ešte nedajú objednať.
   const kys = db.categories.find((c) => c.id === 'chlebik');
   kys.name = 'Kysnuté';
@@ -143,6 +159,40 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
     await page.evaluate(() => !document.querySelector('[id^="mc-p-knedla"]')
       && !document.querySelector('[id^="mc-p-rozky"]')));
 
+  console.log('\nPORADIE V OBJEDNÁVKOVOM FORMULÁRI:');
+  // Do formulára sa dá prejsť len s vybraným termínom.
+  await page.evaluate(() => DoSrdiecka.pickDay('2027-04-10'));
+  await page.waitForTimeout(600);
+  await page.evaluate(() => setStep(2));
+  await page.waitForSelector('.oitem', { timeout: 5000 });
+  const vFormulari = await page.$$eval('.oitem .info', (r) => r.map((x) => ({
+    nazov: x.querySelector('h5').textContent.trim(),
+    prichut: x.querySelector('.l2').textContent.trim(),
+  })));
+  const zakusky = vFormulari.filter((r) => r.nazov === 'Veterník' || r.nazov === 'Choux');
+  console.log('  ' + zakusky.map((r) => `${r.nazov}/${r.prichut}`).join(' · '));
+  // Nemá sa striedať: všetky príchute jedného výrobku idú za sebou.
+  const mena = zakusky.map((r) => r.nazov);
+  const skokov = mena.filter((m, i) => i > 0 && m !== mena[i - 1]).length;
+  ok('príchute jedného výrobku idú za sebou, nie prestriedane (' + skokov + ' prechod)',
+    skokov === 1);
+  // A v tom istom poradí ako v ponuke — inak by to boli dva rôzne zoznamy.
+  const vPonuke = await page.evaluate(() => {
+    setStep(1);
+    return Array.from(document.querySelectorAll('#menu .card'))
+      .flatMap((k) => {
+        const nazov = k.querySelector('h4').textContent.trim();
+        // Karta s príchuťami má riadok .fl na každú z nich; karta
+        // s veľkosťami torty je jeden výrobok s prepínačom.
+        const prichute = k.querySelectorAll('.fl');
+        return prichute.length ? Array.from(prichute, () => nazov) : [nazov];
+      });
+  });
+  ok('poradie výrobkov sedí s ponukou (' + vPonuke.filter((n) => n === 'Veterník' || n === 'Choux').join(', ') + ')',
+    JSON.stringify(vPonuke.filter((n) => n === 'Veterník' || n === 'Choux')) === JSON.stringify(mena));
+
+  await page.evaluate(() => setStep(2));
+  await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(VYSTUP, 'ponuka.png'), fullPage: true });
   console.log('\nobrázky:', VYSTUP);
   console.log('chyby v prehliadači:', chyby.length ? chyby : 'žiadne');
