@@ -5,6 +5,8 @@
 --
 -- 1. Kategória „Chlebík" sa volá „Kysnuté". Chlebík v nej ostáva, ale
 --    pribudne k nemu parená knedľa a rožky — a tie už chlebík nie sú.
+--    Popis pod nadpisom sa zároveň maže: hovoril o kvásku, ktorým
+--    parená knedľa nekysne.
 --
 -- 2. Kategória ide na webe pod torty. Doteraz bola prvá.
 --
@@ -42,6 +44,11 @@ comment on column products.teaser is
 
 -- 1. Premenovanie. Len z pôvodného názvu, nech vlastná úprava ostane.
 update categories set name = 'Kysnuté' where id = 'chlebik' and name = 'Chlebík';
+
+-- Popis pod nadpisom ide preč. „Kváskové pečivo z pomalého kysnutia"
+-- platilo o chlebíku, ale parená knedľa kváskom nekysne. Prázdny popis
+-- sa na stránke nevykreslí ani ako prázdny riadok.
+update categories set note = '' where id = 'chlebik' and note <> '';
 
 -- 2. Na koniec poradia, teda pod torty. Podmienka drží opakované
 --    spustenie: po prvom behu už kategória najvyššie poradie MÁ.

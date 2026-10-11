@@ -99,7 +99,8 @@
       // vypnutí posledného výrobku ostal na stránke prázdny nadpis.
       if (!cards && !teasery) return '';
       return `<div class="catblock"><div class="cathead"><h3>${c.name}</h3><span class="cl"></span></div>
-        <p class="catnote">${c.note || ''}</p><div class="grid">${cards}${teasery}</div></div>`;
+        ${c.note ? `<p class="catnote">${c.note}</p>` : ''}
+        <div class="grid">${cards}${teasery}</div></div>`;
     }).join('');
     renderMenuControls();
   }
