@@ -122,7 +122,7 @@
       <input type="hidden" id="productId">
       <div class="form">
         <div><label for="pCategory">Kategória</label>
-          <select id="pCategory"><option value="chlebik">Chlebík</option><option value="zakusky">Zákusky</option><option value="torty">Torty</option></select>
+          <select id="pCategory"><option value="chlebik">Chlebík</option><option value="zakusky">Zákusky</option><option value="torty">Torty</option><option value="coskoro">Čoskoro</option></select>
         </div>
         <div><label for="pName">Názov</label><input id="pName">
           <span class="fieldhint">Rovnaký názov = jedna karta na webe. Ďalšiu príchuť
@@ -144,6 +144,11 @@
             ďalšie voľné — nová príchuť tak pribudne na koniec svojej karty.</span></div>
         <div><label for="pActive">Zobrazovať na webe</label>
           <select id="pActive"><option value="true">Áno</option><option value="false">Nie</option></select>
+        </div>
+        <div><label for="pTeaser">Chystá sa</label>
+          <select id="pTeaser"><option value="false">Nie</option><option value="true">Áno</option></select>
+          <span class="fieldhint">Áno = v ponuke je vidieť ako „Čoskoro", ale nedá sa
+            objednať. Cena a alergény sa pri ňom nevypisujú.</span>
         </div>
         <div class="full">
           <label for="pImageFile">Fotka</label>
