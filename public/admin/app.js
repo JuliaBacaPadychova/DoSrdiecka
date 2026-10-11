@@ -1991,14 +1991,20 @@
     if (!recepty.length) { el.innerHTML = '<p class="muted">Zatiaľ žiadne recepty.</p>'; return; }
 
     const filter = (document.getElementById('recFilter') || {}).value || '';
+    const filterSkupina = (document.getElementById('recFilterSkupina') || {}).value || '';
     const filterPrichut = (document.getElementById('recFilterPrichut') || {}).value || '';
     naplnFilterReceptov();
+    naplnFilterSkupin();
     naplnFilterPrichuti();
     const pouzite = new Set(vazby.map((v) => v.recipe_id));
     // Recepty patriace k vybranej príchuti — podľa toho, čo je v jej zložení.
     const priPrichuti = new Set(vazby.filter((v) => v.product_id === filterPrichut).map((v) => v.recipe_id));
     const vybrane = recepty
       .filter((r) => (!filter || r.id === filter))
+      // Prázdne group_id je vlastná možnosť: recept bez skupiny sa inak
+      // v zozname stratí medzi ostatnými a nedá sa nájsť.
+      .filter((r) => (!filterSkupina
+        || (filterSkupina === 'bez-skupiny' ? !r.group_id : r.group_id === filterSkupina)))
       .filter((r) => (!filterPrichut
         || (filterPrichut === 'nepriradene' ? !pouzite.has(r.id) : priPrichuti.has(r.id))))
       // Vnútri skupiny podľa abecedy: hľadá sa podľa názvu, takže recept
@@ -2239,6 +2245,24 @@
   // Uloží naraz všetko, čo sa v rozbalenom recepte zmenilo: gramáže aj
   // poznámku. Ukladá sa až na tlačidlo, nie pri každom kliknutí do
   // políčka — inak sa dá recept prepísať šípkou a ani si to nevšimneš.
+  // Skupiny sú vo výbere v tom poradí, v akom stoja nadpisy v zozname
+  // pod ním — teda tak, ako si ich majiteľka preusporiadala šípkami.
+  // Abeceda by tu hovorila niečo iné než to, čo je hneď vidieť.
+  function naplnFilterSkupin() {
+    const el = document.getElementById('recFilterSkupina');
+    if (!el || !RECEPTAR) return;
+    const skupiny = (skupinyAleboNic() || []).slice()
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    const bezSkupiny = (RECEPTAR.recepty || []).some((r) => !r.group_id);
+    const doteraz = el.value;
+    el.innerHTML = '<option value="">všetky skupiny</option>'
+      + skupiny.map((g) => `<option value="${g.id}">${esc(g.name)}</option>`).join('')
+      + (bezSkupiny ? '<option value="bez-skupiny">— bez skupiny —</option>' : '');
+    if (doteraz === 'bez-skupiny'
+      ? bezSkupiny
+      : (doteraz && skupiny.some((g) => g.id === doteraz))) el.value = doteraz;
+  }
+
   // Vo filtri sú len príchute, ktoré nejaké recepty naozaj majú — inak
   // by ponuka sľubovala výber, po ktorom ostane prázdno.
   function naplnFilterPrichuti() {
