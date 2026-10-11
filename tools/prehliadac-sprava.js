@@ -65,8 +65,8 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   // Malinové coulis zámerne skupinu nemá: musí sa dať nájsť cez
   // „bez skupiny".
   db.recipe_groups.push(
-    { id: 'g-cesta', name: 'Cestá', sort_order: 1, layer_role: null },
-    { id: 'g-kremy', name: 'Krémy', sort_order: 2, layer_role: 'naplna' },
+    { id: 'g-kremy', name: 'Krémy', sort_order: 1, layer_role: 'naplna' },
+    { id: 'g-cesta', name: 'Cestá', sort_order: 2, layer_role: null },
   );
   db.recipes.find((r) => r.id === 'r-cesto').group_id = 'g-cesta';
   db.recipes.find((r) => r.id === 'r-craq').group_id = 'g-cesta';
@@ -308,9 +308,9 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   // filter podľa skupiny
   ok('v Receptoch je filter podľa skupiny', !!(await page.$('#recFilterSkupina')));
   const skupinyVoVybere = await page.$$eval('#recFilterSkupina option', (o) => o.map((x) => x.textContent.trim()));
-  ok('ponúka skupiny v poradí, v akom sú nadpisy v zozname',
-    JSON.stringify(skupinyVoVybere) === JSON.stringify(['všetky skupiny', 'Cestá', 'Krémy', '— bez skupiny —']),
-    JSON.stringify(skupinyVoVybere));
+  // Krémy sú vo fixture prvé, hoci abecedne sú druhé — presne o to ide.
+  ok('ponúka skupiny v poradí nadpisov, nie podľa abecedy (' + skupinyVoVybere.join(', ') + ')',
+    JSON.stringify(skupinyVoVybere) === JSON.stringify(['všetky skupiny', 'Krémy', 'Cestá', '— bez skupiny —']));
   await page.selectOption('#recFilterSkupina', { label: 'Cestá' });
   await page.waitForTimeout(400);
   const vCestach = await page.$$eval('#receptyList details summary strong', (d) => d.map((x) => x.textContent.trim()));
@@ -340,9 +340,34 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
     nepriradene.length === maByt && nepriradene.every((t) => /nepriradený k príchuti/.test(t)));
   await page.selectOption('#recFilterPrichut', '');
   await page.waitForTimeout(400);
-  const poradie = await page.$$eval('#receptyList details summary strong', (d) => d.map((x) => x.textContent.trim()));
-  ok('zoznam receptov je celý podľa abecedy',
-    JSON.stringify(poradie) === JSON.stringify([...poradie].sort((a, b) => a.localeCompare(b, 'sk'))));
+  // Zoznam NIE JE abecedný ako celok: skupiny idú v poradí, ktoré si
+  // majiteľka nastavila šípkami, a abeceda platí až vnútri skupiny.
+  // Kontrola preto čítá zoznam po skupinách, tak ako ho vidno.
+  const poSkupinach = await page.$$eval('#receptyList > *', (uzly) => {
+    const von = [];
+    let teraz = null;
+    uzly.forEach((u) => {
+      if (u.classList.contains('skupina-nadpis')) {
+        teraz = { skupina: u.textContent.replace(/\s*\(\d+\)\s*$/, '').trim(), recepty: [] };
+        von.push(teraz);
+      } else if (u.tagName === 'DETAILS' && teraz) {
+        teraz.recepty.push(u.querySelector('summary strong').textContent.trim());
+      }
+    });
+    return von;
+  });
+  ok('recepty sú rozdelené pod nadpisy skupín ('
+    + poSkupinach.map((g) => `${g.skupina}: ${g.recepty.length}`).join(', ') + ')',
+    poSkupinach.length >= 2 && poSkupinach.every((g) => g.recepty.length > 0));
+  ok('vnútri každej skupiny idú recepty podľa abecedy',
+    poSkupinach.every((g) => JSON.stringify(g.recepty)
+      === JSON.stringify([...g.recepty].sort((a, b) => a.localeCompare(b, 'sk')))));
+  // Nezaradené sú navrchu zámerne — recept bez skupiny má pýtať, kam
+  // patrí, nie sa stratiť na konci. Krémy pred Cestami dokazujú, že sa
+  // drží nastavené poradie: abecedne by boli opačne.
+  ok('skupiny idú v nastavenom poradí, nezaradené navrchu',
+    JSON.stringify(poSkupinach.map((g) => g.skupina)) === JSON.stringify(['Nezaradené', 'Krémy', 'Cestá']));
+  const poradie = poSkupinach.flatMap((g) => g.recepty);
   const vsetky = await page.$$eval('#receptyList details', (d) => d.length);
   await page.selectOption('#recFilterPrichut', { label: 'Choux — Pistáciovo mangový' });
   await page.waitForTimeout(400);

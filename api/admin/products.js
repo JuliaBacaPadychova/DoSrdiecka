@@ -13,6 +13,7 @@ const EDITABLE_FIELDS = [
   "min_label",
   "allergens",
   "image_url",
+  "gallery",
   "active",
   "sort_order",
   "diameter_cm",

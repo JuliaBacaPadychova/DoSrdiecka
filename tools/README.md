@@ -1,7 +1,7 @@
 # Preklikanie v prehliadači
 
 `npm test` overuje výpočty a API — čísla, pravidlá, odpovede servera.
-Tieto dva skripty overujú to, čo z nich vidno v správe webu: že sa formulár
+Tieto tri skripty overujú to, čo z nich vidno na stránke: že sa formulár
 naozaj uloží, že sa zoznam prekreslí, že políčko je tam, kde má byť.
 Veci, ktoré `node --test` nikdy nezachytí.
 
@@ -9,6 +9,7 @@ Veci, ktoré `node --test` nikdy nezachytí.
 |---|---|
 | `prehliadac-sprava.js` | celú správu: suroviny, recepty, kalkulačku, peniaze, ručné objednávky |
 | `prehliadac-pecenie.js` | celé pečenie naraz — objednávka s choux aj veterníkmi |
+| `prehliadac-ponuka.js` | verejná stránka — karty v ponuke, listovanie fotiek, „čoskoro" |
 
 Bežia proti falošnému Supabase z `test/fake-supabase.js` a proti
 `dev-server.js`, takže nepotrebujú účet, internet ani skutočné dáta.

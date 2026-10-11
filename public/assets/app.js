@@ -17,6 +17,9 @@
 
   let CATS = [];
   let TEASERY = [];
+  // Ktorá fotka je navrchu pri ktorom výrobku. Ponuka sa prekresľuje pri
+  // každej zmene košíka, takže si to karta nemôže pamätať sama.
+  const FOTKA = {};
   let PRODUCTS = [];
   let DAYS_BY_DATE = {}; // 'YYYY-MM-DD' -> {is_open, cap_zakusky, cap_torty, remaining_zakusky, remaining_torty}
   let NEXT_FREE = null;  // najbližší voľný termín, počíta ho server naprieč všetkými dňami
@@ -151,10 +154,62 @@
         </article>`;
   }
 
+  // Hlavná fotka je stále tá v `image_url` — galéria je to, čo ide za
+  // ňou. Keby sa raz tá istá adresa ocitla v oboch, ukáže sa raz.
+  function zoznamFotiek(p) {
+    const dalsie = Array.isArray(p.gallery) ? p.gallery : [];
+    return (p.image_url ? [p.image_url] : [])
+      .concat(dalsie.filter((u) => typeof u === 'string' && u && u !== p.image_url));
+  }
+
+  // Fotka v karte. Pri jednej sa nič nemení; pri viacerých sa doplnia
+  // šípky a bodky. Všetky fotky sú v stránke naraz a prepína sa len to,
+  // ktorá je vidieť — prehadzovanie `src` by pri prvom kliknutí bliklo.
+  function blokFotky(p, alt) {
+    const fotky = zoznamFotiek(p);
+    if (fotky.length <= 1) {
+      return `<div class="ph"><img src="${fotky[0] || ''}" alt="${alt}" loading="lazy"></div>`;
+    }
+    const kde = ((FOTKA[p.id] || 0) % fotky.length + fotky.length) % fotky.length;
+    const obrazky = fotky.map((u, n) =>
+      `<img src="${u}" alt="${n === kde ? alt : ''}" class="${n === kde ? 'on' : ''}" loading="lazy">`).join('');
+    const bodky = fotky.map((_, n) => `<span class="${n === kde ? 'on' : ''}"></span>`).join('');
+    return `<div class="ph gal" data-gal="${p.id}">
+            ${obrazky}
+            <button class="gnav prev" type="button" aria-label="Predchádzajúca fotka"
+              onclick="DoSrdiecka.fotkaPosun('${p.id}', -1)">&#8249;</button>
+            <button class="gnav next" type="button" aria-label="Ďalšia fotka"
+              onclick="DoSrdiecka.fotkaPosun('${p.id}', 1)">&#8250;</button>
+            <div class="gdots" aria-hidden="true">${bodky}</div>
+          </div>`;
+  }
+
+  // Prepína sa priamo v stránke, nie prekreslením ponuky: prekreslenie
+  // by zahodilo rozpísaný výber veľkosti aj pozíciu fotiek v ostatných
+  // kartách. Do FOTKA sa to zapíše, nech to prežije zmenu košíka.
+  function fotkaPosun(id, smer) {
+    const box = document.querySelector(`[data-gal="${id}"]`);
+    if (!box) return;
+    const obrazky = Array.from(box.querySelectorAll('img'));
+    const bodky = Array.from(box.querySelectorAll('.gdots span'));
+    if (obrazky.length < 2) return;
+    const teraz = Math.max(0, obrazky.findIndex((o) => o.classList.contains('on')));
+    const dalsi = ((teraz + smer) % obrazky.length + obrazky.length) % obrazky.length;
+    obrazky[teraz].classList.remove('on');
+    obrazky[dalsi].classList.add('on');
+    // Popis fotky patrí tej, ktorá je vidieť — čítačka obrazovky inak
+    // ohlási popis, ktorý na obrazovke nie je.
+    obrazky[dalsi].alt = obrazky[teraz].alt;
+    obrazky[teraz].alt = '';
+    if (bodky[teraz]) bodky[teraz].classList.remove('on');
+    if (bodky[dalsi]) bodky[dalsi].classList.add('on');
+    FOTKA[id] = dalsi;
+  }
+
   function kartaJedneho(p) {
     return `
         <article class="card">
-          <div class="ph"><img src="${p.image_url}" alt="${p.name} – ${p.sub}" loading="lazy"></div>
+          ${blokFotky(p, `${p.name} – ${p.sub}`)}
           <div class="body">
             <h4>${p.name}</h4><div class="sub">${p.sub || ''}</div>
             <div class="desc">${p.description || ''}</div>
@@ -206,7 +261,7 @@
 
     return `
         <article class="card">
-          <div class="ph"><img src="${hlavny.image_url}" alt="${hlavny.name}" loading="lazy"></div>
+          ${blokFotky(hlavny, hlavny.name)}
           <div class="body">
             <h4>${hlavny.name}</h4>
             <div class="fl-head">Príchute</div>
@@ -236,7 +291,7 @@
 
     return `
         <article class="card">
-          <div class="ph"><img src="${hlavny.image_url}" alt="${hlavny.name}" loading="lazy"></div>
+          ${blokFotky(hlavny, hlavny.name)}
           <div class="body">
             <h4>${hlavny.name}</h4>
             ${vybrany.description ? `<div class="desc">${vybrany.description}</div>` : ''}
@@ -494,7 +549,10 @@
     document.getElementById('capCh').textContent = Math.max(0, state.capCh - usedCh());
     let html = '';
     CATS.forEach((c) => {
-      const items = PRODUCTS.filter((p) => p.category_id === c.id);
+      // Rovnaké zoskupenie ako v ponuke: všetky príchute jedného výrobku
+      // za sebou. Bez toho sa veterníky a choux striedali podľa toho,
+      // v akom poradí pribúdali do databázy.
+      const items = zoskupPodlaNazvu(PRODUCTS.filter((p) => p.category_id === c.id)).flat();
       if (!items.length) return;
       html += `<div class="ocat">${c.name}</div>`;
       html += items.map((p) => {
@@ -557,7 +615,7 @@
 
   // ---------- step 3 ----------
   function renderSummary() {
-    const rows = PRODUCTS.filter((p) => state.qty[p.id] > 0).map((p) => {
+    const rows = zoskupPodlaNazvu(PRODUCTS.filter((p) => state.qty[p.id] > 0)).flat().map((p) => {
       const q = state.qty[p.id];
       return `<div class="sumline"><span>${p.name} — ${p.sub || ''} · ${q} ks</span><span>${
         jeTorta(p) ? 'od ' : ''}${q * p.price} €</span></div>`;
@@ -695,7 +753,7 @@
     setStep(1);
   }
 
-  window.DoSrdiecka = { pickDay, addItem, incItem, decItem, vyberVelkost };
+  window.DoSrdiecka = { pickDay, addItem, incItem, decItem, vyberVelkost, fotkaPosun };
   window.goOrder = goOrder;
   window.goCart = goCart;
   window.setStep = setStep;
