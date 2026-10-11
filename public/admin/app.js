@@ -303,10 +303,23 @@
   // Objednávky rozdelené podľa stavu: hore to, čo ešte treba upiecť.
   // V jednom zozname sa v nich dalo ťažko vyznať.
   const SKUPINY = [
-    { stav: 'nova', nadpis: 'Nové — čakajú na vybavenie', odNajblizsieho: true },
-    { stav: 'vybavena', nadpis: 'Vybavené', odNajblizsieho: false },
-    { stav: 'zrusena', nadpis: 'Zrušené', odNajblizsieho: false },
+    { stav: 'nova', nadpis: 'Nové — čakajú na vybavenie' },
+    { stav: 'vybavena', nadpis: 'Vybavené' },
+    { stav: 'zrusena', nadpis: 'Zrušené' },
   ];
+
+  // Najnovšie hore — teda tá, ktorá prišla naposledy, nie tá s najbližším
+  // termínom. Rozhoduje čas vzniku; keby chýbal, číslo objednávky a až
+  // nakoniec termín, aby poradie nikdy neskákalo pri prekreslení.
+  function odNajnovsej(a, b) {
+    const ca = a.created_at || '';
+    const cb = b.created_at || '';
+    if (ca !== cb) return cb.localeCompare(ca);
+    const na = Number(a.order_no) || 0;
+    const nb = Number(b.order_no) || 0;
+    if (na !== nb) return nb - na;
+    return (b.day || '').localeCompare(a.day || '');
+  }
 
   function riadokObjednavky(o) {
     return `
@@ -340,9 +353,7 @@
     el.innerHTML = SKUPINY.map((s) => {
       const moje = orders
         .filter((o) => o.status === s.stav)
-        // Pri nových je najdôležitejší najbližší termín — ten sa pečie ako prvý.
-        // Pri vybavených a zrušených je to história, tak od najnovšieho.
-        .sort((a, b) => (s.odNajblizsieho ? a.day.localeCompare(b.day) : b.day.localeCompare(a.day)));
+        .sort(odNajnovsej);
 
       const obsah = moje.length
         ? `<table class="admin-table"><thead><tr>

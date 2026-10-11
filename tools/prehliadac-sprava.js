@@ -796,6 +796,40 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
       note: '', status: 'zrusena', total_estimate: 99, paid_amount: null, paid_on: null, paid_note: '' },
   );
 
+  console.log('\nPORADIE OBJEDNÁVOK:');
+  // Tri nové objednávky, kde najnovšia má najvzdialenejší termín a
+  // najstaršia najbližší — poradie podľa termínu by ich zoradilo opačne.
+  // Termíny sú zámerne v inom roku, nech nezasahujú do súm v Peniazoch,
+  // ktoré počítajú tento mesiac.
+  db.orders.push(
+    { id: 'op4', order_no: 104, day: '2029-03-28', customer_name: 'Prvá', phone: '', email: '',
+      note: '', status: 'nova', total_estimate: 10, paid_amount: null, paid_on: null, paid_note: '',
+      created_at: '2026-01-01T08:00:00Z' },
+    { id: 'op5', order_no: 105, day: '2029-03-20', customer_name: 'Druhá', phone: '', email: '',
+      note: '', status: 'nova', total_estimate: 10, paid_amount: null, paid_on: null, paid_note: '',
+      created_at: '2026-01-02T08:00:00Z' },
+    { id: 'op6', order_no: 106, day: '2029-03-14', customer_name: 'Tretia', phone: '', email: '',
+      note: '', status: 'nova', total_estimate: 10, paid_amount: null, paid_on: null, paid_note: '',
+      created_at: '2026-01-03T08:00:00Z' },
+  );
+  await page.click('button[data-tab="orders"]');
+  await page.click('button[data-tab="days"]');
+  await page.click('button[data-tab="orders"]');
+  await page.waitForTimeout(600);
+  const poradieObj = await page.$$eval('#ordersList .ordgrp:first-child tbody .ordno',
+    (b) => b.map((x) => x.textContent.trim()));
+  // Objednávky, ktoré si scenár vytvoril sám, vznikli práve teraz, takže
+  // sú nad týmito troma právom. Overuje sa poradie medzi nimi.
+  const kdeObj = (c) => poradieObj.indexOf(c);
+  ok('novšia objednávka je nad staršou (' + poradieObj.join(' ') + ')',
+    kdeObj('#106') < kdeObj('#105') && kdeObj('#105') < kdeObj('#104'));
+  // Keby sa radilo podľa termínu, vyšlo by #104 #105 #106 alebo opačne —
+  // ani jedno nie je to, čo je hore.
+  ok('nie je to poradie podľa termínu', kdeObj('#104') > kdeObj('#106'));
+  // Staršie záznamy nemusia mať čas vzniku; vtedy rozhodne číslo.
+  ok('objednávka bez času vzniku sa zaradí podľa čísla',
+    poradieObj[poradieObj.length - 1] === '#102');
+
   await page.click('button[data-tab="peniaze"]');
   await page.waitForSelector('#penSuhrn table', { timeout: 5000 });
   const suhrn = (await page.textContent('#penSuhrn')).replace(/\s+/g, ' ');
