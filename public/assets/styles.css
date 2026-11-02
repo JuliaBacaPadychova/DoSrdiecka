@@ -409,6 +409,7 @@ footer a{color:var(--peach-deep)}
 /* Stĺpec so stavom objednávky. Bez spodnej hranice ho dlhý zákazníčkin
    e-mail v susednom stĺpci stlačil tak, že z „vybavená" ostalo „vybc". */
 .admin-table .stavbunka{white-space:nowrap}
+.admin-table .prijata{white-space:nowrap;font-size:.86rem}
 /* Dlhá poznámka od zákazníčky roztiahla stĺpec Zákazník na pol tabuľky
    a zvyšok stlačila — „Položky" potom lámalo každý výrobok na tri riadky.
    Poznámka sa preto zalomí skôr: stĺpec ostane úzky a vpravo je miesto.

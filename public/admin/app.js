@@ -321,10 +321,27 @@
     return (b.day || '').localeCompare(a.day || '');
   }
 
+  // Kedy objednávka prišla. V tabuľke je inak len termín pečenia, takže
+  // sa nedalo povedať, či je dohodnutá dávno alebo prišla dnes ráno.
+  // Databáza beží v UTC, preto sa prepisuje do nášho času — inak by
+  // objednávka z 23:30 vyzerala, že prišla až nasledujúci deň.
+  function prijataText(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
+    const moznosti = { timeZone: 'Europe/Bratislava' };
+    const datum = new Intl.DateTimeFormat('sk-SK', {
+      ...moznosti, day: 'numeric', month: 'numeric', year: 'numeric' }).format(d);
+    const cas = new Intl.DateTimeFormat('sk-SK', {
+      ...moznosti, hour: '2-digit', minute: '2-digit' }).format(d);
+    return `${datum}<br><span class="muted" style="font-size:.82rem">${cas}</span>`;
+  }
+
   function riadokObjednavky(o) {
     return `
         <tr>
           <td class="ordno">${o.order_no ? '#' + o.order_no : '—'}</td>
+          <td class="prijata">${prijataText(o.created_at)}</td>
           <td><input type="date" value="${o.day}" class="termin"
             onchange="Admin.presunObjednavku('${o.id}', this.value, '${o.day}')"></td>
           <td>${o.customer_name}<br><span class="muted">${o.phone || '—'}${
@@ -357,7 +374,7 @@
 
       const obsah = moje.length
         ? `<table class="admin-table"><thead><tr>
-            <th>Číslo</th><th>Termín</th><th>Zákazník</th><th>Položky</th><th>Cena</th><th>Stav</th><th></th>
+            <th>Číslo</th><th>Prijatá</th><th>Termín</th><th>Zákazník</th><th>Položky</th><th>Cena</th><th>Stav</th><th></th>
           </tr></thead><tbody>${moje.map(riadokObjednavky).join('')}</tbody></table>`
         : `<p class="prazdne">Žiadne.</p>`;
 
@@ -2826,7 +2843,8 @@
             <td>${kusov}</td>
             <td class="akcie">${otvoreny
               ? '<span class="muted">otvorený</span>'
-              : `<button class="btn ghost sm" onclick="Admin.vyberZoznam('${z.id}')">Otvoriť</button>`}</td>
+              : `<button class="btn ghost sm" onclick="Admin.vyberZoznam('${z.id}')">Otvoriť</button>`}
+              <button class="btn ghost sm" onclick="Admin.exportZoznamu('${z.id}')">Excel</button></td>
           </tr>`;
         }).join('')}</tbody></table>`
       : '<p class="muted">Zatiaľ žiadny uložený zoznam.</p>';
@@ -3091,14 +3109,117 @@
     }
   }
 
+  // Posledný spočítaný zoznam — drží sa kvôli exportu do Excelu, aby sa
+  // nemusel počítať druhý raz.
+  let POSLEDNY_ROZPIS = null;
+
+  const POPISY_STAVU = {
+    bez_mnozstva: 'v recepte bez gramáže',
+    chyba_balenie: 'doplň balenie a cenu',
+    chyba_prevod: 'jednotku sa nepodarilo prepočítať',
+    nerata_sa: 'neráta sa',
+    ok: '',
+  };
+
+  // Zoznam do Excelu. Ten istý obsah, aký je na obrazovke — suroviny
+  // v abecednom poradí, ako sa čítajú v obchode. Čísla sa zapisujú ako
+  // čísla, takže sa v tabuľke dajú rovno spočítať.
+  function doExcelu(z, hlavicka, subor) {
+    if (!z || !z.riadky || !z.riadky.length) return false;
+    const riadky = z.riadky.map((r) => [
+      r.surovina,
+      (r.recepty || []).join(', '),
+      r.mnozstvo === null ? null : Number(r.mnozstvo),
+      r.jednotka || '',
+      r.balenia === null ? null : Number(r.balenia),
+      r.nakup === null ? null : Number(r.nakup),
+      r.spotreba === null ? null : Number(r.spotreba),
+      POPISY_STAVU[r.stav] || '',
+    ]);
+    const prazdny = ['', '', null, '', null, null, null, ''];
+    riadky.push(prazdny.slice());
+    riadky.push(['Spolu nákup (celé balenia)', '', null, '', null,
+      z.nakup === null ? null : Number(z.nakup), null, '']);
+    riadky.push(['Spolu spotreba (čo sa minie)', '', null, '', null, null,
+      z.spotreba === null ? null : Number(z.spotreba), '']);
+    if (!z.uplna) {
+      riadky.push(prazdny.slice());
+      riadky.push([`Nedopočítané: ${(z.nedopocitane || []).join(', ')}. Skutočná cena je vyššia.`,
+        '', null, '', null, null, null, '']);
+    }
+
+    Xlsx.stiahni(subor, {
+      nazov: 'Nákup',
+      nadpis: hlavicka,
+      stlpce: [
+        { hlavicka: 'Surovina', sirka: 30 },
+        { hlavicka: 'V receptoch', sirka: 32 },
+        { hlavicka: 'Potreba', sirka: 11 },
+        { hlavicka: 'Jednotka', sirka: 10 },
+        { hlavicka: 'Balení', sirka: 9 },
+        { hlavicka: 'Nákup (€)', sirka: 12 },
+        { hlavicka: 'Spotreba (€)', sirka: 13 },
+        { hlavicka: 'Poznámka', sirka: 26 },
+      ],
+      riadky,
+    });
+    return true;
+  }
+
+  // Z názvu súboru preč medzery, lomky a diakritika.
+  function nazovSuboru(zaklad) {
+    const bezDiakritiky = String(zaklad).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return 'nakup-' + (bezDiakritiky.toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'zoznam') + '.xlsx';
+  }
+
+  function exportPoslednehoRozpisu() {
+    if (!POSLEDNY_ROZPIS) return;
+    doExcelu(POSLEDNY_ROZPIS.zoznam, POSLEDNY_ROZPIS.hlavicka,
+      nazovSuboru(POSLEDNY_ROZPIS.hlavicka));
+  }
+
+  // Export priamo z prehľadu uložených zoznamov: zoznam sa najprv spočíta
+  // a hneď stiahne, nech to nie sú tri kliky.
+  async function exportZoznamu(id) {
+    const z = ((RECEPTAR && RECEPTAR.zoznamy) || []).find((x) => x.id === id);
+    const stav = document.getElementById('zozStav');
+    if (!z) { if (stav) stav.textContent = 'Zoznam sa nenašiel. Obnov stránku.'; return; }
+    const polozky = (z.items || [])
+      .map((p) => ({ product_id: p.product_id, kusy: Number(p.kusy) || 0 }))
+      .filter((p) => p.kusy > 0);
+    if (!polozky.length) { if (stav) stav.textContent = 'Tento zoznam je prázdny.'; return; }
+    if (stav) stav.textContent = 'Pripravujem tabuľku…';
+    try {
+      const data = await apiFetch('/api/admin/receptar?co=kalkulacia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ polozky }),
+      });
+      const hlavicka = popisZoznamu(z);
+      const islo = doExcelu(data.zoznam, hlavicka, nazovSuboru(hlavicka));
+      if (stav) {
+        stav.textContent = islo ? 'Tabuľka stiahnutá.'
+          : 'Z tohto zoznamu sa nedá nič spočítať — príchute v ňom nemajú priradené recepty.';
+      }
+    } catch (err) {
+      if (stav) stav.textContent = err.message;
+    }
+  }
+
   function renderZoznam(z, hlavicka) {
     const el = document.getElementById('kalVysledok');
+    POSLEDNY_ROZPIS = null;
     if (!z || !z.riadky.length) {
       el.innerHTML = `<p class="muted">${esc(hlavicka)}: niet čo počítať.</p>`;
       return;
     }
+    POSLEDNY_ROZPIS = { zoznam: z, hlavicka };
     el.innerHTML = `
-      <h3 style="margin:0 0 4px">${esc(hlavicka)}</h3>
+      <div class="admin-row" style="margin:0 0 4px">
+        <h3 style="margin:0">${esc(hlavicka)}</h3>
+        <button class="btn ghost sm" onclick="Admin.exportPoslednehoRozpisu()">Stiahnuť do Excelu</button>
+      </div>
       <p style="margin:0 0 14px">
         Nákup (celé balenia): <strong>${euro(z.nakup)}</strong>
         ${z.nakup_na_kus !== null ? `· ${euro(z.nakup_na_kus)} na kus` : ''}<br>
@@ -3116,12 +3237,7 @@
           <td>${r.balenia === null ? '—' : esc(r.balenia)}</td>
           <td>${euro(r.nakup)}</td>
           <td>${euro(r.spotreba)}</td>
-          <td class="muted" style="font-size:.85rem">${{
-            bez_mnozstva: 'v recepte bez gramáže',
-            chyba_balenie: 'doplň balenie a cenu',
-            nerata_sa: 'neráta sa',
-            ok: '',
-          }[r.stav] || ''}</td>
+          <td class="muted" style="font-size:.85rem">${POPISY_STAVU[r.stav] || ''}</td>
         </tr>`).join('')}</tbody></table>`;
   }
 
@@ -3398,6 +3514,7 @@
     pridajKalRiadok, kalkulaciaRucna, kalkulaciaDna, zobrazRozpis,
     ulozVyber, otvorUlozeny, premenujUlozeny, zmazUlozeny, ulozPoznamkuRozpisu,
     novyZoznam, vyberZoznam, ulozZoznam, zmazZoznam, objednavkyDoZoznamu,
+    exportZoznamu, exportPoslednehoRozpisu,
     zobrazPeniaze, penazeMesiac, ulozPlatby, pridajNakup, zmazNakup,
   };
 

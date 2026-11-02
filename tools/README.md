@@ -53,3 +53,22 @@ alebo sa premenuje, skript čaká na niečo, čo už neexistuje, a spadne na
 timeout. Hláška povie, na ktorý prvok čakal. **Nie je to chyba webu** —
 treba opraviť skript. Preto sú v repozitári a nie v dočasnom priečinku:
 inak zostarnú potichu a zistí sa to až vtedy, keď sú na nič.
+
+## prehliadac-export.js
+
+Dátum prijatia objednávky a export nákupného zoznamu do Excelu. Zošit sa
+naozaj stiahne — skript na konci vypíše, kam.
+
+```
+PREHLIADAC_VYSTUP=/niekam NODE_PATH=/cesta/k/node_modules node tools/prehliadac-export.js
+```
+
+## over-xlsx.py
+
+Otvorí stiahnutý zošit tak, ako ho otvorí Excel, a vypíše jeho obsah.
+Keď prejde bez chyby, súbor je platný `.xlsx`, nie premenované CSV.
+
+```
+pip install --target /niekam openpyxl
+PYTHONPATH=/niekam python3 tools/over-xlsx.py nakup-….xlsx
+```
