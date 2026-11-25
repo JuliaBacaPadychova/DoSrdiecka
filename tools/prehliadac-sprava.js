@@ -1140,6 +1140,11 @@ const { startFakeSupabase } = require(path.join(REPO, 'test/fake-supabase.js'));
   console.log('  v ponuke: ' + dniPomocky.join(' | '));
   ok('ponúka termíny objednávok aj s počtami',
     dniPomocky.length > 0 && dniPomocky.every((t) => /^\d{4}-\d{2}-\d{2} — \d+ objedn\S+, \d+ ks$/.test(t)));
+  // Jedno pravidlo na celý zoznam: od najneskoršieho termínu po najstarší.
+  // Kým sa delil na budúce a minulé, dátum uprostred odskočil späť.
+  const datumy = dniPomocky.map((t) => t.slice(0, 10));
+  ok('a sú zoradené od najneskoršieho po najstarší',
+    datumy.every((d, i) => i === 0 || datumy[i - 1] > d));
   await page.selectOption('#kalDay', { index: 0 });
   await page.click('button:has-text("Spočítať z objednávok")');
   await page.waitForTimeout(800);
