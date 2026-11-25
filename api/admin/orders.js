@@ -53,9 +53,9 @@ module.exports = withErrors(
 
     // Objednávka dohodnutá mimo web. Zapisuje sa tou istou funkciou ako
     // objednávky z webu, ale uloží sa s manual = true: obchádza lehotu
-    // na objednanie, minimálny odber aj limit dňa a z limitu na webe
-    // neuberá. Limit hovorí, koľko si majiteľka necháva na verejné
-    // objednávanie, nie koľko celkovo upečie.
+    // na objednanie, minimálny odber aj limit dňa — zapíše sa teda aj
+    // nad limit. Miesto na ten deň však zaberá ako každá iná, takže web
+    // ho už neponúkne; v správe sa vypisuje zvlášť.
     //
     // E-mail sa neposiela: majiteľka je so zákazníčkou v kontakte,
     // objednávku si práve s ňou dohodla.
