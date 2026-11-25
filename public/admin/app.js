@@ -449,9 +449,10 @@
     return `${n} objednávok`;
   }
 
-  // Objednávky dohodnuté mimo web z limitu neuberajú — web bude ponúkať
-  // plný počet, aj keď je polovica dňa sľúbená osobne. Preto musia byť
-  // pri dni vidieť, inak sa deň prebookuje bez varovania.
+  // Objednávky dohodnuté mimo web z limitu uberajú rovnako ako tie
+  // z webu — za deň sa upečie to isté, nech si to objedná ktokoľvek.
+  // Vypisujú sa zvlášť preto, aby bolo vidieť, prečo deň ubúda, hoci
+  // cez web neprišlo nič.
   function mimoWebu(d) {
     const kusy = [
       [d.mimo_webu_zakusky, 'ks'],
@@ -459,7 +460,17 @@
       [d.mimo_webu_chlebik, 'chlebík'],
     ].filter(([n]) => Number(n) > 0).map(([n, jednotka]) => `${n} ${jednotka}`);
     return kusy.length
-      ? `<br><span class="muted">mimo web: ${kusy.join(' · ')}</span>`
+      ? `<br><span class="muted">z toho mimo web: ${kusy.join(' · ')}</span>`
+      : '';
+  }
+
+  // Ručnú objednávku limit nezastaví, takže zvyšná kapacita môže ísť aj
+  // do mínusu. Je to jej rozhodnutie, ale nech to nevyzerá ako chyba.
+  function nadLimit(d) {
+    const kolko = [d.remaining_zakusky, d.remaining_torty, d.remaining_chlebik]
+      .map(Number).filter((n) => n < 0);
+    return kolko.length
+      ? '<br><span class="muted">nad limit — dohodla si viac, než máš na deň nastavené</span>'
       : '';
   }
 
@@ -482,7 +493,7 @@
           <td>${d.cap_torty}</td>
           <td>${d.cap_chlebik}</td>
           <td>${d.remaining_zakusky} ks · ${d.remaining_torty} torta · ${d.remaining_chlebik} chlebík${
-            mimoWebu(d)}</td>
+            mimoWebu(d)}${nadLimit(d)}</td>
           <td class="akcie">
             <button class="btn ghost sm" onclick="Admin.editDay('${d.day}', ${d.is_open}, ${d.cap_zakusky}, ${d.cap_torty}, ${d.cap_chlebik})">Upraviť</button>
             ${d.pocet_objednavok

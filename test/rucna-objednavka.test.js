@@ -99,13 +99,13 @@ test("limit dňa ju nezastaví — zapíše sa aj do plného dňa", async (t) =>
   });
 });
 
-test("ručná objednávka z limitu na webe neuberá", async (t) => {
+test("ručná objednávka miesto zaberie a je pri nej vidieť, že je spoza webu", async (t) => {
   await sSpravou(t, [otvoreny(den(9), 12)], async ({ fake, zapis }) => {
-    await zapis({ ...zaklad, day: den(9), items: [{ product_id: "p-choux", qty: 12 }] });
+    await zapis({ ...zaklad, day: den(9), items: [{ product_id: "p-choux", qty: 7 }] });
     const stav = await fetch(`${process.env.SUPABASE_URL}/rest/v1/day_capacity?day=eq.${den(9)}`)
       .then((r) => r.json());
-    assert.equal(stav[0].remaining_zakusky, 12, "na webe ostáva celý limit");
-    assert.equal(stav[0].mimo_webu_zakusky, 12, "ale je vidieť, čo je dohodnuté mimo");
+    assert.equal(stav[0].remaining_zakusky, 5, "z limitu 12 ubudlo sedem kusov");
+    assert.equal(stav[0].mimo_webu_zakusky, 7, "a je vidieť, že sú dohodnuté mimo web");
     assert.equal(fake.db.orders.length, 1);
   });
 });
@@ -163,9 +163,11 @@ test("na dni, ktorý si zápis založil, limit tiež neplatí", async (t) => {
   });
 });
 
-// Druhá polovica dohody: web musí ostať obmedzený. Keby ručná objednávka
-// limit zdvihla, prišla by cez web objednávka, ktorá sa už neupečie.
-test("web ostáva obmedzený aj vedľa ručných objednávok", async (t) => {
+// Druhá polovica dohody: limit ručnej objednávke nebráni, ale miesto
+// zaberá. Za deň sa upečie to isté, nech si to objedná ktokoľvek —
+// keby ručná objednávka miesto nezabrala, web by pustil tortu na deň,
+// na ktorý je už jedna sľúbená osobne.
+test("ručná objednávka zaberie miesto aj webu", async (t) => {
   await sSpravou(t, [otvoreny(den(9), 6)], async ({ fake, zapis }) => {
     await zapis({ ...zaklad, day: den(9), items: [{ product_id: "p-choux", qty: 6 }] });
 
@@ -176,16 +178,74 @@ test("web ostáva obmedzený aj vedľa ručných objednávok", async (t) => {
       body: { day: den(9), name: "Web", phone: "0900000000", email: "a@b.sk",
               note: "bez orechov", items: [{ product_id: "p-choux", qty: 6 }] },
     }, res);
-    assert.equal(res.out.code, 200, "webu ručná objednávka kapacitu nezobrala");
+    assert.equal(res.out.code, 409, "limit 6 je ručnou objednávkou minutý");
+    assert.equal(fake.db.orders.filter((o) => !o.manual).length, 0,
+      "cez web neprešlo nič");
+  });
+});
 
-    const este = fakeRes();
+// Deň s ručnou objednávkou sa na webe nesmie ponúkať ako voľný. Presne
+// toto sa stalo v praxi: na 12.12. bola dohodnutá torta mimo webu a web
+// na ten istý deň ďalej ponúkal tortu.
+// Deň, na ktorom je torta dohodnutá mimo webu, už tortu ponúkať nesmie.
+// Presne toto sa stalo v praxi: na 12.12. bola torta dohodnutá osobne
+// a web na ten istý deň ďalej ponúkal tortu.
+test("tortu dohodnutú mimo web už web na ten deň neponúkne", async (t) => {
+  // Deň len na tortu: zákusky ani chlebík sa naň nepečú. Inak by deň
+  // ostal voľný kvôli zákuskom a na torte by sa nič neukázalo.
+  const lenTorta = { day: den(9), is_open: true, cap_zakusky: 0, cap_torty: 1, cap_chlebik: 0 };
+  await sSpravou(t, [lenTorta], async ({ zapis }) => {
+    const dni = require("../api/days");
+    const teraz = new Date(`${den(9)}T00:00:00Z`);
+    const stavDni = async () => {
+      const res = fakeRes();
+      await dni({
+        method: "GET",
+        url: `/api/days?year=${teraz.getUTCFullYear()}&month=${teraz.getUTCMonth() + 1}`,
+        headers: {},
+      }, res);
+      return res.out.body;
+    };
+
+    const pred = await stavDni();
+    assert.equal(pred.next_free, den(9), "pred dohodou web ten deň ponúka");
+
+    await zapis({ ...zaklad, day: den(9), items: [{ product_id: "p-brownie", qty: 1 }] });
+
+    const po = await stavDni();
+    const d = po.days.find((x) => String(x.day).slice(0, 10) === den(9));
+    assert.equal(d.remaining_torty, 0, "torta na ten deň je obsadená");
+    assert.equal(d.mimo_webu_torty, 1, "a vidno, že je dohodnutá mimo web");
+    assert.notEqual(po.next_free, den(9), "web ten deň už ako voľný neponúka");
+  });
+});
+
+// Druhá strana tej istej mince: deň sa nezatvorí celý. Keď je mimo web
+// dohodnutá iba torta, zákusky sa na ten deň objednať dajú ďalej.
+test("ručná torta nezavrie celý deň — zákusky sa objednať dajú", async (t) => {
+  await sSpravou(t, [otvoreny(den(9))], async ({ zapis }) => {
+    await zapis({ ...zaklad, day: den(9), items: [{ product_id: "p-brownie", qty: 1 }] });
+
+    const objednavky = require("../api/orders");
+    const res = fakeRes();
     await objednavky({
       method: "POST", url: "/api/orders", headers: {},
-      body: { day: den(9), name: "Web2", phone: "0900000000", email: "a@b.sk",
+      body: { day: den(9), name: "Web", phone: "0900000000", email: "a@b.sk",
               note: "bez orechov", items: [{ product_id: "p-choux", qty: 6 }] },
-    }, este);
-    assert.equal(este.out.code, 409, "limit 6 na webe naďalej platí");
-    assert.equal(fake.db.orders.filter((o) => !o.manual).length, 1);
+    }, res);
+    assert.equal(res.out.code, 200, "zákusky ručná torta neblokuje");
+  });
+});
+
+// Opačný smer, aby sa pravidlo neprehuplo celé: limit zapísať nezabráni.
+test("limit ručnej objednávke ani tak nebráni", async (t) => {
+  await sSpravou(t, [otvoreny(den(9), 6)], async ({ fake, zapis }) => {
+    await zapis({ ...zaklad, day: den(9), items: [{ product_id: "p-choux", qty: 6 }] });
+    const nadLimit = await zapis({
+      ...zaklad, day: den(9), items: [{ product_id: "p-choux", qty: 6 }],
+    });
+    assert.equal(nadLimit.code, 200, "12 kusov na deň s limitom 6 — je to jej rozhodnutie");
+    assert.equal(fake.db.orders.length, 2);
   });
 });
 

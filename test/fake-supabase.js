@@ -46,16 +46,17 @@ function startFakeSupabase() {
 
   function dayCapacityRows() {
     return db.open_days.map((d) => {
-      // Zvyšná kapacita počíta len webové objednávky — ručne dohodnuté
-      // z nej neuberajú, ale vypisujú sa zvlášť. Musí sedieť s pohľadom
-      // day_capacity v supabase/schema.sql.
-      const used = (cat, rucne) =>
+      // Zvyšná kapacita ráta všetko, čo sa na ten deň pečie — ručne
+      // dohodnuté rovnako ako objednávky z webu. Stĺpce mimo_webu_*
+      // hovoria, koľko z obsadeného miesta je dohodnuté osobne. Musí
+      // sedieť s pohľadom day_capacity v supabase/schema.sql.
+      const used = (cat, lenRucne) =>
         db.order_items
           .filter((oi) => oi.category_id === cat)
           .filter((oi) => {
             const order = db.orders.find((o) => o.id === oi.order_id);
             return order && order.day === d.day && order.status !== "zrusena"
-              && Boolean(order.manual) === rucne;
+              && (!lenRucne || Boolean(order.manual));
           })
           .reduce((s, oi) => s + oi.qty, 0);
       const cap = d.cap_chlebik === undefined ? 1 : d.cap_chlebik;
@@ -192,8 +193,9 @@ function startFakeSupabase() {
       total += product.price * qty;
       resolvedItems.push({ product, qty });
     }
-    // Limit stráži web. Ručná objednávka ho obchádza aj nezaberá —
-    // musí sedieť s funkciou create_order v supabase/schema.sql.
+    // Limit stráži web. Ručná objednávka ho obchádza (zapíše sa aj nad
+    // neho), ale miesto zaberá — zvyšná kapacita vyššie ju už
+    // započítala. Musí sedieť s create_order v supabase/schema.sql.
     if (!rucne) {
       if (addZ > cap.remaining_zakusky) throw { message: "capacity_zakusky" };
       if (addT > cap.remaining_torty) throw { message: "capacity_torty" };
