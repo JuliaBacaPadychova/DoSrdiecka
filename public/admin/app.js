@@ -1999,14 +1999,21 @@
       podlaDna.set(den, z);
     });
 
-    // Najbližší termín hore: ten sa pečie ako prvý. Minulé idú za ne,
-    // od najnovšieho — sú to už len záznamy, ale občas sa do nich pozerá.
+    // Zoradené od najneskoršieho termínu po najstarší — jedno pravidlo na
+    // celý zoznam. Delenie na budúce a minulé síce dávalo najbližší termín
+    // navrch, ale uprostred zoznamu dátum odskočil späť a vyzeralo to
+    // poprehadzovane. Najbližší termín sa namiesto toho rovno predvolí.
+    return [...podlaDna.values()].sort((a, b) => b.den.localeCompare(a.den));
+  }
+
+  // Termín, ktorý sa v ponuke predvolí: najbližší, ktorý ešte len bude.
+  // Zoznam ide od najneskoršieho, takže budúce sú hore a ten najbližší
+  // je z nich posledný. Keď už je všetko za nami, berie sa najnovší.
+  function najblizsiTermin(dni) {
+    if (!dni.length) return '';
     const dnes = new Date().toISOString().slice(0, 10);
-    const buduce = [...podlaDna.values()].filter((d) => d.den >= dnes)
-      .sort((a, b) => a.den.localeCompare(b.den));
-    const minule = [...podlaDna.values()].filter((d) => d.den < dnes)
-      .sort((a, b) => b.den.localeCompare(a.den));
-    return buduce.concat(minule);
+    const buduce = dni.filter((d) => d.den >= dnes);
+    return buduce.length ? buduce[buduce.length - 1].den : dni[0].den;
   }
 
   // Vyberá sa z dní, na ktoré objednávka naozaj je — v Receptoch aj
@@ -2021,6 +2028,7 @@
       : '<option value="">— zatiaľ žiadne objednávky —</option>';
     // Po prekreslení sa drží to, čo bolo vybrané; inak najbližší termín.
     if (doteraz && dni.some((d) => d.den === doteraz)) el.value = doteraz;
+    else if (dni.length) el.value = najblizsiTermin(dni);
   }
 
   function naplnDniPecenia() {
